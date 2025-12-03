@@ -1,0 +1,31 @@
+{
+  "cli": {
+    "version": ">= 16.24.1",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk",
+        "image": "latest",
+        "credentialsSource": "local"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease --stacktrace --info --warning-mode all",
+        "image": "latest",
+        "credentialsSource": "local",
+        "env": {
+          "EXPO_USE_COMMUNITY_AUTOLINKING": "1"
+        }
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

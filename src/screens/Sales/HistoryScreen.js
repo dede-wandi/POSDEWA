@@ -1,0 +1,832 @@
+import React, { useEffect, useState } from 'react';
+import { 
+  View, 
+  Text, 
+  FlatList, 
+  TouchableOpacity, 
+  Alert, 
+  StyleSheet, 
+  TextInput,
+  Modal,
+  ScrollView,
+  RefreshControl 
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { formatIDR } from '../../utils/currency';
+import { useAuth } from '../../context/AuthContext';
+import { getSalesHistory, getSaleById } from '../../services/salesSupabase';
+import { printInvoiceToPDF, shareInvoicePDF, shareToWhatsApp } from '../../utils/invoicePrint';
+
+export default function HistoryScreen({ navigation }) {
+  const { user } = useAuth();
+  const [sales, setSales] = useState([]);
+  const [filteredSales, setFilteredSales] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterPeriod, setFilterPeriod] = useState('all'); // all, today, week, month, year
+  const [selectedSale, setSelectedSale] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+
+  useEffect(() => {
+    loadSalesHistory();
+  }, []);
+
+  useEffect(() => {
+    filterSales();
+  }, [sales, searchQuery, filterPeriod]);
+
+  const loadSalesHistory = async () => {
+    console.log('🔄 HistoryScreen: Loading sales history for user:', user?.id);
+    setLoading(true);
+    try {
+      const result = await getSalesHistory(user?.id);
+      console.log('✅ HistoryScreen: Sales history loaded:', result?.length || 0, 'items');
+      setSales(result || []);
+    } catch (error) {
+      console.error('❌ HistoryScreen: Error loading sales history:', error);
+      Alert.alert('Error', 'Gagal memuat riwayat penjualan');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadSalesHistory();
+    setRefreshing(false);
+  };
+
+  const filterSales = () => {
+    let filtered = [...sales];
+
+    // Filter by search query (sale ID)
+    if (searchQuery) {
+      filtered = filtered.filter(sale => 
+        (sale.no_invoice && sale.no_invoice.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        sale.id?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Filter by period
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    switch (filterPeriod) {
+      case 'today':
+        filtered = filtered.filter(sale => {
+          const saleDate = new Date(sale.created_at);
+          return saleDate >= today;
+        });
+        break;
+      case 'week':
+        const weekAgo = new Date(today);
+        weekAgo.setDate(today.getDate() - 7);
+        filtered = filtered.filter(sale => {
+          const saleDate = new Date(sale.created_at);
+          return saleDate >= weekAgo;
+        });
+        break;
+      case 'month':
+        const monthAgo = new Date(today);
+        monthAgo.setMonth(today.getMonth() - 1);
+        filtered = filtered.filter(sale => {
+          const saleDate = new Date(sale.created_at);
+          return saleDate >= monthAgo;
+        });
+        break;
+      case 'year':
+        const yearAgo = new Date(today);
+        yearAgo.setFullYear(today.getFullYear() - 1);
+        filtered = filtered.filter(sale => {
+          const saleDate = new Date(sale.created_at);
+          return saleDate >= yearAgo;
+        });
+        break;
+      default:
+        // 'all' - no additional filtering
+        break;
+    }
+
+    // Sort by date (newest first)
+    filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    
+    setFilteredSales(filtered);
+  };
+
+  const showSaleDetail = async (saleId) => {
+    try {
+      console.log('🔍 HistoryScreen: Loading sale detail for ID:', saleId);
+      const saleDetail = await getSaleById(saleId);
+      if (saleDetail) {
+        setSelectedSale(saleDetail);
+        setShowDetailModal(true);
+      } else {
+        Alert.alert('Error', 'Detail penjualan tidak ditemukan');
+      }
+    } catch (error) {
+      console.error('❌ HistoryScreen: Error loading sale detail:', error);
+      Alert.alert('Error', 'Gagal memuat detail penjualan');
+    }
+  };
+
+  // Print invoice function
+  const printInvoice = async (sale) => {
+    try {
+      console.log('🖨️ HistoryScreen: Printing invoice for sale:', sale.id);
+      
+      // First, ask for receipt size
+      Alert.alert(
+        'Pilih Ukuran Struk',
+        'Pilih ukuran struk thermal:',
+        [
+          {
+            text: 'Batal',
+            style: 'cancel'
+          },
+          {
+            text: '📄 58mm',
+            onPress: () => showPrintOptions(sale, '58mm')
+          },
+          {
+            text: '📄 80mm',
+            onPress: () => showPrintOptions(sale, '80mm')
+          }
+        ],
+        { cancelable: true }
+      );
+    } catch (error) {
+      console.error('❌ HistoryScreen: Error in printInvoice:', error);
+      Alert.alert('Error', 'Terjadi kesalahan saat mencetak invoice');
+    }
+  };
+
+  // Show print options with selected receipt size
+  const showPrintOptions = (sale, receiptSize) => {
+    Alert.alert(
+      `Cetak Invoice (${receiptSize})`,
+      'Pilih cara untuk mencetak invoice:',
+      [
+        {
+          text: 'Batal',
+          style: 'cancel'
+        },
+        {
+          text: '📄 Simpan PDF',
+          onPress: async () => {
+            const result = await printInvoiceToPDF(sale, user?.id, receiptSize);
+            if (result.success) {
+              Alert.alert('Berhasil', `Invoice ${receiptSize} berhasil disimpan sebagai PDF`);
+            } else {
+              Alert.alert('Error', result.error || 'Gagal menyimpan PDF');
+            }
+          }
+        },
+        {
+          text: '📤 Share PDF',
+          onPress: async () => {
+            const result = await shareInvoicePDF(sale, user?.id, receiptSize);
+            if (!result.success) {
+              Alert.alert('Error', result.error || 'Gagal share PDF');
+            }
+          }
+        },
+        {
+          text: '📱 Share ke WhatsApp',
+          onPress: async () => {
+            const result = await shareToWhatsApp(sale, user?.id, receiptSize);
+            if (!result.success) {
+              Alert.alert('Error', result.error || 'Gagal share ke WhatsApp');
+            }
+          }
+        }
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const renderFilterButton = (period, label) => (
+    <TouchableOpacity
+      style={[
+        styles.filterButton,
+        filterPeriod === period && styles.filterButtonActive
+      ]}
+      onPress={() => setFilterPeriod(period)}
+    >
+      <Text style={[
+        styles.filterButtonText,
+        filterPeriod === period && styles.filterButtonTextActive
+      ]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  const renderSaleItem = ({ item }) => (
+    <TouchableOpacity style={styles.saleCard}>
+      <View style={styles.saleHeader}>
+        <View style={styles.invoiceInfo}>
+          <Text style={styles.invoiceNumber}>
+            {item.no_invoice || `#INV-${new Date(item.created_at).getFullYear()}${String(new Date(item.created_at).getMonth() + 1).padStart(2, '0')}${String(new Date(item.created_at).getDate()).padStart(2, '0')}-${String(item.id).slice(-4)}`}
+          </Text>
+          <Text style={styles.saleDate}>
+            {new Date(item.created_at).toLocaleDateString('id-ID', {
+              day: '2-digit',
+              month: '2-digit', 
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })}
+          </Text>
+        </View>
+        <View style={styles.totalContainer}>
+          <Text style={styles.saleTotal}>{formatIDR(item.total)}</Text>
+        </View>
+      </View>
+      
+      <View style={styles.saleDetails}>
+        <View style={styles.itemInfo}>
+          <View style={styles.itemCountContainer}>
+            <Text style={styles.itemCount}>
+              {item.items?.length || 0} item{(item.items?.length || 0) > 1 ? 's' : ''}
+            </Text>
+          </View>
+          {item.payment_method && (
+            <View style={styles.paymentMethodContainer}>
+              <Text style={styles.paymentMethod}>
+                {item.payment_method}
+                {item.payment_channel ? ` - ${item.payment_channel.name}` : ''}
+              </Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      <View style={styles.saleActions}>
+        <TouchableOpacity 
+          style={styles.detailButton}
+          onPress={() => showSaleDetail(item.id)}
+        >
+          <Ionicons name="eye-outline" size={16} color="#fff" />
+          <Text style={styles.detailButtonText}>Detail</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.printButton}
+          onPress={() => printInvoice(item)}
+        >
+          <Ionicons name="print-outline" size={16} color="#fff" />
+          <Text style={styles.printButtonText}>Print</Text>
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color="#000000" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Riwayat Penjualan</Text>
+        <View style={styles.placeholder} />
+      </View>
+
+      {/* Search */}
+      <View style={styles.searchSection}>
+        <View style={styles.searchContainer}>
+          <Text style={styles.searchIcon}>🔍</Text>
+          <TextInput
+            placeholder="Cari nomor invoice atau ID transaksi..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            style={styles.searchInput}
+            placeholderTextColor="#999"
+          />
+        </View>
+      </View>
+
+      {/* Filter Buttons */}
+      <View style={styles.filterSection}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={styles.filterContainer}>
+            {renderFilterButton('all', 'Semua')}
+            {renderFilterButton('today', 'Hari Ini')}
+            {renderFilterButton('week', 'Minggu Ini')}
+            {renderFilterButton('month', 'Bulan Ini')}
+            {renderFilterButton('year', 'Tahun Ini')}
+          </View>
+        </ScrollView>
+      </View>
+
+      {/* Sales List */}
+      <FlatList
+        data={filteredSales}
+        keyExtractor={(item) => item.id}
+        renderItem={renderSaleItem}
+        contentContainerStyle={styles.listContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#007AFF']}
+            tintColor="#007AFF"
+          />
+        }
+        ListEmptyComponent={() => (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyIcon}>📋</Text>
+            <Text style={styles.emptyTitle}>Tidak ada riwayat penjualan</Text>
+            <Text style={styles.emptySubtitle}>
+              {searchQuery.trim() || filterPeriod !== 'all' 
+                ? 'Coba ubah filter atau kata kunci pencarian'
+                : 'Belum ada transaksi penjualan'
+              }
+            </Text>
+          </View>
+        )}
+      />
+
+      {/* Detail Modal */}
+      <Modal
+        visible={showDetailModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowDetailModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>📄 Detail Penjualan</Text>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowDetailModal(false)}
+            >
+              <Text style={styles.closeButtonText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          {selectedSale && (
+            <ScrollView style={styles.modalContent}>
+              <View style={styles.detailSection}>
+                <Text style={styles.detailLabel}>No. Invoice:</Text>
+                <Text style={styles.detailValue}>{selectedSale.no_invoice || selectedSale.id}</Text>
+              </View>
+
+              <View style={styles.detailSection}>
+                <Text style={styles.detailLabel}>Tanggal:</Text>
+                <Text style={styles.detailValue}>{formatDate(selectedSale.created_at)}</Text>
+              </View>
+
+              <View style={styles.detailSection}>
+                <Text style={styles.detailLabel}>Metode Pembayaran:</Text>
+                <Text style={styles.detailValue}>
+                  {selectedSale.payment_method === 'cash' ? '💵 Tunai' : 
+                   selectedSale.payment_method === 'digital' ? '💳 Digital' : 
+                   selectedSale.payment_method === 'bank' ? '🏦 Transfer Bank' : 
+                   '💵 Tunai'}
+                </Text>
+              </View>
+
+              {selectedSale.payment_method === 'cash' && (
+                <>
+                  <View style={styles.detailSection}>
+                    <Text style={styles.detailLabel}>Uang Diterima:</Text>
+                    <Text style={styles.detailValue}>{formatIDR(selectedSale.cash_amount || selectedSale.total)}</Text>
+                  </View>
+                  <View style={styles.detailSection}>
+                    <Text style={styles.detailLabel}>Kembalian:</Text>
+                    <Text style={styles.detailValue}>{formatIDR(selectedSale.change_amount || 0)}</Text>
+                  </View>
+                </>
+              )}
+
+              {/* Show change amount for non-cash payments if exists */}
+              {selectedSale.payment_method !== 'cash' && selectedSale.change_amount > 0 && (
+                <View style={styles.detailSection}>
+                  <Text style={styles.detailLabel}>Kembalian:</Text>
+                  <Text style={styles.detailValue}>{formatIDR(selectedSale.change_amount)}</Text>
+                </View>
+              )}
+
+              {selectedSale.customer_name && (
+                <View style={styles.detailSection}>
+                  <Text style={styles.detailLabel}>Nama Pelanggan:</Text>
+                  <Text style={styles.detailValue}>{selectedSale.customer_name}</Text>
+                </View>
+              )}
+
+              {selectedSale.payment_channel && (
+                <View style={styles.detailSection}>
+                  <Text style={styles.detailLabel}>Channel Pembayaran:</Text>
+                  <Text style={styles.detailValue}>{selectedSale.payment_channel.name}</Text>
+                </View>
+              )}
+
+              {selectedSale.notes && (
+                <View style={styles.detailSection}>
+                  <Text style={styles.detailLabel}>Catatan:</Text>
+                  <Text style={styles.detailValue}>{selectedSale.notes}</Text>
+                </View>
+              )}
+
+              <View style={styles.detailSection}>
+                <Text style={styles.detailLabel}>Items:</Text>
+                {selectedSale.items?.map((item, index) => (
+                  <View key={index} style={styles.itemDetail}>
+                    <Text style={styles.itemName}>{item.product_name}</Text>
+                    <Text style={styles.itemInfo}>
+                      {item.qty} × {formatIDR(item.price)} = {formatIDR(item.line_total)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+
+              <View style={styles.totalSection}>
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Total:</Text>
+                  <Text style={styles.totalValue}>{formatIDR(selectedSale.total)}</Text>
+                </View>
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Profit:</Text>
+                  <Text style={styles.totalValue}>{formatIDR(selectedSale.profit)}</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={styles.modalPrintButton}
+                onPress={() => {
+                  setShowDetailModal(false);
+                  setTimeout(() => printInvoice(selectedSale), 300);
+                }}
+              >
+                <Text style={styles.modalPrintButtonText}>🖨️ Cetak Invoice</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalPrintButton, { backgroundColor: '#28a745', marginTop: 10 }]}
+                onPress={() => {
+                   setShowDetailModal(false);
+                   setTimeout(() => {
+                     // Ask for receipt size first
+                     Alert.alert(
+                       'Pilih Ukuran Struk',
+                       'Pilih ukuran struk thermal untuk WhatsApp:',
+                       [
+                         {
+                           text: 'Batal',
+                           style: 'cancel'
+                         },
+                         {
+                           text: '📄 58mm',
+                           onPress: async () => {
+                             const result = await shareToWhatsApp(selectedSale, user?.id, '58mm');
+                             if (!result.success) {
+                               Alert.alert('Error', result.error || 'Gagal share ke WhatsApp');
+                             }
+                           }
+                         },
+                         {
+                           text: '📄 80mm',
+                           onPress: async () => {
+                             const result = await shareToWhatsApp(selectedSale, user?.id, '80mm');
+                             if (!result.success) {
+                               Alert.alert('Error', result.error || 'Gagal share ke WhatsApp');
+                             }
+                           }
+                         }
+                       ],
+                       { cancelable: true }
+                     );
+                   }, 300);
+                 }}
+              >
+                <Text style={styles.modalPrintButtonText}>📱 Share ke WhatsApp</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          )}
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F7FA',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e9ecef',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f8f9fa',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+    flex: 1,
+    textAlign: 'center',
+  },
+  placeholder: {
+    width: 40,
+  },
+  searchSection: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: '#fff',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 44,
+  },
+  searchIcon: {
+    fontSize: 16,
+    marginRight: 8,
+    color: '#666',
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#333',
+  },
+  filterSection: {
+    backgroundColor: '#fff',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e9ecef',
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+  },
+  filterButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#f8f9fa',
+    marginRight: 8,
+  },
+  filterButtonActive: {
+    backgroundColor: '#007AFF',
+  },
+  filterButtonText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  filterButtonTextActive: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  listContainer: {
+    padding: 20,
+    paddingTop: 16,
+  },
+  saleCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  saleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  invoiceInfo: {
+    flex: 1,
+  },
+  invoiceNumber: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000000',
+  },
+  saleDate: {
+    fontSize: 12,
+    color: '#8E8E93',
+  },
+  totalContainer: {
+    alignItems: 'flex-end',
+  },
+  saleTotal: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#34C759',
+  },
+  saleDetails: {
+    marginBottom: 12,
+  },
+  itemInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+  },
+  itemCountContainer: {
+    flex: 1,
+    alignItems: 'flex-start',
+  },
+  itemCount: {
+    fontSize: 12,
+    color: '#8E8E93',
+  },
+  paymentMethodContainer: {
+    flex: 1,
+    alignItems: 'flex-end',
+  },
+  paymentMethod: {
+    fontSize: 12,
+    color: '#8E8E93',
+  },
+  saleActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  detailButton: {
+    flex: 1,
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  detailButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  printButton: {
+    flex: 1,
+    backgroundColor: '#34C759',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  printButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e9ecef',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#f8f9fa',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeButtonText: {
+    fontSize: 18,
+    color: '#666',
+  },
+  modalContent: {
+    flex: 1,
+    padding: 20,
+  },
+  detailSection: {
+    marginBottom: 20,
+  },
+  detailLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  detailValue: {
+    fontSize: 16,
+    color: '#666',
+  },
+  itemDetail: {
+    backgroundColor: '#fff',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  itemName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  itemDetailInfo: {
+    fontSize: 14,
+    color: '#666',
+  },
+  totalSection: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  totalLabel: {
+    fontSize: 16,
+    color: '#666',
+  },
+  totalValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  modalPrintButton: {
+    backgroundColor: '#28a745',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalPrintButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+});
