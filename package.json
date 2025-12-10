@@ -4,6 +4,7 @@
   "main": "index.js",
   "scripts": {
     "start": "expo start -c",
+    "build:web": "expo export --platform web",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web"
@@ -39,5 +40,6 @@
   },
   "resolutions": {
     "postcss": "8.4.38"
-  }
+  },
+  "packageManager": "npm@10.5.0"
 }

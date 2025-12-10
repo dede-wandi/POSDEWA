@@ -1,6 +1,6 @@
 {
   "expo": {
-    "owner": "tseldewan",
+    "owner": "dedetester51",
     "name": "POSDEWA",
     "slug": "POSDEWA",
     "version": "1.0.0",
@@ -39,7 +39,7 @@
       "supabaseUrl": "https://wdpzehzatqdkcslakbiw.supabase.co",
       "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndkcHplaHphdHFka2NzbGFrYml3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE0NzYzMTYsImV4cCI6MjA3NzA1MjMxNn0._MzViNByTdyZ9nF9YoHP7PZAoCcI0Lq0i5b8kY0IZAg",
       "eas": {
-        "projectId": "e0ba4b23-6636-424d-bcae-351a27cccc5e"
+        "projectId": "74f6d273-f87a-4176-86b7-ab2852331c84"
       }
     },
     "scheme": "posdewa",

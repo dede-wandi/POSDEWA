@@ -71,8 +71,32 @@ jobs:
         run: |
           ./gradlew :app:assembleRelease --stacktrace --info
 
-      - name: Upload APK artifact
+      - name: Build Android debug APK (fallback)
+        working-directory: android
+        run: |
+          ./gradlew :app:assembleDebug --stacktrace --info
+
+      - name: Collect release APK (signed or unsigned)
+        run: |
+          REL_DIR=android/app/build/outputs/apk/release
+          if [ -f "$REL_DIR/app-release.apk" ]; then
+            cp "$REL_DIR/app-release.apk" "$REL_DIR/app-release-final.apk"
+          elif [ -f "$REL_DIR/app-release-unsigned.apk" ]; then
+            cp "$REL_DIR/app-release-unsigned.apk" "$REL_DIR/app-release-final.apk"
+          else
+            echo "No release APK found"
+          fi
+
+      - name: Upload Release APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-release.apk
-          path: android/app/build/outputs/apk/release/app-release.apk
+          path: android/app/build/outputs/apk/release/app-release-final.apk
+        continue-on-error: true
+
+      - name: Upload Debug APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+        continue-on-error: true

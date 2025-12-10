@@ -1,31 +1,35 @@
 {
   "cli": {
-    "version": ">= 16.24.1",
+    "version": ">= 16.28.0",
     "appVersionSource": "remote"
   },
   "build": {
     "preview": {
       "distribution": "internal",
       "android": {
-        "buildType": "apk",
-        "image": "latest",
-        "credentialsSource": "local"
-      }
+        "buildType": "apk"
+      },
+      "credentialsSource": "remote"
     },
     "production": {
       "autoIncrement": true,
+"env": {
+        "EXPO_BUILD_NODE_VERSION": "18",
+        "EXPO_USE_COMMUNITY_AUTOLINKING": "1",
+        "EXPO_KOTLIN_VERSION": "2.0.21",
+        "EXPO_USE_KSP": "false",
+        "ANDROID_KEYSTORE_PASSWORD": "PosDewaStorePass-20251202",
+        "ANDROID_KEY_ALIAS": "posdewa_release_key",
+        "ANDROID_KEY_PASSWORD": "PosDewaStorePass-20251202"
+      },
       "android": {
-        "buildType": "apk",
-        "gradleCommand": ":app:assembleRelease --stacktrace --info --warning-mode all",
-        "image": "latest",
-        "credentialsSource": "local",
-        "env": {
-          "EXPO_USE_COMMUNITY_AUTOLINKING": "1"
-        }
-      }
+        "buildType": "apk"
+      },
+      "credentialsSource": "remote"
     }
   },
   "submit": {
     "production": {}
   }
 }
+      
