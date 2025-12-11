@@ -12,7 +12,7 @@ export default function SalesScreen({ navigation, route }) {
   const { user } = useAuth();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
-  const [cart, setCart] = useState([]); // Each item: { id, name, price, qty, lineTotal, tokenCode? }
+  const [cart, setCart] = useState([]); // Each item: { id, name, price, costPrice, qty, lineTotal, tokenCode? }
   const [refreshing, setRefreshing] = useState(false);
   
   // Token modal states
@@ -25,7 +25,10 @@ export default function SalesScreen({ navigation, route }) {
   }, [cart]);
 
   const profit = useMemo(() => {
-    return cart.reduce((sum, item) => sum + ((item.price - item.cost) * item.qty), 0);
+    return cart.reduce((sum, item) => {
+      const unitCost = item?.costPrice ?? item?.cost ?? 0;
+      return sum + ((item.price - unitCost) * item.qty);
+    }, 0);
   }, [cart]);
 
   const handleSearch = async () => {
@@ -87,7 +90,7 @@ export default function SalesScreen({ navigation, route }) {
         id: item.productId,
         name: item.name,
         price: item.price,
-        cost: item.costPrice || 0,
+        costPrice: item.costPrice || 0,
         qty: item.qty,
         lineTotal: item.price * item.qty,
         tokenCode: item.tokenCode || null
@@ -170,7 +173,7 @@ export default function SalesScreen({ navigation, route }) {
         id: product.id,
         name: product.name,
         price: product.price,
-        cost: product.cost || 0,
+        costPrice: product.cost_price || product.costPrice || product.cost || 0,
         qty: 1,
         lineTotal: product.price,
         tokenCode: tokenCode
