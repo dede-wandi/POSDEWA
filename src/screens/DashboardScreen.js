@@ -136,9 +136,36 @@ export default function DashboardScreen({ navigation }) {
           Profit: {formatCurrency(sale.profit)}
         </Text>
       </View>
-      <Text style={styles.saleItemCount}>
-        {sale.sale_items?.length || 0} item
-      </Text>
+      <View style={{ marginTop: 8 }}>
+        {(() => {
+           const items = sale.sale_items || [];
+           if (items.length === 0) return <Text style={styles.saleItemCount}>0 Items</Text>;
+
+           if (items.length === 1) {
+              return (
+                 <Text style={styles.saleItemCount}>
+                    1 Items : {items[0].product_name} {formatCurrency(items[0].price)}
+                 </Text>
+              );
+           }
+
+           return (
+              <View>
+                 <Text style={styles.saleItemCount}>{items.length} Items :</Text>
+                 {items.slice(0, 3).map((prod, idx) => (
+                    <Text key={idx} style={[styles.saleItemCount, { marginLeft: 8, marginTop: 2 }]}>
+                       - {prod.product_name} {formatCurrency(prod.price)}
+                    </Text>
+                 ))}
+                 {items.length > 3 && (
+                    <Text style={[styles.saleItemCount, { marginLeft: 8, marginTop: 2 }]}>
+                       ... dan {items.length - 3} lainnya
+                    </Text>
+                 )}
+              </View>
+           );
+        })()}
+      </View>
     </TouchableOpacity>
   );
 

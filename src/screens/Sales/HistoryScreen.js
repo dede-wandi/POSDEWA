@@ -400,9 +400,34 @@ export default function HistoryScreen({ navigation }) {
       <View style={styles.saleDetails}>
         <View style={styles.itemInfo}>
           <View style={styles.itemCountContainer}>
-            <Text style={styles.itemCount}>
-              {item.items?.length || 0} item{(item.items?.length || 0) > 1 ? 's' : ''}
-            </Text>
+            {(() => {
+              const items = item.items || [];
+              if (items.length === 0) return <Text style={styles.itemCount}>0 Items</Text>;
+              
+              if (items.length === 1) {
+                 return (
+                    <Text style={styles.itemCount}>
+                       1 Items : {items[0].product_name} {formatIDR(items[0].price)}
+                    </Text>
+                 );
+              }
+
+              return (
+                 <View>
+                    <Text style={styles.itemCount}>{items.length} Items :</Text>
+                    {items.slice(0, 3).map((prod, idx) => (
+                       <Text key={idx} style={[styles.itemCount, { marginLeft: 8, marginTop: 2 }]}>
+                          - {prod.product_name} {formatIDR(prod.price)}
+                       </Text>
+                    ))}
+                    {items.length > 3 && (
+                       <Text style={[styles.itemCount, { marginLeft: 8, marginTop: 2 }]}>
+                          ... dan {items.length - 3} lainnya
+                       </Text>
+                    )}
+                 </View>
+              );
+            })()}
           </View>
           {item.payment_method && (
             <View style={styles.paymentMethodContainer}>
@@ -449,7 +474,6 @@ export default function HistoryScreen({ navigation }) {
       <View style={styles.filterSection}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.filterContainer}>
-            {renderFilterButton('all', 'Semua')}
             {renderFilterButton('today', 'Hari Ini')}
             {renderFilterButton('yesterday', 'Kemarin')}
             {renderFilterButton('week', 'Minggu Ini')}
