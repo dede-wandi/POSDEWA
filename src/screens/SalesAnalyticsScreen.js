@@ -13,9 +13,22 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { useAuth } from '../context/AuthContext';
 import { getSalesAnalytics, getSalesPerformance } from '../services/salesSupabase';
+
+// Setup Indonesian Locale for Calendar
+LocaleConfig.locales['id'] = {
+  monthNames: [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ],
+  monthNamesShort: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'],
+  dayNames: ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'],
+  dayNamesShort: ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'],
+  today: 'Hari ini'
+};
+LocaleConfig.defaultLocale = 'id';
 
 const { width } = Dimensions.get('window');
 
@@ -125,6 +138,17 @@ export default function SalesAnalyticsScreen({ navigation, route }) {
   const handlePeriodChange = (period) => {
     setSelectedPeriod(period);
     if (period === 'custom') {
+      // Initialize temp range with current custom range or today
+      const start = customDateRange.startDate || new Date();
+      const end = customDateRange.endDate || new Date();
+      
+      // Initial marking
+      updateMarkedDates(start, end);
+      setTempDateRange({
+        startDate: start,
+        endDate: end
+      });
+      
       setShowDatePicker(true);
     }
   };

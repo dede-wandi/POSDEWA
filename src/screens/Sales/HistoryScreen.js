@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { Calendar } from 'react-native-calendars';
 import { formatIDR } from '../../utils/currency';
 import { useAuth } from '../../context/AuthContext';
 import { getSalesHistory, getSaleById } from '../../services/salesSupabase';
@@ -37,11 +37,10 @@ export default function HistoryScreen({ navigation }) {
     endDate: new Date()
   });
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showPicker, setShowPicker] = useState(false);
-  const [pickerMode, setPickerMode] = useState('start'); // 'start' or 'end'
+  const [markedDates, setMarkedDates] = useState({});
   const [tempDateRange, setTempDateRange] = useState({
-    startDate: new Date(),
-    endDate: new Date()
+    startDate: null,
+    endDate: null
   });
 
   useEffect(() => {
@@ -264,24 +263,76 @@ export default function HistoryScreen({ navigation }) {
     });
   };
 
-  const onDateChange = (event, selectedDate) => {
-    if (Platform.OS === 'android') {
-        setShowPicker(false);
-    }
+  const onDayPress = (day) => {
+    const selectedDate = new Date(day.timestamp);
     
-    if (selectedDate) {
-      if (pickerMode === 'start') {
-        setTempDateRange(prev => ({ ...prev, startDate: selectedDate }));
-      } else {
-        setTempDateRange(prev => ({ ...prev, endDate: selectedDate }));
+    // Logic for range selection
+    if (!tempDateRange.startDate || (tempDateRange.startDate && tempDateRange.endDate)) {
+      // Start new selection
+      setTempDateRange({
+        startDate: selectedDate,
+        endDate: null
+      });
+      updateMarkedDates(selectedDate, null);
+    } else if (tempDateRange.startDate && !tempDateRange.endDate) {
+      // Complete selection
+      let start = tempDateRange.startDate;
+      let end = selectedDate;
+      
+      // Swap if end is before start
+      if (end < start) {
+        const temp = start;
+        start = end;
+        end = temp;
       }
+      
+      setTempDateRange({
+        startDate: start,
+        endDate: end
+      });
+      updateMarkedDates(start, end);
     }
   };
 
+  const updateMarkedDates = (start, end) => {
+    const marked = {};
+    
+    if (start) {
+      const startStr = start.toISOString().split('T')[0];
+      marked[startStr] = { startingDay: true, color: '#007AFF', textColor: 'white' };
+      
+      if (end) {
+        const endStr = end.toISOString().split('T')[0];
+        let curr = new Date(start);
+        curr.setDate(curr.getDate() + 1);
+        
+        while (curr < end) {
+          const dateStr = curr.toISOString().split('T')[0];
+          marked[dateStr] = { color: '#70d7c7', textColor: 'white' }; // lighter color for range
+          curr.setDate(curr.getDate() + 1);
+        }
+        
+        marked[endStr] = { endingDay: true, color: '#007AFF', textColor: 'white' };
+        
+        // Handle single day range
+        if (startStr === endStr) {
+           marked[startStr] = { startingDay: true, endingDay: true, color: '#007AFF', textColor: 'white' };
+        }
+      } else {
+         marked[startStr] = { startingDay: true, endingDay: true, color: '#007AFF', textColor: 'white' };
+      }
+    }
+    setMarkedDates(marked);
+  };
+
   const applyCustomDate = () => {
-    setCustomDateRange(tempDateRange);
-    setShowDatePicker(false);
-    setFilterPeriod('custom');
+    if (tempDateRange.startDate && tempDateRange.endDate) {
+      setCustomDateRange(tempDateRange);
+      setShowDatePicker(false);
+      setFilterPeriod('custom');
+    } else {
+      Alert.alert('Pilih Tanggal', 'Silakan pilih tanggal mulai dan selesai.');
+    }
   };
 
   const renderFilterButton = (period, label) => (
@@ -292,6 +343,17 @@ export default function HistoryScreen({ navigation }) {
       ]}
       onPress={() => {
         if (period === 'custom') {
+          // Initialize temp range with current custom range or today
+          const start = customDateRange.startDate || new Date();
+          const end = customDateRange.endDate || new Date();
+          
+          // Initial marking
+          updateMarkedDates(start, end);
+          setTempDateRange({
+            startDate: start,
+            endDate: end
+          });
+          
           setShowDatePicker(true);
         } else {
           setFilterPeriod(period);
@@ -607,43 +669,43 @@ export default function HistoryScreen({ navigation }) {
             
             <View style={styles.datePickerContent}>
                <View style={styles.dateInputsRow}>
-                  <TouchableOpacity 
-                      style={styles.dateInput} 
-                      onPress={() => {
-                          setPickerMode('start');
-                          setShowPicker(true);
-                      }}
-                  >
+                  <View style={styles.dateInput}>
                       <Text style={styles.dateLabel}>Mulai Dari</Text>
-                      <Text style={styles.dateValue}>{formatDateOnly(tempDateRange.startDate)}</Text>
-                  </TouchableOpacity>
+                      <Text style={styles.dateValue}>
+                        {tempDateRange.startDate ? formatDateOnly(tempDateRange.startDate) : '-'}
+                      </Text>
+                  </View>
                   <Ionicons name="arrow-forward" size={20} color="#8E8E93" />
-                  <TouchableOpacity 
-                      style={styles.dateInput}
-                      onPress={() => {
-                          setPickerMode('end');
-                          setShowPicker(true);
-                      }}
-                  >
+                  <View style={styles.dateInput}>
                       <Text style={styles.dateLabel}>Sampai</Text>
-                      <Text style={styles.dateValue}>{formatDateOnly(tempDateRange.endDate)}</Text>
-                  </TouchableOpacity>
+                      <Text style={styles.dateValue}>
+                        {tempDateRange.endDate ? formatDateOnly(tempDateRange.endDate) : '-'}
+                      </Text>
+                  </View>
                </View>
 
-              {showPicker && (
-                  <DateTimePicker
-                      value={pickerMode === 'start' ? tempDateRange.startDate : tempDateRange.endDate}
-                      mode="date"
-                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                      onChange={onDateChange}
-                  />
-              )}
+              <Calendar
+                markingType={'period'}
+                markedDates={markedDates}
+                onDayPress={onDayPress}
+                theme={{
+                  todayTextColor: '#007AFF',
+                  arrowColor: '#007AFF',
+                  selectedDayBackgroundColor: '#007AFF',
+                  selectedDayTextColor: '#ffffff',
+                }}
+              />
               
               <TouchableOpacity 
-                style={[styles.modalButton, { marginTop: 20 }]}
+                style={[
+                  styles.modalButton, 
+                  { marginTop: 20 },
+                  (!tempDateRange.startDate || !tempDateRange.endDate) && { backgroundColor: '#ccc' }
+                ]}
                 onPress={applyCustomDate}
+                disabled={!tempDateRange.startDate || !tempDateRange.endDate}
               >
-                <Text style={styles.modalButtonText}>Terapkan</Text>
+                <Text style={styles.modalButtonText}>Terapkan Filter</Text>
               </TouchableOpacity>
             </View>
           </View>
