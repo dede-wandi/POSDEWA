@@ -9,10 +9,12 @@ import {
   TextInput,
   Modal,
   ScrollView,
-  RefreshControl 
+  RefreshControl,
+  Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { formatIDR } from '../../utils/currency';
 import { useAuth } from '../../context/AuthContext';
 import { getSalesHistory, getSaleById } from '../../services/salesSupabase';
@@ -25,9 +27,22 @@ export default function HistoryScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterPeriod, setFilterPeriod] = useState('all'); // all, today, week, month, year
+  const [filterPeriod, setFilterPeriod] = useState('all'); // all, today, yesterday, week, month, year, custom
   const [selectedSale, setSelectedSale] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+
+  // Custom Date Picker State
+  const [customDateRange, setCustomDateRange] = useState({
+    startDate: new Date(),
+    endDate: new Date()
+  });
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerMode, setPickerMode] = useState('start'); // 'start' or 'end'
+  const [tempDateRange, setTempDateRange] = useState({
+    startDate: new Date(),
+    endDate: new Date()
+  });
 
   useEffect(() => {
     loadSalesHistory();
@@ -35,7 +50,7 @@ export default function HistoryScreen({ navigation }) {
 
   useEffect(() => {
     filterSales();
-  }, [sales, searchQuery, filterPeriod]);
+  }, [sales, searchQuery, filterPeriod, customDateRange]);
 
   const loadSalesHistory = async () => {
     console.log('🔄 HistoryScreen: Loading sales history for user:', user?.id);
@@ -80,6 +95,17 @@ export default function HistoryScreen({ navigation }) {
           return saleDate >= today;
         });
         break;
+      case 'yesterday':
+        const yesterday = new Date(today);
+        yesterday.setDate(today.getDate() - 1);
+        const endYesterday = new Date(yesterday);
+        endYesterday.setHours(23, 59, 59, 999);
+        
+        filtered = filtered.filter(sale => {
+          const saleDate = new Date(sale.created_at);
+          return saleDate >= yesterday && saleDate <= endYesterday;
+        });
+        break;
       case 'week':
         const weekAgo = new Date(today);
         weekAgo.setDate(today.getDate() - 7);
@@ -103,6 +129,19 @@ export default function HistoryScreen({ navigation }) {
           const saleDate = new Date(sale.created_at);
           return saleDate >= yearAgo;
         });
+        break;
+      case 'custom':
+        if (customDateRange.startDate && customDateRange.endDate) {
+          const start = new Date(customDateRange.startDate);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date(customDateRange.endDate);
+          end.setHours(23, 59, 59, 999);
+          
+          filtered = filtered.filter(sale => {
+            const saleDate = new Date(sale.created_at);
+            return saleDate >= start && saleDate <= end;
+          });
+        }
         break;
       default:
         // 'all' - no additional filtering
@@ -217,13 +256,47 @@ export default function HistoryScreen({ navigation }) {
     });
   };
 
+  const formatDateOnly = (date) => {
+    return date.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
+  const onDateChange = (event, selectedDate) => {
+    if (Platform.OS === 'android') {
+        setShowPicker(false);
+    }
+    
+    if (selectedDate) {
+      if (pickerMode === 'start') {
+        setTempDateRange(prev => ({ ...prev, startDate: selectedDate }));
+      } else {
+        setTempDateRange(prev => ({ ...prev, endDate: selectedDate }));
+      }
+    }
+  };
+
+  const applyCustomDate = () => {
+    setCustomDateRange(tempDateRange);
+    setShowDatePicker(false);
+    setFilterPeriod('custom');
+  };
+
   const renderFilterButton = (period, label) => (
     <TouchableOpacity
       style={[
         styles.filterButton,
         filterPeriod === period && styles.filterButtonActive
       ]}
-      onPress={() => setFilterPeriod(period)}
+      onPress={() => {
+        if (period === 'custom') {
+          setShowDatePicker(true);
+        } else {
+          setFilterPeriod(period);
+        }
+      }}
     >
       <Text style={[
         styles.filterButtonText,
@@ -235,7 +308,10 @@ export default function HistoryScreen({ navigation }) {
   );
 
   const renderSaleItem = ({ item }) => (
-    <TouchableOpacity style={styles.saleCard}>
+    <TouchableOpacity 
+      style={styles.saleCard} 
+      onPress={() => showSaleDetail(item.id)}
+    >
       <View style={styles.saleHeader}>
         <View style={styles.invoiceInfo}>
           <Text style={styles.invoiceNumber}>
@@ -253,6 +329,9 @@ export default function HistoryScreen({ navigation }) {
         </View>
         <View style={styles.totalContainer}>
           <Text style={styles.saleTotal}>{formatIDR(item.total)}</Text>
+          <Text style={[styles.saleTotal, { fontSize: 12, color: '#34C759', marginTop: 4 }]}>
+            Profit: {formatIDR(item.profit)}
+          </Text>
         </View>
       </View>
       
@@ -272,23 +351,6 @@ export default function HistoryScreen({ navigation }) {
             </View>
           )}
         </View>
-      </View>
-
-      <View style={styles.saleActions}>
-        <TouchableOpacity 
-          style={styles.detailButton}
-          onPress={() => showSaleDetail(item.id)}
-        >
-          <Ionicons name="eye-outline" size={16} color="#fff" />
-          <Text style={styles.detailButtonText}>Detail</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.printButton}
-          onPress={() => printInvoice(item)}
-        >
-          <Ionicons name="print-outline" size={16} color="#fff" />
-          <Text style={styles.printButtonText}>Print</Text>
-        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -327,9 +389,11 @@ export default function HistoryScreen({ navigation }) {
           <View style={styles.filterContainer}>
             {renderFilterButton('all', 'Semua')}
             {renderFilterButton('today', 'Hari Ini')}
+            {renderFilterButton('yesterday', 'Kemarin')}
             {renderFilterButton('week', 'Minggu Ini')}
             {renderFilterButton('month', 'Bulan Ini')}
             {renderFilterButton('year', 'Tahun Ini')}
+            {renderFilterButton('custom', 'Kustom')}
           </View>
         </ScrollView>
       </View>
@@ -521,6 +585,70 @@ export default function HistoryScreen({ navigation }) {
           )}
         </View>
       </Modal>
+
+      {/* Date Picker Modal */}
+      <Modal
+        visible={showDatePicker}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowDatePicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.datePickerContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Pilih Rentang Tanggal</Text>
+              <TouchableOpacity 
+                onPress={() => setShowDatePicker(false)}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={24} color="#8E8E93" />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.datePickerContent}>
+               <View style={styles.dateInputsRow}>
+                  <TouchableOpacity 
+                      style={styles.dateInput} 
+                      onPress={() => {
+                          setPickerMode('start');
+                          setShowPicker(true);
+                      }}
+                  >
+                      <Text style={styles.dateLabel}>Mulai Dari</Text>
+                      <Text style={styles.dateValue}>{formatDateOnly(tempDateRange.startDate)}</Text>
+                  </TouchableOpacity>
+                  <Ionicons name="arrow-forward" size={20} color="#8E8E93" />
+                  <TouchableOpacity 
+                      style={styles.dateInput}
+                      onPress={() => {
+                          setPickerMode('end');
+                          setShowPicker(true);
+                      }}
+                  >
+                      <Text style={styles.dateLabel}>Sampai</Text>
+                      <Text style={styles.dateValue}>{formatDateOnly(tempDateRange.endDate)}</Text>
+                  </TouchableOpacity>
+               </View>
+
+              {showPicker && (
+                  <DateTimePicker
+                      value={pickerMode === 'start' ? tempDateRange.startDate : tempDateRange.endDate}
+                      mode="date"
+                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                      onChange={onDateChange}
+                  />
+              )}
+              
+              <TouchableOpacity 
+                style={[styles.modalButton, { marginTop: 20 }]}
+                onPress={applyCustomDate}
+              >
+                <Text style={styles.modalButtonText}>Terapkan</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -604,47 +732,43 @@ const styles = StyleSheet.create({
   filterButtonText: {
     fontSize: 14,
     color: '#666',
-    fontWeight: '500',
   },
   filterButtonTextActive: {
     color: '#fff',
     fontWeight: '600',
   },
   listContainer: {
-    padding: 20,
-    paddingTop: 16,
+    padding: 16,
+    paddingBottom: 80,
   },
   saleCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: '#fff',
+    borderRadius: 16,
     padding: 16,
-    marginBottom: 8,
+    marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
     elevation: 2,
   },
   saleHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   invoiceInfo: {
     flex: 1,
   },
   invoiceNumber: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#000000',
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+    marginBottom: 4,
   },
   saleDate: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: '#6c757d',
   },
   totalContainer: {
     alignItems: 'flex-end',
@@ -652,71 +776,41 @@ const styles = StyleSheet.create({
   saleTotal: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#34C759',
+    color: '#007AFF',
   },
   saleDetails: {
-    marginBottom: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f3f5',
+    paddingTop: 12,
   },
   itemInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 8,
   },
   itemCountContainer: {
-    flex: 1,
-    alignItems: 'flex-start',
+    backgroundColor: '#e7f5ff',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   itemCount: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: '#007AFF',
+    fontWeight: '500',
   },
   paymentMethodContainer: {
-    flex: 1,
-    alignItems: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   paymentMethod: {
     fontSize: 12,
-    color: '#8E8E93',
-  },
-  saleActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  detailButton: {
-    flex: 1,
-    backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  detailButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  printButton: {
-    flex: 1,
-    backgroundColor: '#34C759',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  printButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
+    color: '#6c757d',
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
+    paddingTop: 60,
   },
   emptyIcon: {
     fontSize: 48,
@@ -725,83 +819,97 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#1a1a1a',
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: '#6c757d',
     textAlign: 'center',
+    paddingHorizontal: 40,
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#F5F7FA',
   },
   modalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    justifyContent: 'space-between',
+    padding: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e9ecef',
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#1a1a1a',
   },
   closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#f8f9fa',
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 8,
   },
   closeButtonText: {
-    fontSize: 18,
-    color: '#666',
+    fontSize: 24,
+    color: '#6c757d',
   },
   modalContent: {
-    flex: 1,
-    padding: 20,
+    padding: 16,
   },
   detailSection: {
-    marginBottom: 20,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   detailLabel: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
+    fontSize: 14,
+    color: '#6c757d',
   },
   detailValue: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    maxWidth: '60%',
+    textAlign: 'right',
   },
   itemDetail: {
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
+    width: '100%',
+    flexDirection: 'column',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f3f5',
   },
   itemName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1a1a1a',
     marginBottom: 4,
   },
-  itemDetailInfo: {
-    fontSize: 14,
-    color: '#666',
+  itemInfo: {
+    fontSize: 12,
+    color: '#6c757d',
   },
   totalSection: {
     backgroundColor: '#fff',
-    padding: 16,
     borderRadius: 12,
-    marginBottom: 20,
+    padding: 16,
+    marginTop: 8,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   totalRow: {
     flexDirection: 'row',
@@ -811,22 +919,73 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     fontSize: 16,
-    color: '#666',
+    color: '#6c757d',
   },
   totalValue: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#007AFF',
   },
   modalPrintButton: {
-    backgroundColor: '#28a745',
-    paddingVertical: 16,
+    backgroundColor: '#007AFF',
     borderRadius: 12,
+    padding: 16,
     alignItems: 'center',
+    marginBottom: 12,
   },
   modalPrintButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  datePickerContainer: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 30,
+    minHeight: 300,
+  },
+  datePickerContent: {
+    padding: 20,
+  },
+  dateInputsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  dateInput: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    borderRadius: 10,
+  },
+  dateLabel: {
+    fontSize: 12,
+    color: '#8E8E93',
+    marginBottom: 4,
+  },
+  dateValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  modalButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  }
 });

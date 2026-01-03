@@ -8,12 +8,14 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  Modal
+  Modal,
+  Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../context/AuthContext';
-import { getSalesAnalytics } from '../services/salesSupabase';
+import { getSalesAnalytics, getSalesPerformance } from '../services/salesSupabase';
 
 const { width } = Dimensions.get('window');
 
@@ -23,15 +25,25 @@ export default function SalesAnalyticsScreen({ navigation, route }) {
   
   const [selectedPeriod, setSelectedPeriod] = useState(initialPeriod);
   const [analytics, setAnalytics] = useState(null);
+  const [performanceData, setPerformanceData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [customDateRange, setCustomDateRange] = useState({
-    startDate: null,
-    endDate: null
+    startDate: new Date(),
+    endDate: new Date()
   });
+  
+  // Date Picker State
+  const [tempDateRange, setTempDateRange] = useState({
+    startDate: new Date(),
+    endDate: new Date()
+  });
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerMode, setPickerMode] = useState('start'); // 'start' or 'end'
 
   const periods = [
     { key: 'today', label: 'Hari Ini', icon: 'today-outline', color: '#34C759' },
+    { key: 'yesterday', label: 'Kemarin', icon: 'time-outline', color: '#8E8E93' },
     { key: 'week', label: 'Minggu Ini', icon: 'calendar-outline', color: '#007AFF' },
     { key: 'month', label: 'Bulan Ini', icon: 'calendar-number-outline', color: '#FF9500' },
     { key: 'year', label: 'Tahun Ini', icon: 'calendar-clear-outline', color: '#5856D6' },
@@ -51,6 +63,13 @@ export default function SalesAnalyticsScreen({ navigation, route }) {
         console.error('❌ SalesAnalyticsScreen: Error loading analytics:', result.error);
         Alert.alert('Error', 'Gagal memuat data analytics: ' + result.error);
       }
+
+      // Load performance data (last 10 days)
+      const perfResult = await getSalesPerformance(user?.id);
+      if (perfResult.success) {
+        setPerformanceData(perfResult.data);
+      }
+
     } catch (error) {
       console.error('❌ SalesAnalyticsScreen: Exception loading analytics:', error);
       Alert.alert('Error', 'Terjadi kesalahan saat memuat data analytics');
@@ -169,6 +188,25 @@ export default function SalesAnalyticsScreen({ navigation, route }) {
     </View>
   );
 
+  const onDateChange = (event, selectedDate) => {
+    if (Platform.OS === 'android') {
+        setShowPicker(false);
+    }
+    
+    if (selectedDate) {
+      if (pickerMode === 'start') {
+        setTempDateRange(prev => ({ ...prev, startDate: selectedDate }));
+      } else {
+        setTempDateRange(prev => ({ ...prev, endDate: selectedDate }));
+      }
+    }
+  };
+
+  const applyCustomDate = () => {
+    setCustomDateRange(tempDateRange);
+    setShowDatePicker(false);
+  };
+
   const DatePickerModal = () => (
     <Modal
       visible={showDatePicker}
@@ -189,19 +227,44 @@ export default function SalesAnalyticsScreen({ navigation, route }) {
           </View>
           
           <View style={styles.datePickerContent}>
-            <Text style={styles.datePickerNote}>
-              Fitur pemilihan tanggal kustom akan segera tersedia.
-              Saat ini Anda dapat menggunakan filter periode yang sudah tersedia.
-            </Text>
+             <View style={styles.dateInputsRow}>
+                <TouchableOpacity 
+                    style={styles.dateInput} 
+                    onPress={() => {
+                        setPickerMode('start');
+                        setShowPicker(true);
+                    }}
+                >
+                    <Text style={styles.dateLabel}>Mulai Dari</Text>
+                    <Text style={styles.dateValue}>{formatDate(tempDateRange.startDate)}</Text>
+                </TouchableOpacity>
+                <Ionicons name="arrow-forward" size={20} color="#8E8E93" />
+                <TouchableOpacity 
+                    style={styles.dateInput}
+                    onPress={() => {
+                        setPickerMode('end');
+                        setShowPicker(true);
+                    }}
+                >
+                    <Text style={styles.dateLabel}>Sampai</Text>
+                    <Text style={styles.dateValue}>{formatDate(tempDateRange.endDate)}</Text>
+                </TouchableOpacity>
+             </View>
+
+            {showPicker && (
+                <DateTimePicker
+                    value={pickerMode === 'start' ? tempDateRange.startDate : tempDateRange.endDate}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={onDateChange}
+                />
+            )}
             
             <TouchableOpacity 
-              style={styles.modalButton}
-              onPress={() => {
-                setShowDatePicker(false);
-                setSelectedPeriod('today');
-              }}
+              style={[styles.modalButton, { marginTop: 20 }]}
+              onPress={applyCustomDate}
             >
-              <Text style={styles.modalButtonText}>Kembali ke Hari Ini</Text>
+              <Text style={styles.modalButtonText}>Terapkan</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -358,6 +421,37 @@ export default function SalesAnalyticsScreen({ navigation, route }) {
                     </View>
                   </View>
                 )}
+              </View>
+
+              {/* 10 Hari Terakhir */}
+              <View style={[styles.insightCard, { marginTop: 12 }]}>
+                 <Text style={[styles.insightTitle, { marginBottom: 12 }]}>10 Hari Terakhir</Text>
+                 {performanceData.length > 0 ? (
+                    performanceData.map((item, index) => (
+                        <View key={index} style={{ 
+                            flexDirection: 'row', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center',
+                            paddingVertical: 12,
+                            borderBottomWidth: index < performanceData.length - 1 ? 1 : 0,
+                            borderBottomColor: '#F2F2F7'
+                        }}>
+                            <View>
+                                <Text style={{ fontWeight: '500', fontSize: 14 }}>{item.dayName}, {item.fullDate}</Text>
+                                <Text style={{ fontSize: 12, color: '#8E8E93', marginTop: 2 }}>{item.transactions} Transaksi</Text>
+                            </View>
+                            <Text style={{ 
+                                fontWeight: '600', 
+                                fontSize: 14,
+                                color: type === 'sales' ? '#007AFF' : '#34C759' 
+                            }}>
+                                {formatCurrency(type === 'sales' ? item.totalSales : item.totalProfit)}
+                            </Text>
+                        </View>
+                    ))
+                 ) : (
+                    <Text style={{ textAlign: 'center', color: '#8E8E93', marginVertical: 10 }}>Belum ada data</Text>
+                 )}
               </View>
             </View>
           </>
@@ -596,6 +690,30 @@ const styles = StyleSheet.create({
   },
   datePickerContent: {
     padding: 20,
+  },
+  dateInputsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  dateInput: {
+    flex: 1,
+    padding: 12,
+    backgroundColor: '#F2F2F7',
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: 8,
+  },
+  dateLabel: {
+    fontSize: 12,
+    color: '#8E8E93',
+    marginBottom: 4,
+  },
+  dateValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000000',
   },
   datePickerNote: {
     fontSize: 14,

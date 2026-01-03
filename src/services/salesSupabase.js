@@ -115,7 +115,7 @@ export const getSaleById = async (saleId) => {
 };
 
 // Get sales analytics for different periods
-export const getSalesAnalytics = async (userId, period = 'today') => {
+export const getSalesAnalytics = async (userId, period = 'today', customRange = null) => {
   console.log('📊 salesSupabase: Getting sales analytics for user:', userId, 'period:', period);
   
   try {
@@ -129,6 +129,10 @@ export const getSalesAnalytics = async (userId, period = 'today') => {
       case 'today':
         startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        break;
+      case 'yesterday':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         break;
       case 'week':
         const startOfWeek = new Date(now);
@@ -145,6 +149,20 @@ export const getSalesAnalytics = async (userId, period = 'today') => {
       case 'year':
         startDate = new Date(now.getFullYear(), 0, 1);
         endDate = new Date(now.getFullYear() + 1, 0, 1);
+        break;
+      case 'custom':
+        if (customRange && customRange.startDate && customRange.endDate) {
+          startDate = new Date(customRange.startDate);
+          endDate = new Date(customRange.endDate);
+          // Ensure we cover the full end date by adding 1 day if it's just a date without time or same as start
+          // Assuming the UI passes dates at 00:00:00
+          const endDateTime = new Date(endDate);
+          endDateTime.setHours(23, 59, 59, 999);
+          endDate = endDateTime;
+        } else {
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        }
         break;
       default:
         startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -197,6 +215,90 @@ export const getSalesAnalytics = async (userId, period = 'today') => {
     return { success: true, data: analytics };
   } catch (error) {
     console.error('❌ salesSupabase: Error in getSalesAnalytics:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Get last 10 days performance
+export const getSalesPerformance = async (userId) => {
+  console.log('📊 salesSupabase: Getting sales performance for user:', userId);
+  
+  try {
+    const supabase = getSupabaseClient();
+    
+    // Calculate date range (last 10 days)
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 10);
+    startDate.setHours(0, 0, 0, 0);
+
+    const { data, error } = await supabase
+      .from('sales')
+      .select('created_at, total, profit')
+      .eq('user_id', userId)
+      .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString())
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ salesSupabase: Error getting sales performance:', error);
+      return { success: false, error: error.message };
+    }
+
+    // Initialize last 10 days with 0
+    const dailyStats = {};
+    for (let i = 0; i < 10; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      
+      const dayName = d.toLocaleDateString('id-ID', { weekday: 'long' });
+      const fullDate = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+      
+      dailyStats[dateStr] = {
+        date: d,
+        dateStr,
+        dayName,
+        fullDate,
+        totalSales: 0,
+        totalProfit: 0,
+        transactions: 0
+      };
+    }
+
+    // Aggregate data
+    if (data) {
+      data.forEach(sale => {
+        const saleDate = new Date(sale.created_at);
+        // Adjust for timezone offset if necessary, but ISO string split is UTC.
+        // Better to use local date string for grouping to match the key generation above?
+        // Let's stick to ISO date part for grouping key consistency if both use same logic.
+        // Actually, to be safe with timezones, let's match based on local date components.
+        const dateStr = saleDate.toISOString().split('T')[0];
+        
+        // Find matching key in dailyStats (which might be off by timezone)
+        // A safer way is to check date equality
+        const key = Object.keys(dailyStats).find(k => {
+            const statDate = dailyStats[k].date;
+            return statDate.getDate() === saleDate.getDate() && 
+                   statDate.getMonth() === saleDate.getMonth() && 
+                   statDate.getFullYear() === saleDate.getFullYear();
+        });
+
+        if (key && dailyStats[key]) {
+          dailyStats[key].totalSales += (sale.total || 0);
+          dailyStats[key].totalProfit += (sale.profit || 0);
+          dailyStats[key].transactions += 1;
+        }
+      });
+    }
+
+    const result = Object.values(dailyStats).sort((a, b) => b.date - a.date);
+    
+    console.log('✅ salesSupabase: Sales performance calculated, days:', result.length);
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('❌ salesSupabase: Error in getSalesPerformance:', error);
     return { success: false, error: error.message };
   }
 };
