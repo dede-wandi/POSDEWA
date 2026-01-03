@@ -136,7 +136,6 @@ export default function SalesAnalyticsScreen({ navigation, route }) {
   };
 
   const handlePeriodChange = (period) => {
-    setSelectedPeriod(period);
     if (period === 'custom') {
       // Initialize temp range with current custom range or today
       const start = customDateRange.startDate || new Date();
@@ -150,6 +149,8 @@ export default function SalesAnalyticsScreen({ navigation, route }) {
       });
       
       setShowDatePicker(true);
+    } else {
+      setSelectedPeriod(period);
     }
   };
 
@@ -227,8 +228,13 @@ export default function SalesAnalyticsScreen({ navigation, route }) {
   };
 
   const applyCustomDate = () => {
-    setCustomDateRange(tempDateRange);
-    setShowDatePicker(false);
+    if (tempDateRange.startDate && tempDateRange.endDate) {
+      setCustomDateRange(tempDateRange);
+      setSelectedPeriod('custom');
+      setShowDatePicker(false);
+    } else {
+      Alert.alert('Pilih Tanggal', 'Silakan pilih tanggal mulai dan selesai.');
+    }
   };
 
   const DatePickerModal = () => (

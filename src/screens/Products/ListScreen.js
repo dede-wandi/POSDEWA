@@ -116,41 +116,46 @@ export default function ListScreen({ navigation, route }) {
     <View style={styles.container}>
       {/* Search and Add Section */}
       <View style={styles.searchSection}>
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={16} color={Colors.muted} style={styles.searchIcon} />
-          <TextInput
-            placeholder="Cari nama produk atau barcode..."
-            value={query}
-            onChangeText={setQuery}
-            style={styles.searchInput}
-            placeholderTextColor={Colors.muted}
-          />
-          {Boolean(query) && (
-            <TouchableOpacity
-              onPress={() => setQuery('')}
-              accessibilityRole="button"
-              accessibilityLabel="Hapus pencarian"
-              style={{ marginLeft: 8, padding: 6 }}
-            >
-              <Ionicons name="close-circle" size={18} color={Colors.muted} />
-            </TouchableOpacity>
-          )}
+        <View style={styles.searchRow}>
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={16} color={Colors.muted} style={styles.searchIcon} />
+            <TextInput
+              placeholder="Cari nama produk atau barcode..."
+              value={query}
+              onChangeText={setQuery}
+              style={styles.searchInput}
+              placeholderTextColor={Colors.muted}
+            />
+            {Boolean(query) && (
+              <TouchableOpacity
+                onPress={() => setQuery('')}
+                accessibilityRole="button"
+                accessibilityLabel="Hapus pencarian"
+                style={{ marginLeft: 8, padding: 6 }}
+              >
+                <Ionicons name="close-circle" size={18} color={Colors.muted} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+        
+        <View style={styles.actionRow}>
           <TouchableOpacity
             onPress={() => navigation.navigate('Scan', { mode: 'pick', returnTo: 'DaftarProduk' })}
-            style={{ marginLeft: 8, backgroundColor: Colors.primary, padding: 10, borderRadius: 10 }}
+            style={styles.scanButton}
           >
-            <Ionicons name="scan" size={18} color="#fff" />
+            <Ionicons name="scan" size={18} color="#fff" style={{ marginRight: 6 }} />
+            <Text style={styles.buttonText}>Scan</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.addButton} 
+            onPress={() => navigation.navigate('FormProduk')}
+          >
+            <Ionicons name="add-circle" size={18} color="#ffffff" style={styles.buttonIcon} />
+            <Text style={styles.buttonText}>Tambah</Text>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity 
-          style={styles.addButton} 
-          onPress={() => navigation.navigate('FormProduk')}
-        >
-          <View style={styles.buttonContent}>
-            <Ionicons name="add-circle" size={18} color="#ffffff" style={styles.buttonIcon} />
-            <Text style={styles.addButtonText}>Tambah</Text>
-          </View>
-        </TouchableOpacity>
       </View>
 
       {/* Status Message */}
