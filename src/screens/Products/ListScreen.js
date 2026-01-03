@@ -305,10 +305,10 @@ const styles = StyleSheet.create({
   searchSection: {
     flexDirection: 'row',
     padding: 16,
-    gap: 12,
     backgroundColor: Colors.card,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
+    alignItems: 'center',
   },
   searchContainer: {
     flex: 1,
@@ -316,9 +316,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.card,
     borderRadius: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     borderWidth: 1,
     borderColor: Colors.border,
+    marginRight: 12,
+    height: 48,
   },
   searchIcon: {
     fontSize: 16,

@@ -257,6 +257,8 @@ export default function SalesAnalyticsScreen({ navigation, route }) {
                     mode="date"
                     display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                     onChange={onDateChange}
+                    minimumDate={new Date(2000, 0, 1)}
+                    maximumDate={new Date(2100, 11, 31)}
                 />
             )}
             

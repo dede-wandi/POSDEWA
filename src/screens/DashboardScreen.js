@@ -83,7 +83,7 @@ export default function DashboardScreen({ navigation }) {
     });
   };
 
-  const StatCard = ({ title, value, subtitle, icon, color = Colors.primary, onPress }) => (
+  const StatCard = ({ title, value, subtitle, icon, color = Colors.primary, onPress, comparison }) => (
     <TouchableOpacity
       style={[
         styles.statCard,
@@ -101,6 +101,21 @@ export default function DashboardScreen({ navigation }) {
       </View>
       <Text style={[styles.statCardValue]}>{value}</Text>
       {subtitle && <Text style={styles.statCardSubtitle}>{subtitle}</Text>}
+      {comparison && (
+        <View style={styles.comparisonContainer}>
+           <Text style={styles.comparisonLabel}>Kemarin: {comparison.yesterdayValue}</Text>
+           <View style={[styles.comparisonBadge, { backgroundColor: comparison.isUp ? '#E8F5E9' : '#FFEBEE' }]}>
+             <Ionicons 
+                name={comparison.isUp ? "arrow-up" : "arrow-down"} 
+                size={12} 
+                color={comparison.isUp ? Colors.success : Colors.danger} 
+             />
+             <Text style={[styles.comparisonText, { color: comparison.isUp ? Colors.success : Colors.danger }]}>
+                {comparison.diff}
+             </Text>
+           </View>
+        </View>
+      )}
     </TouchableOpacity>
   );
 
@@ -153,6 +168,9 @@ export default function DashboardScreen({ navigation }) {
               Selamat datang, {user?.email?.split('@')[0] || 'Admin'}
             </Text>
           </View>
+          <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
+             <Ionicons name="refresh" size={24} color={Colors.primary} />
+          </TouchableOpacity>
         </View>
 
         {/* Today's Stats */}
@@ -166,6 +184,13 @@ export default function DashboardScreen({ navigation }) {
               icon="cash-outline"
               color={Colors.success}
               onPress={() => navigation.navigate('SalesAnalytics', { type: 'sales', period: 'today' })}
+              comparison={{
+                yesterdayValue: formatCurrency(stats?.today?.yesterdayTotal),
+                isUp: (stats?.today?.total || 0) >= (stats?.today?.yesterdayTotal || 0),
+                diff: (stats?.today?.yesterdayTotal || 0) > 0 
+                  ? `${Math.abs(((stats?.today?.total - stats.today.yesterdayTotal) / stats.today.yesterdayTotal) * 100).toFixed(1)}%`
+                  : stats?.today?.total > 0 ? '100%' : '0%'
+              }}
             />
             <StatCard
               title="Profit"
@@ -174,6 +199,13 @@ export default function DashboardScreen({ navigation }) {
               icon="trending-up-outline"
               color={Colors.warning}
               onPress={() => navigation.navigate('SalesAnalytics', { type: 'profit', period: 'today' })}
+              comparison={{
+                yesterdayValue: formatCurrency(stats?.today?.yesterdayProfit),
+                isUp: (stats?.today?.profit || 0) >= (stats?.today?.yesterdayProfit || 0),
+                diff: (stats?.today?.yesterdayProfit || 0) > 0 
+                  ? `${Math.abs(((stats?.today?.profit - stats?.today?.yesterdayProfit) / stats?.today?.yesterdayProfit) * 100).toFixed(1)}%`
+                  : stats?.today?.profit > 0 ? '100%' : '0%'
+              }}
             />
           </View>
         </View>
@@ -292,6 +324,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: Spacing.xl,
     backgroundColor: Colors.card,
     borderBottomWidth: 1,
@@ -299,6 +332,34 @@ const styles = StyleSheet.create({
   },
   headerContent: {
     flex: 1,
+  },
+  refreshButton: {
+    padding: 8,
+  },
+  comparisonContainer: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  comparisonLabel: {
+    fontSize: 10,
+    color: Colors.muted,
+  },
+  comparisonBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  comparisonText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginLeft: 2,
   },
   headerTitle: {
     fontSize: 28,

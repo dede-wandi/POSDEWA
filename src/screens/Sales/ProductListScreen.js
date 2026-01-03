@@ -15,6 +15,7 @@ export default function ProductListScreen({ navigation, route }) {
   const [query, setQuery] = useState('');
   const [products, setProducts] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [isGrid, setIsGrid] = useState(false);
 
   const loadProducts = async () => {
     console.log('🔄 ProductListScreen: Loading products for user:', user?.id, 'query:', query);
@@ -378,6 +379,72 @@ const styles = StyleSheet.create({
   proceedButtonText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  viewToggle: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: Colors.background,
+  },
+  productCardGrid: {
+    flex: 1,
+    backgroundColor: Colors.card,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+    minHeight: 140,
+    justifyContent: 'space-between',
+    maxWidth: '48%', // Ensure 2 columns fit with gap
+  },
+  productInfoGrid: {
+    marginBottom: 8,
+  },
+  productNameGrid: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: Colors.text,
+    marginBottom: 4,
+    height: 40,
+  },
+  productPriceGrid: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: Colors.success,
+    marginBottom: 2,
+  },
+  productStockGrid: {
+    fontSize: 10,
+    color: Colors.muted,
+  },
+  addButtonGrid: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: Colors.primary,
+    borderRadius: 20,
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qtyBadgeGrid: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: Colors.warning,
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    zIndex: 1,
+  },
+  qtyBadgeText: {
+    color: '#fff',
+    fontSize: 10,
     fontWeight: 'bold',
   },
 });

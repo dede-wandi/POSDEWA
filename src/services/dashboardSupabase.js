@@ -37,6 +37,23 @@ export async function getDashboardStats(userId) {
       return { success: false, error: todayError.message };
     }
 
+    // Get yesterday's sales
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    const { data: yesterdaySales, error: yesterdayError } = await supabase
+      .from('sales')
+      .select('total, profit')
+      .eq('user_id', session.user.id)
+      .gte('created_at', yesterdayStr + 'T00:00:00')
+      .lt('created_at', yesterdayStr + 'T23:59:59');
+
+    if (yesterdayError) {
+      console.log('❌ dashboardSupabase: Error fetching yesterday sales:', yesterdayError);
+      // Don't fail the whole request, just log it
+    }
+
     // Get this month's sales
     const { data: monthSales, error: monthError } = await supabase
       .from('sales')
@@ -78,6 +95,9 @@ export async function getDashboardStats(userId) {
     const todayProfit = todaySales.reduce((sum, sale) => sum + (sale.profit || 0), 0);
     const todayTransactions = todaySales.length;
 
+    const yesterdayTotal = yesterdaySales ? yesterdaySales.reduce((sum, sale) => sum + (sale.total || 0), 0) : 0;
+    const yesterdayProfit = yesterdaySales ? yesterdaySales.reduce((sum, sale) => sum + (sale.profit || 0), 0) : 0;
+
     const monthTotal = monthSales.reduce((sum, sale) => sum + (sale.total || 0), 0);
     const monthProfit = monthSales.reduce((sum, sale) => sum + (sale.profit || 0), 0);
     const monthTransactions = monthSales.length;
@@ -86,7 +106,9 @@ export async function getDashboardStats(userId) {
       today: {
         total: todayTotal,
         profit: todayProfit,
-        transactions: todayTransactions
+        transactions: todayTransactions,
+        yesterdayTotal: yesterdayTotal,
+        yesterdayProfit: yesterdayProfit
       },
       month: {
         total: monthTotal,

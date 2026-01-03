@@ -253,7 +253,7 @@ export const getSalesPerformance = async (userId) => {
       const dateStr = d.toISOString().split('T')[0];
       
       const dayName = d.toLocaleDateString('id-ID', { weekday: 'long' });
-      const fullDate = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+      const fullDate = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
       
       dailyStats[dateStr] = {
         date: d,
