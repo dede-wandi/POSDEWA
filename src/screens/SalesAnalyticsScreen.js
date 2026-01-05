@@ -46,6 +46,15 @@ export default function SalesAnalyticsScreen({ navigation, route }) {
     endDate: new Date()
   });
   
+  // Chart Date Range (defaults to last 10 days)
+  const defaultChartStart = new Date();
+  defaultChartStart.setDate(defaultChartStart.getDate() - 10);
+  const [chartDateRange, setChartDateRange] = useState({
+    startDate: defaultChartStart,
+    endDate: new Date()
+  });
+  const [datePickerTarget, setDatePickerTarget] = useState('global'); // 'global' or 'chart'
+
   // Date Picker State
   const [markedDates, setMarkedDates] = useState({});
   const [tempDateRange, setTempDateRange] = useState({
@@ -76,17 +85,22 @@ export default function SalesAnalyticsScreen({ navigation, route }) {
         Alert.alert('Error', 'Gagal memuat data analytics: ' + result.error);
       }
 
-      // Load performance data (last 10 days)
-      const perfResult = await getSalesPerformance(user?.id);
-      if (perfResult.success) {
-        setPerformanceData(perfResult.data);
-      }
-
     } catch (error) {
       console.error('❌ SalesAnalyticsScreen: Exception loading analytics:', error);
       Alert.alert('Error', 'Terjadi kesalahan saat memuat data analytics');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadPerformanceData = async (start, end) => {
+    try {
+      const perfResult = await getSalesPerformance(user?.id, start, end);
+      if (perfResult.success) {
+        setPerformanceData(perfResult.data);
+      }
+    } catch (error) {
+        console.error('❌ SalesAnalyticsScreen: Error loading performance:', error);
     }
   };
 
@@ -99,6 +113,12 @@ export default function SalesAnalyticsScreen({ navigation, route }) {
       }
     }
   }, [user?.id, selectedPeriod, customDateRange]);
+
+  useEffect(() => {
+      if (user?.id) {
+          loadPerformanceData(chartDateRange.startDate, chartDateRange.endDate);
+      }
+  }, [user?.id, chartDateRange]);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('id-ID', {
@@ -148,6 +168,7 @@ export default function SalesAnalyticsScreen({ navigation, route }) {
         endDate: end
       });
       
+      setDatePickerTarget('global');
       setShowDatePicker(true);
     }
   };
@@ -275,7 +296,18 @@ export default function SalesAnalyticsScreen({ navigation, route }) {
 
   const applyCustomDate = () => {
     if (tempDateRange.startDate && tempDateRange.endDate) {
-        setCustomDateRange(tempDateRange);
+        if (datePickerTarget === 'chart') {
+            setChartDateRange({
+                startDate: tempDateRange.startDate,
+                endDate: tempDateRange.endDate
+            });
+        } else {
+            setCustomDateRange(tempDateRange);
+            // Also update selected period to custom if we are in global mode
+            if (selectedPeriod !== 'custom') {
+                setSelectedPeriod('custom');
+            }
+        }
         setShowDatePicker(false);
     } else {
         Alert.alert('Pilih Tanggal', 'Silakan pilih tanggal mulai dan selesai.');
@@ -498,9 +530,28 @@ export default function SalesAnalyticsScreen({ navigation, route }) {
                 )}
               </View>
 
-              {/* 10 Hari Terakhir */}
+              {/* Performance List */}
               <View style={[styles.insightCard, { marginTop: 12 }]}>
-                 <Text style={[styles.insightTitle, { marginBottom: 12 }]}>10 Hari Terakhir</Text>
+                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <Text style={styles.insightTitle}>
+                        {chartDateRange.startDate && chartDateRange.endDate 
+                            ? `${formatDate(chartDateRange.startDate)} - ${formatDate(chartDateRange.endDate)}`
+                            : 'Riwayat Performa'}
+                    </Text>
+                    <TouchableOpacity onPress={() => {
+                        // Initialize temp range with current chart range
+                        const start = chartDateRange.startDate || new Date();
+                        const end = chartDateRange.endDate || new Date();
+                        
+                        updateMarkedDates(start, end);
+                        setTempDateRange({ startDate: start, endDate: end });
+                        setDatePickerTarget('chart');
+                        setShowDatePicker(true);
+                    }}>
+                        <Ionicons name="calendar-outline" size={20} color="#007AFF" />
+                    </TouchableOpacity>
+                 </View>
+                 
                  {performanceData.length > 0 ? (
                     performanceData.map((item, index) => (
                         <View key={index} style={{ 
@@ -513,7 +564,26 @@ export default function SalesAnalyticsScreen({ navigation, route }) {
                         }}>
                             <View>
                                 <Text style={{ fontWeight: '500', fontSize: 14 }}>{item.dayName}, {item.fullDate}</Text>
-                                <Text style={{ fontSize: 12, color: '#8E8E93', marginTop: 2 }}>{item.transactions} Transaksi</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                                    <Text style={{ fontSize: 12, color: '#8E8E93', marginRight: 6 }}>{item.transactions} Transaksi</Text>
+                                    {/* Trend Indicator */}
+                                    {item.trend !== 'stable' && (
+                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                            <Ionicons 
+                                                name={item.trend === 'up' ? 'arrow-up' : 'arrow-down'} 
+                                                size={10} 
+                                                color={item.trend === 'up' ? '#34C759' : '#FF3B30'} 
+                                            />
+                                            <Text style={{ 
+                                                fontSize: 10, 
+                                                color: item.trend === 'up' ? '#34C759' : '#FF3B30',
+                                                marginLeft: 2
+                                            }}>
+                                                {Math.abs(item.growth).toFixed(1)}%
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
                             </View>
                             <Text style={{ 
                                 fontWeight: '600', 

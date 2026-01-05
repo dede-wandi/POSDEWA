@@ -219,17 +219,28 @@ export const getSalesAnalytics = async (userId, period = 'today', customRange = 
   }
 };
 
-// Get last 10 days performance
-export const getSalesPerformance = async (userId) => {
+// Get sales performance (custom range, default last 10 days)
+export const getSalesPerformance = async (userId, customStartDate = null, customEndDate = null) => {
   console.log('📊 salesSupabase: Getting sales performance for user:', userId);
   
   try {
     const supabase = getSupabaseClient();
     
-    // Calculate date range (last 10 days)
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - 10);
+    // Calculate date range
+    let startDate, endDate;
+    
+    if (customStartDate && customEndDate) {
+       startDate = new Date(customStartDate);
+       endDate = new Date(customEndDate);
+       // Ensure end date includes the full day
+       endDate.setHours(23, 59, 59, 999);
+    } else {
+       // Default 10 days
+       endDate = new Date();
+       startDate = new Date();
+       startDate.setDate(startDate.getDate() - 10);
+    }
+    
     startDate.setHours(0, 0, 0, 0);
 
     const { data, error } = await supabase
@@ -245,11 +256,18 @@ export const getSalesPerformance = async (userId) => {
       return { success: false, error: error.message };
     }
 
-    // Initialize last 10 days with 0
+    // Initialize daily stats
     const dailyStats = {};
-    for (let i = 0; i < 10; i++) {
-      const d = new Date();
+    const dayCount = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+    
+    // Create a map for all days in range
+    for (let i = 0; i <= dayCount; i++) {
+      const d = new Date(endDate);
       d.setDate(d.getDate() - i);
+      
+      // Stop if we go before start date (can happen with rough dayCount calculation)
+      if (d < startDate) break;
+
       const dateStr = d.toISOString().split('T')[0];
       
       const dayName = d.toLocaleDateString('id-ID', { weekday: 'long' });
@@ -270,33 +288,44 @@ export const getSalesPerformance = async (userId) => {
     if (data) {
       data.forEach(sale => {
         const saleDate = new Date(sale.created_at);
-        // Adjust for timezone offset if necessary, but ISO string split is UTC.
-        // Better to use local date string for grouping to match the key generation above?
-        // Let's stick to ISO date part for grouping key consistency if both use same logic.
-        // Actually, to be safe with timezones, let's match based on local date components.
         const dateStr = saleDate.toISOString().split('T')[0];
         
-        // Find matching key in dailyStats (which might be off by timezone)
-        // A safer way is to check date equality
-        const key = Object.keys(dailyStats).find(k => {
-            const statDate = dailyStats[k].date;
-            return statDate.getDate() === saleDate.getDate() && 
-                   statDate.getMonth() === saleDate.getMonth() && 
-                   statDate.getFullYear() === saleDate.getFullYear();
-        });
-
-        if (key && dailyStats[key]) {
-          dailyStats[key].totalSales += (sale.total || 0);
-          dailyStats[key].totalProfit += (sale.profit || 0);
-          dailyStats[key].transactions += 1;
+        // Find matching key (handling potential timezone mismatches by just using the date part string)
+        // Since we initialized keys with ISO string split, this should match directly
+        if (dailyStats[dateStr]) {
+          dailyStats[dateStr].totalSales += (sale.total || 0);
+          dailyStats[dateStr].totalProfit += (sale.profit || 0);
+          dailyStats[dateStr].transactions += 1;
         }
       });
     }
 
     const result = Object.values(dailyStats).sort((a, b) => b.date - a.date);
     
-    console.log('✅ salesSupabase: Sales performance calculated, days:', result.length);
-    return { success: true, data: result };
+    // Calculate trends (growth vs next item in the sorted list which is the previous day)
+    const resultWithTrend = result.map((item, index) => {
+        const prevItem = result[index + 1]; // Since it's sorted descending, next item is previous day
+        let growth = 0;
+        let trend = 'stable'; // 'up', 'down', 'stable'
+
+        if (prevItem && prevItem.totalSales > 0) {
+            growth = ((item.totalSales - prevItem.totalSales) / prevItem.totalSales) * 100;
+        } else if (prevItem && prevItem.totalSales === 0 && item.totalSales > 0) {
+            growth = 100; // Treated as 100% growth from 0
+        }
+
+        if (growth > 0) trend = 'up';
+        if (growth < 0) trend = 'down';
+
+        return {
+            ...item,
+            growth,
+            trend
+        };
+    });
+    
+    console.log('✅ salesSupabase: Sales performance calculated, days:', resultWithTrend.length);
+    return { success: true, data: resultWithTrend };
   } catch (error) {
     console.error('❌ salesSupabase: Error in getSalesPerformance:', error);
     return { success: false, error: error.message };

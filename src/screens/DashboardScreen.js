@@ -103,7 +103,9 @@ export default function DashboardScreen({ navigation }) {
       {subtitle && <Text style={styles.statCardSubtitle}>{subtitle}</Text>}
       {comparison && (
         <View style={styles.comparisonContainer}>
-           <Text style={styles.comparisonLabel}>Kemarin: {comparison.yesterdayValue}</Text>
+           <Text style={styles.comparisonLabel}>
+             {comparison.label}: {comparison.value}
+           </Text>
            <View style={[styles.comparisonBadge, { backgroundColor: comparison.isUp ? '#E8F5E9' : '#FFEBEE' }]}>
              <Ionicons 
                 name={comparison.isUp ? "arrow-up" : "arrow-down"} 
@@ -137,35 +139,35 @@ export default function DashboardScreen({ navigation }) {
         </Text>
       </View>
       <View style={{ marginTop: 8 }}>
-        {(() => {
-           const items = sale.sale_items || [];
-           if (items.length === 0) return <Text style={styles.saleItemCount}>0 Items</Text>;
+            {(() => {
+               const items = sale.sale_items || [];
+               if (items.length === 0) return <Text style={styles.saleItemCount}>0 Items</Text>;
 
-           if (items.length === 1) {
-              return (
-                 <Text style={styles.saleItemCount}>
-                    1 Items : {items[0].product_name} {formatCurrency(items[0].price)}
-                 </Text>
-              );
-           }
+               if (items.length === 1) {
+                  return (
+                     <Text style={styles.saleItemCount}>
+                        1 Item : {items[0].qty}x {items[0].product_name} {formatCurrency(items[0].price)}
+                     </Text>
+                  );
+               }
 
-           return (
-              <View>
-                 <Text style={styles.saleItemCount}>{items.length} Items :</Text>
-                 {items.slice(0, 3).map((prod, idx) => (
-                    <Text key={idx} style={[styles.saleItemCount, { marginLeft: 8, marginTop: 2 }]}>
-                       - {prod.product_name} {formatCurrency(prod.price)}
-                    </Text>
-                 ))}
-                 {items.length > 3 && (
-                    <Text style={[styles.saleItemCount, { marginLeft: 8, marginTop: 2 }]}>
-                       ... dan {items.length - 3} lainnya
-                    </Text>
-                 )}
-              </View>
-           );
-        })()}
-      </View>
+               return (
+                  <View>
+                     <Text style={styles.saleItemCount}>{items.length} Items :</Text>
+                     {items.slice(0, 3).map((prod, idx) => (
+                        <Text key={idx} style={[styles.saleItemCount, { marginLeft: 8, marginTop: 2 }]}>
+                           - {prod.qty}x {prod.product_name} {formatCurrency(prod.price)}
+                        </Text>
+                     ))}
+                     {items.length > 3 && (
+                        <Text style={[styles.saleItemCount, { marginLeft: 8, marginTop: 2 }]}>
+                           ... dan {items.length - 3} lainnya
+                        </Text>
+                     )}
+                  </View>
+               );
+            })()}
+          </View>
     </TouchableOpacity>
   );
 
@@ -212,7 +214,8 @@ export default function DashboardScreen({ navigation }) {
               color={Colors.success}
               onPress={() => navigation.navigate('SalesAnalytics', { type: 'sales', period: 'today' })}
               comparison={{
-                yesterdayValue: formatCurrency(stats?.today?.yesterdayTotal),
+                label: 'Kemarin',
+                value: formatCurrency(stats?.today?.yesterdayTotal),
                 isUp: (stats?.today?.total || 0) >= (stats?.today?.yesterdayTotal || 0),
                 diff: (stats?.today?.yesterdayTotal || 0) > 0 
                   ? `${Math.abs(((stats?.today?.total - stats.today.yesterdayTotal) / stats.today.yesterdayTotal) * 100).toFixed(1)}%`
@@ -227,7 +230,8 @@ export default function DashboardScreen({ navigation }) {
               color={Colors.warning}
               onPress={() => navigation.navigate('SalesAnalytics', { type: 'profit', period: 'today' })}
               comparison={{
-                yesterdayValue: formatCurrency(stats?.today?.yesterdayProfit),
+                label: 'Kemarin',
+                value: formatCurrency(stats?.today?.yesterdayProfit),
                 isUp: (stats?.today?.profit || 0) >= (stats?.today?.yesterdayProfit || 0),
                 diff: (stats?.today?.yesterdayProfit || 0) > 0 
                   ? `${Math.abs(((stats?.today?.profit - stats?.today?.yesterdayProfit) / stats?.today?.yesterdayProfit) * 100).toFixed(1)}%`
@@ -248,6 +252,14 @@ export default function DashboardScreen({ navigation }) {
               icon="calendar-outline"
               color={Colors.primary}
               onPress={() => navigation.navigate('SalesAnalytics', { type: 'sales', period: 'month' })}
+              comparison={{
+                label: 'Bulan Lalu',
+                value: formatCurrency(stats?.month?.lastMonthTotal),
+                isUp: (stats?.month?.total || 0) >= (stats?.month?.lastMonthTotal || 0),
+                diff: (stats?.month?.lastMonthTotal || 0) > 0 
+                  ? `${Math.abs(((stats?.month?.total - stats.month.lastMonthTotal) / stats.month.lastMonthTotal) * 100).toFixed(1)}%`
+                  : stats?.month?.total > 0 ? '100%' : '0%'
+              }}
             />
             <StatCard
               title="Profit"
@@ -256,6 +268,14 @@ export default function DashboardScreen({ navigation }) {
               icon="bar-chart-outline"
               color={Colors.secondary}
               onPress={() => navigation.navigate('SalesAnalytics', { type: 'profit', period: 'month' })}
+              comparison={{
+                label: 'Bulan Lalu',
+                value: formatCurrency(stats?.month?.lastMonthProfit),
+                isUp: (stats?.month?.profit || 0) >= (stats?.month?.lastMonthProfit || 0),
+                diff: (stats?.month?.lastMonthProfit || 0) > 0 
+                  ? `${Math.abs(((stats?.month?.profit - stats.month.lastMonthProfit) / stats.month.lastMonthProfit) * 100).toFixed(1)}%`
+                  : stats?.month?.profit > 0 ? '100%' : '0%'
+              }}
             />
           </View>
         </View>

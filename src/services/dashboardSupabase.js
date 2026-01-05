@@ -66,6 +66,23 @@ export async function getDashboardStats(userId) {
       return { success: false, error: monthError.message };
     }
 
+    // Get last month's sales
+    const lastMonthStart = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString().split('T')[0];
+    const lastMonthEnd = new Date(new Date().getFullYear(), new Date().getMonth(), 0); // Last day of previous month
+    const lastMonthEndStr = lastMonthEnd.toISOString().split('T')[0];
+
+    const { data: lastMonthSales, error: lastMonthError } = await supabase
+      .from('sales')
+      .select('total, profit')
+      .eq('user_id', session.user.id)
+      .gte('created_at', lastMonthStart + 'T00:00:00')
+      .lte('created_at', lastMonthEndStr + 'T23:59:59');
+
+    if (lastMonthError) {
+      console.log('❌ dashboardSupabase: Error fetching last month sales:', lastMonthError);
+      // Don't fail, just log
+    }
+
     // Get total products count
     const { count: totalProducts, error: productsError } = await supabase
       .from('products')
@@ -102,6 +119,9 @@ export async function getDashboardStats(userId) {
     const monthProfit = monthSales.reduce((sum, sale) => sum + (sale.profit || 0), 0);
     const monthTransactions = monthSales.length;
 
+    const lastMonthTotal = lastMonthSales ? lastMonthSales.reduce((sum, sale) => sum + (sale.total || 0), 0) : 0;
+    const lastMonthProfit = lastMonthSales ? lastMonthSales.reduce((sum, sale) => sum + (sale.profit || 0), 0) : 0;
+
     const stats = {
       today: {
         total: todayTotal,
@@ -113,7 +133,9 @@ export async function getDashboardStats(userId) {
       month: {
         total: monthTotal,
         profit: monthProfit,
-        transactions: monthTransactions
+        transactions: monthTransactions,
+        lastMonthTotal: lastMonthTotal,
+        lastMonthProfit: lastMonthProfit
       },
       products: {
         total: totalProducts || 0,
@@ -151,6 +173,8 @@ export async function getRecentSales(userId, limit = 5) {
 
     console.log('📡 dashboardSupabase: Fetching recent sales...');
 
+    const today = new Date().toISOString().split('T')[0];
+
     const { data: recentSales, error } = await supabase
       .from('sales')
       .select(`
@@ -167,6 +191,8 @@ export async function getRecentSales(userId, limit = 5) {
         )
       `)
       .eq('user_id', session.user.id)
+      .gte('created_at', today + 'T00:00:00')
+      .lt('created_at', today + 'T23:59:59')
       .order('created_at', { ascending: false })
       .limit(limit);
 

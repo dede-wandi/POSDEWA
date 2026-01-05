@@ -27,7 +27,7 @@ export default function HistoryScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterPeriod, setFilterPeriod] = useState('all'); // all, today, yesterday, week, month, year, custom
+  const [filterPeriod, setFilterPeriod] = useState('today'); // all, today, yesterday, week, month, year, custom
   const [selectedSale, setSelectedSale] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
@@ -407,7 +407,7 @@ export default function HistoryScreen({ navigation }) {
               if (items.length === 1) {
                  return (
                     <Text style={styles.itemCount}>
-                       1 Items : {items[0].product_name} {formatIDR(items[0].price)}
+                       1 Item : {items[0].qty}x {items[0].product_name} {formatIDR(items[0].price)}
                     </Text>
                  );
               }
@@ -417,7 +417,7 @@ export default function HistoryScreen({ navigation }) {
                     <Text style={styles.itemCount}>{items.length} Items :</Text>
                     {items.slice(0, 3).map((prod, idx) => (
                        <Text key={idx} style={[styles.itemCount, { marginLeft: 8, marginTop: 2 }]}>
-                          - {prod.product_name} {formatIDR(prod.price)}
+                          - {prod.qty}x {prod.product_name} {formatIDR(prod.price)}
                        </Text>
                     ))}
                     {items.length > 3 && (
