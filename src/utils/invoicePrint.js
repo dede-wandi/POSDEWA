@@ -47,8 +47,6 @@ export const generateInvoiceHTML = async (sale, userId, receiptSize = '58mm') =>
   const showBusinessInfo = invoiceSettings?.show_business_info !== false;
   const showFooterText = invoiceSettings?.show_footer_text !== false;
   const headerText = invoiceSettings?.header_text || '';
-  const logoUrl = invoiceSettings?.header_logo_url || '';
-  const showLogo = invoiceSettings?.show_header_logo || false;
 
   // Determine sizes based on receipt size
   const is80mm = receiptSize === '80mm';
@@ -171,7 +169,6 @@ export const generateInvoiceHTML = async (sale, userId, receiptSize = '58mm') =>
     <body>
       <div class="receipt">
         <div class="header">
-          ${showLogo && logoUrl ? `<div style="margin-bottom: 2px;"><img src="${logoUrl}" alt="Logo" style="max-width: 90%; height: auto;" /></div>` : ''}
           <div class="business-name">${businessName}</div>
           ${showBusinessInfo ? `<div class="business-address">${businessAddress}${businessPhone ? ' • ' + businessPhone : ''}</div>` : ''}
           ${headerText && invoiceSettings?.show_header_text ? `<div style="font-size: ${infoLineSize}; margin-top: 1px;">${headerText}</div>` : ''}
@@ -192,12 +189,12 @@ export const generateInvoiceHTML = async (sale, userId, receiptSize = '58mm') =>
         
         <div class="items-section">
           ${Array.isArray(sale.items) && sale.items.length > 0 ? `
-            ${sale.items.map(item => {
+            ${sale.items.map((item, idx) => {
               const unit = '${formatIDR(0)}'.replace('Rp', '').trim();
               const unitPrice = '${formatIDR(item.price)}'.replace('Rp', '').trim();
               return `
               <div class="item-line">
-                <div class="name">${item.product_name}</div>
+                <div class="name">${idx + 1}. ${item.product_name}</div>
                 ${item.token_code ? `<div style="font-size: 8px; color: #666;">🔑 ${item.token_code}</div>` : ''}
                 <div class="line">
                   <span>${item.qty} x ${unitPrice}</span>
@@ -215,6 +212,10 @@ export const generateInvoiceHTML = async (sale, userId, receiptSize = '58mm') =>
           <div class="total-line">
             <span>Total QTY</span>
             <span>${totalQty}</span>
+          </div>
+          <div class="total-line">
+            <span>Sub Total</span>
+            <span>${formatIDR((sale.items || []).reduce((sum, it) => sum + (Number(it.line_total) || 0), 0))}</span>
           </div>
           <div class="total-line bold">
             <span>Total</span>
@@ -303,8 +304,9 @@ export const printToBluetoothPrinter = async (sale, receiptSize = '58mm') => {
     const header = saleDate.toLocaleDateString('id-ID') + ' ' + saleDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
     await BluetoothEscposPrinter.printText(`${header}\n`, {});
     await BluetoothEscposPrinter.printText(`------------------------------\n`, {});
-    for (const item of sale.items || []) {
-      await BluetoothEscposPrinter.printText(`${item.product_name}\n`, {});
+    for (let i = 0; i < (sale.items || []).length; i++) {
+      const item = sale.items[i];
+      await BluetoothEscposPrinter.printText(`${i + 1}. ${item.product_name}\n`, {});
       const unitPrice = formatIDR(item.price).replace('Rp', '').trim();
       await BluetoothEscposPrinter.printColumn(
         [20, 12],
@@ -319,6 +321,13 @@ export const printToBluetoothPrinter = async (sale, receiptSize = '58mm') => {
       [20, 12],
       [BluetoothEscposPrinter.ALIGN.LEFT, BluetoothEscposPrinter.ALIGN.RIGHT],
       ['Total QTY', String(totalQty)],
+      {}
+    );
+    const subTotal = (sale.items || []).reduce((sum, it) => sum + (Number(it.line_total) || 0), 0);
+    await BluetoothEscposPrinter.printColumn(
+      [12, 20],
+      [BluetoothEscposPrinter.ALIGN.LEFT, BluetoothEscposPrinter.ALIGN.RIGHT],
+      ['Sub Total', formatIDR(subTotal)],
       {}
     );
     await BluetoothEscposPrinter.printColumn(

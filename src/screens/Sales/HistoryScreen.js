@@ -427,21 +427,41 @@ export default function HistoryScreen({ navigation }) {
               if (items.length === 0) return <Text style={styles.itemCount}>0 Items</Text>;
               
               if (items.length === 1) {
+                 const it = items[0];
+                 const itemProfit = typeof it.line_profit === 'number'
+                   ? it.line_profit
+                   : ((Number(it.price) - Number(it.cost_price || 0)) * Number(it.qty || 0));
+                 const profitFallback = typeof item.profit === 'number' ? item.profit : itemProfit;
                  return (
-                    <Text style={styles.itemCount}>
-                       1 Item : {items[0].qty}x {items[0].product_name} {formatIDR(items[0].price)}
-                    </Text>
+                    <View>
+                      <Text style={styles.itemCount}>
+                        1 Item : {it.qty}x {it.product_name} {formatIDR(it.price)}
+                      </Text>
+                      <Text style={[styles.itemCount, { color: '#28a745', marginTop: 2 }]}>
+                        Profit: {formatIDR(profitFallback)}
+                      </Text>
+                    </View>
                  );
               }
 
               return (
                  <View>
                     <Text style={styles.itemCount}>{items.length} Items :</Text>
-                    {items.slice(0, 3).map((prod, idx) => (
-                       <Text key={idx} style={[styles.itemCount, { marginLeft: 8, marginTop: 2 }]}>
-                          - {prod.qty}x {prod.product_name} {formatIDR(prod.price)}
-                       </Text>
-                    ))}
+                    {items.slice(0, 3).map((prod, idx) => {
+                       const profit = typeof prod.line_profit === 'number'
+                         ? prod.line_profit
+                         : ((Number(prod.price) - Number(prod.cost_price || 0)) * Number(prod.qty || 0));
+                       return (
+                         <View key={idx} style={{ marginLeft: 8, marginTop: 2 }}>
+                           <Text style={styles.itemCount}>
+                             - {prod.qty}x {prod.product_name} {formatIDR(prod.price)}
+                           </Text>
+                           <Text style={[styles.itemCount, { color: '#28a745' }]}>
+                             Profit: {formatIDR(profit)}
+                           </Text>
+                         </View>
+                       );
+                    })}
                     {items.length > 3 && (
                        <Text style={[styles.itemCount, { marginLeft: 8, marginTop: 2 }]}>
                           ... dan {items.length - 3} lainnya
@@ -645,16 +665,6 @@ export default function HistoryScreen({ navigation }) {
                     <Text style={styles.itemInfo}>
                       {item.qty} × {formatIDR(item.price)} = {formatIDR(item.line_total)}
                     </Text>
-                    {(() => {
-                      const profit = typeof item.line_profit === 'number'
-                        ? item.line_profit
-                        : ((Number(item.price) - Number(item.cost_price || 0)) * Number(item.qty || 0));
-                      return (
-                        <Text style={[styles.itemInfo, { color: '#28a745' }]}>
-                          Profit: {formatIDR(profit)}
-                        </Text>
-                      );
-                    })()}
                   </View>
                 ))}
               </View>
