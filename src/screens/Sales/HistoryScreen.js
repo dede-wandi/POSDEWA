@@ -9,7 +9,8 @@ import {
   TextInput,
   Modal,
   ScrollView,
-  RefreshControl
+  RefreshControl,
+  Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -667,16 +668,30 @@ export default function HistoryScreen({ navigation }) {
               <TouchableOpacity
                 style={styles.modalPrintButton}
                 onPress={async () => {
-                  setShowDetailModal(false);
                   try {
+                    if (Platform.OS === 'web') {
+                      const result = await printToSelectedPrinter(selectedSale, user?.id, '58mm');
+                      if (!result.success) {
+                        Alert.alert('Error', result.error || 'Gagal membuka dialog print di browser');
+                      }
+                      return;
+                    }
                     const resultBt = await printToBluetoothPrinter(selectedSale, '58mm');
                     if (!resultBt.success) {
-                      setTimeout(() => printInvoice(selectedSale), 300);
+                      const result = await printToSelectedPrinter(selectedSale, user?.id, '58mm');
+                      if (!result.success) {
+                        Alert.alert('Error', result.error || 'Gagal mencetak invoice');
+                      } else {
+                        Alert.alert('Berhasil', 'Invoice dikirim ke printer');
+                      }
                     } else {
                       Alert.alert('Berhasil', 'Invoice dicetak ke printer bluetooth');
                     }
-                  } catch {
-                    setTimeout(() => printInvoice(selectedSale), 300);
+                  } catch (e) {
+                    const result = await printToSelectedPrinter(selectedSale, user?.id, '58mm');
+                    if (!result.success) {
+                      Alert.alert('Error', result.error || 'Gagal mencetak invoice');
+                    }
                   }
                 }}
               >
