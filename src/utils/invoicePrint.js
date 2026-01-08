@@ -28,6 +28,7 @@ export const generateInvoiceHTML = async (sale, userId, receiptSize = '58mm') =>
     minute: '2-digit',
     second: '2-digit'
   });
+  const totalQty = (sale.items || []).reduce((acc, it) => acc + (Number(it.qty) || 0), 0);
   
   // Get invoice settings from database
   let invoiceSettings = null;
@@ -127,24 +128,17 @@ export const generateInvoiceHTML = async (sale, userId, receiptSize = '58mm') =>
           line-height: 1.0;
         }
         .items-section { margin: 2px 0; }
-        .items-table {
-          width: 100%;
-          border-collapse: collapse;
+        .item-line { margin-bottom: 1px; }
+        .line {
+          display: flex;
+          justify-content: space-between;
           font-size: ${itemDetailsSize};
+          line-height: 1.0;
         }
-        .items-table thead th {
-          text-align: left;
-          border-bottom: 1px dashed #000;
-          padding: 2px 0;
+        .name {
           font-size: ${itemNameSize};
+          line-height: 1.0;
         }
-        .items-table tbody td {
-          padding: 2px 0;
-        }
-        .col-name { width: 52%; }
-        .col-qty { width: 12%; text-align: left; }
-        .col-price { width: 16%; text-align: right; }
-        .col-total { width: 20%; text-align: right; }
         .total-section {
           margin-top: 1px;
         }
@@ -198,32 +192,30 @@ export const generateInvoiceHTML = async (sale, userId, receiptSize = '58mm') =>
         
         <div class="items-section">
           ${Array.isArray(sale.items) && sale.items.length > 0 ? `
-          <table class="items-table">
-            <thead>
-              <tr>
-                <th class="col-name">Produk</th>
-                <th class="col-qty">Qty</th>
-                <th class="col-price">Harga</th>
-                <th class="col-total">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${sale.items.map(item => `
-                <tr>
-                  <td class="col-name">${item.product_name}${item.token_code ? `<div style="font-size: 8px; color: #666;">🔑 ${item.token_code}</div>` : ''}</td>
-                  <td class="col-qty">${item.qty}</td>
-                  <td class="col-price">${formatIDR(item.price)}</td>
-                  <td class="col-total">${formatIDR(item.line_total)}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
+            ${sale.items.map(item => {
+              const unit = '${formatIDR(0)}'.replace('Rp', '').trim();
+              const unitPrice = '${formatIDR(item.price)}'.replace('Rp', '').trim();
+              return `
+              <div class="item-line">
+                <div class="name">${item.product_name}</div>
+                ${item.token_code ? `<div style="font-size: 8px; color: #666;">🔑 ${item.token_code}</div>` : ''}
+                <div class="line">
+                  <span>${item.qty} x ${unitPrice}</span>
+                  <span>${formatIDR(item.line_total)}</span>
+                </div>
+              </div>
+              `;
+            }).join('')}
           ` : '<div class="text-center">Tidak ada item</div>'}
         </div>
         
         <div class="divider"></div>
         
         <div class="total-section">
+          <div class="total-line">
+            <span>Total QTY</span>
+            <span>${totalQty}</span>
+          </div>
           <div class="total-line bold">
             <span>Total</span>
             <span>${formatIDR(sale.total)}</span>
@@ -312,15 +304,23 @@ export const printToBluetoothPrinter = async (sale, receiptSize = '58mm') => {
     await BluetoothEscposPrinter.printText(`${header}\n`, {});
     await BluetoothEscposPrinter.printText(`------------------------------\n`, {});
     for (const item of sale.items || []) {
-      await BluetoothEscposPrinter.printText(`${item.qty}x ${item.product_name}\n`, {});
+      await BluetoothEscposPrinter.printText(`${item.product_name}\n`, {});
+      const unitPrice = formatIDR(item.price).replace('Rp', '').trim();
       await BluetoothEscposPrinter.printColumn(
-        [12, 20],
+        [20, 12],
         [BluetoothEscposPrinter.ALIGN.LEFT, BluetoothEscposPrinter.ALIGN.RIGHT],
-        [formatIDR(item.price), formatIDR(item.line_total)],
+        [`${item.qty} x ${unitPrice}`, formatIDR(item.line_total)],
         {}
       );
     }
     await BluetoothEscposPrinter.printText(`------------------------------\n`, {});
+    const totalQty = (sale.items || []).reduce((acc, it) => acc + (Number(it.qty) || 0), 0);
+    await BluetoothEscposPrinter.printColumn(
+      [20, 12],
+      [BluetoothEscposPrinter.ALIGN.LEFT, BluetoothEscposPrinter.ALIGN.RIGHT],
+      ['Total QTY', String(totalQty)],
+      {}
+    );
     await BluetoothEscposPrinter.printColumn(
       [12, 20],
       [BluetoothEscposPrinter.ALIGN.LEFT, BluetoothEscposPrinter.ALIGN.RIGHT],
