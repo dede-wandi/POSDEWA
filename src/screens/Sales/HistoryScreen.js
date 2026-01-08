@@ -18,7 +18,7 @@ import { Calendar } from 'react-native-calendars';
 import { formatIDR } from '../../utils/currency';
 import { useAuth } from '../../context/AuthContext';
 import { getSalesHistory, getSaleById } from '../../services/salesSupabase';
-import { printInvoiceToPDF, shareInvoicePDF, printToSelectedPrinter, printToBluetoothPrinter, checkPrinterConnection } from '../../utils/invoicePrint';
+import { printInvoiceToPDF, shareInvoicePDF, printToSelectedPrinter, printToBluetoothPrinter } from '../../utils/invoicePrint';
 
 export default function HistoryScreen({ navigation }) {
   const { user } = useAuth();
@@ -32,7 +32,6 @@ export default function HistoryScreen({ navigation }) {
   const [filterPeriod, setFilterPeriod] = useState('today'); // all, today, yesterday, week, month, year, custom
   const [selectedSale, setSelectedSale] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [selectedPrinterStatus, setSelectedPrinterStatus] = useState(null);
 
   // Custom Date Picker State
   const [customDateRange, setCustomDateRange] = useState({
@@ -184,8 +183,6 @@ export default function HistoryScreen({ navigation }) {
       if (saleDetail) {
         setSelectedSale(saleDetail);
         setShowDetailModal(true);
-        const status = await checkPrinterConnection();
-        setSelectedPrinterStatus(status);
       } else {
         Alert.alert('Error', 'Detail penjualan tidak ditemukan');
       }
@@ -510,25 +507,6 @@ export default function HistoryScreen({ navigation }) {
       </View>
 
       {/* Sales List */}
-      {topItems.length > 0 && (
-        <View style={styles.insightSection}>
-          <Text style={styles.sectionTitle}>Insight Performa</Text>
-          {topItems.slice(0, showAllTopItems ? 5 : 3).map((it, idx) => (
-            <View key={`${it.name}-${idx}`} style={styles.insightItemRow}>
-              <View style={{ flex: 1, marginRight: 10 }}>
-                <Text style={styles.insightItemName}>{it.name}</Text>
-                <Text style={styles.insightItemInfo}>{it.totalQty}x dibeli • {it.transactionCount} transaksi</Text>
-              </View>
-              <Ionicons name="trending-up" size={20} color="#28a745" />
-            </View>
-          ))}
-          {topItems.length > 3 && (
-            <TouchableOpacity style={styles.insightMoreButton} onPress={() => setShowAllTopItems(prev => !prev)}>
-              <Text style={styles.insightMoreText}>{showAllTopItems ? 'Hide' : 'More+'}</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
       <FlatList
         data={filteredSales}
         keyExtractor={(item) => item.id}
@@ -542,6 +520,27 @@ export default function HistoryScreen({ navigation }) {
             tintColor="#007AFF"
           />
         }
+        ListHeaderComponent={() => (
+          topItems.length > 0 ? (
+            <View style={[styles.saleCard, { marginHorizontal: 0, marginTop: 0 }]}>
+              <Text style={styles.sectionTitle}>Insight Performa</Text>
+              {topItems.slice(0, showAllTopItems ? 5 : 3).map((it, idx) => (
+                <View key={`${it.name}-${idx}`} style={styles.insightItemRow}>
+                  <View style={{ flex: 1, marginRight: 10 }}>
+                    <Text style={styles.insightItemName}>{it.name}</Text>
+                    <Text style={styles.insightItemInfo}>{it.totalQty}x dibeli • {it.transactionCount} transaksi</Text>
+                  </View>
+                  <Ionicons name="trending-up" size={20} color="#28a745" />
+                </View>
+              ))}
+              {topItems.length > 3 && (
+                <TouchableOpacity style={[styles.insightMoreButton, { marginTop: 8 }]} onPress={() => setShowAllTopItems(prev => !prev)}>
+                  <Text style={styles.insightMoreText}>{showAllTopItems ? 'Hide' : 'More+'}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : null
+        )}
         ListEmptyComponent={() => (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>📋</Text>
@@ -576,14 +575,6 @@ export default function HistoryScreen({ navigation }) {
 
           {selectedSale && (
             <ScrollView style={styles.modalContent}>
-              {selectedPrinterStatus && (
-                <View style={[styles.detailSection, { flexDirection: 'row', justifyContent: 'space-between' }]}>
-                  <Text style={styles.detailLabel}>Status Printer</Text>
-                  <Text style={[styles.detailValue, { color: selectedPrinterStatus.connected ? '#28a745' : '#FF3B30' }]}>
-                    {selectedPrinterStatus.connected ? '✅ Terhubung' : '❌ Tidak Terhubung'}
-                  </Text>
-                </View>
-              )}
               <View style={styles.detailSection}>
                 <Text style={styles.detailLabel}>No. Invoice:</Text>
                 <Text style={styles.detailValue}>{selectedSale.no_invoice || selectedSale.id}</Text>
@@ -654,6 +645,16 @@ export default function HistoryScreen({ navigation }) {
                     <Text style={styles.itemInfo}>
                       {item.qty} × {formatIDR(item.price)} = {formatIDR(item.line_total)}
                     </Text>
+                    {(() => {
+                      const profit = typeof item.line_profit === 'number'
+                        ? item.line_profit
+                        : ((Number(item.price) - Number(item.cost_price || 0)) * Number(item.qty || 0));
+                      return (
+                        <Text style={[styles.itemInfo, { color: '#28a745' }]}>
+                          Profit: {formatIDR(profit)}
+                        </Text>
+                      );
+                    })()}
                   </View>
                 ))}
               </View>

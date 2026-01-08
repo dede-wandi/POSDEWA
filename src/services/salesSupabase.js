@@ -26,7 +26,9 @@ export const getSalesHistory = async (userId) => {
           barcode,
           price,
           qty,
-          line_total
+          line_total,
+          cost_price,
+          line_profit
         ),
         payment_channels (
           id,
@@ -83,7 +85,9 @@ export const getSaleById = async (saleId) => {
           barcode,
           price,
           qty,
-          line_total
+          line_total,
+          cost_price,
+          line_profit
         ),
         payment_channels (
           id,
