@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { getInvoiceSettings, updateInvoiceSettings, resetInvoiceSettings } from '../../services/invoiceSettingsSupabase';
-import { detectPairedPrinters, connectBluetoothPrinter, checkPrinterConnection, testBluetoothPrint } from '../../utils/invoicePrint';
+import { detectPairedPrinters, connectBluetoothPrinter, checkPrinterConnection, testBluetoothPrint, testWebPrint } from '../../utils/invoicePrint';
 import * as Print from 'expo-print';
 import { getItemAsync, setItemAsync, deleteItemAsync } from '../../utils/storage';
 
@@ -42,6 +42,7 @@ export default function InvoiceSettingsScreen({ navigation }) {
   const [isConnected, setIsConnected] = useState(false);
   const [checkingConn, setCheckingConn] = useState(false);
   const [selectPrompt, setSelectPrompt] = useState('');
+  const isWeb = Platform.OS === 'web';
 
   useEffect(() => {
     loadSettings();
@@ -156,6 +157,10 @@ export default function InvoiceSettingsScreen({ navigation }) {
   };
   
   const selectPrinter = async () => {
+    if (isWeb) {
+      Alert.alert('Info', 'Di Web, pemilihan printer dilakukan melalui dialog print browser saat Anda mencetak invoice.');
+      return;
+    }
     setScanning(true);
     const list = await detectPairedPrinters();
     setPairedPrinters(list);
@@ -183,6 +188,12 @@ export default function InvoiceSettingsScreen({ navigation }) {
   };
   
   const detectPrinters = async () => {
+    if (isWeb) {
+      setPairedPrinters([]);
+      setScanning(false);
+      Alert.alert('Info', 'Deteksi Bluetooth tidak tersedia di mode Web. Gunakan dialog print browser saat mencetak.');
+      return;
+    }
     setScanning(true);
     const list = await detectPairedPrinters();
     setPairedPrinters(list);
@@ -348,56 +359,77 @@ export default function InvoiceSettingsScreen({ navigation }) {
           
           {/* Printer Settings */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🖨️ Printer Bluetooth</Text>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Printer Terpilih</Text>
-              <Text style={styles.selectedPrinterText}>{selectedPrinter.name || 'Belum dipilih'}</Text>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-              <Text style={{ fontSize: 14, color: isConnected ? '#28a745' : '#FF3B30' }}>
-                {isConnected ? '✅ Terhubung' : '❌ Tidak Terhubung'}
-              </Text>
-              <TouchableOpacity onPress={refreshConnectionStatus} style={{ marginLeft: 10 }}>
-                <Text style={{ color: '#007AFF' }}>{checkingConn ? 'Memeriksa…' : 'Periksa Koneksi'}</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <TouchableOpacity style={styles.saveButton} onPress={selectPrinter}>
-                <Text style={styles.saveButtonText}>Pilih Printer</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.resetButton, { marginLeft: 10 }]} onPress={clearPrinter}>
-                <Text style={styles.resetButtonText}>Hapus Pilihan</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={{ marginTop: 12 }}>
-              <TouchableOpacity style={styles.saveButton} onPress={detectPrinters}>
-                <Text style={styles.saveButtonText}>{scanning ? 'Mencari…' : 'Deteksi Printer Bluetooth'}</Text>
-              </TouchableOpacity>
-              {selectPrompt ? (
-                <Text style={{ marginTop: 8, color: '#6c757d' }}>{selectPrompt}</Text>
-              ) : null}
-              <TouchableOpacity style={[styles.saveButton, { marginTop: 8 }]} onPress={selectPrinter}>
-                <Text style={styles.saveButtonText}>Pilih Printer</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.saveButton, { marginTop: 8 }]} onPress={async () => {
-                const res = await testBluetoothPrint('58mm');
-                if (res.success) {
-                  Alert.alert('Berhasil', 'Uji cetak 58mm berhasil dikirim ke printer');
-                } else {
-                  Alert.alert('Error', res.error || 'Gagal uji cetak. Pastikan printer terhubung.');
-                }
-              }}>
-                <Text style={styles.saveButtonText}>Uji Cetak 58mm</Text>
-              </TouchableOpacity>
-              {pairedPrinters.map((dev, idx) => (
-                <View key={`${dev.address}-${idx}`} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8 }}>
-                  <Text style={{ flex: 1 }}>{(dev.name || dev.device || 'Printer') + ' (' + dev.address + ')'}</Text>
-                  <TouchableOpacity style={[styles.saveButton, { paddingHorizontal: 10 }]} onPress={() => connectPrinterBluetooth(dev)}>
-                    <Text style={styles.saveButtonText}>Hubungkan</Text>
+            <Text style={styles.sectionTitle}>{isWeb ? '🖨️ Pengaturan Cetak Browser' : '🖨️ Printer Bluetooth'}</Text>
+            {!isWeb ? (
+              <>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Printer Terpilih</Text>
+                  <Text style={styles.selectedPrinterText}>{selectedPrinter.name || 'Belum dipilih'}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                  <Text style={{ fontSize: 14, color: isConnected ? '#28a745' : '#FF3B30' }}>
+                    {isConnected ? '✅ Terhubung' : '❌ Tidak Terhubung'}
+                  </Text>
+                  <TouchableOpacity onPress={refreshConnectionStatus} style={{ marginLeft: 10 }}>
+                    <Text style={{ color: '#007AFF' }}>{checkingConn ? 'Memeriksa…' : 'Periksa Koneksi'}</Text>
                   </TouchableOpacity>
                 </View>
-              ))}
-            </View>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <TouchableOpacity style={styles.saveButton} onPress={selectPrinter}>
+                    <Text style={styles.saveButtonText}>Pilih Printer</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.resetButton, { marginLeft: 10 }]} onPress={clearPrinter}>
+                    <Text style={styles.resetButtonText}>Hapus Pilihan</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={{ marginTop: 12 }}>
+                  <TouchableOpacity style={styles.saveButton} onPress={detectPrinters}>
+                    <Text style={styles.saveButtonText}>{scanning ? 'Mencari…' : 'Deteksi Printer Bluetooth'}</Text>
+                  </TouchableOpacity>
+                  {selectPrompt ? (
+                    <Text style={{ marginTop: 8, color: '#6c757d' }}>{selectPrompt}</Text>
+                  ) : null}
+                  <TouchableOpacity style={[styles.saveButton, { marginTop: 8 }]} onPress={selectPrinter}>
+                    <Text style={styles.saveButtonText}>Pilih Printer</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.saveButton, { marginTop: 8 }]} onPress={async () => {
+                    const res = await testBluetoothPrint('58mm');
+                    if (res.success) {
+                      Alert.alert('Berhasil', 'Uji cetak 58mm berhasil dikirim ke printer');
+                    } else {
+                      Alert.alert('Error', res.error || 'Gagal uji cetak. Pastikan printer terhubung.');
+                    }
+                  }}>
+                    <Text style={styles.saveButtonText}>Uji Cetak 58mm</Text>
+                  </TouchableOpacity>
+                  {pairedPrinters.map((dev, idx) => (
+                    <View key={`${dev.address}-${idx}`} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8 }}>
+                      <Text style={{ flex: 1 }}>{(dev.name || dev.device || 'Printer') + ' (' + dev.address + ')'}</Text>
+                      <TouchableOpacity style={[styles.saveButton, { paddingHorizontal: 10 }]} onPress={() => connectPrinterBluetooth(dev)}>
+                        <Text style={styles.saveButtonText}>Hubungkan</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              </>
+            ) : (
+              <>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Cara Cetak</Text>
+                  <Text style={styles.selectedPrinterText}>Gunakan dialog print browser saat mencetak invoice.</Text>
+                </View>
+                <TouchableOpacity style={styles.saveButton} onPress={async () => {
+                  const res = await testWebPrint('58mm');
+                  if (res.success) {
+                    Alert.alert('Berhasil', 'Dialog print browser dibuka untuk uji cetak 58mm');
+                  } else {
+                    Alert.alert('Error', res.error || 'Gagal membuka dialog print di browser');
+                  }
+                }}>
+                  <Text style={styles.saveButtonText}>Uji Cetak via Browser (58mm)</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
 
           {/* Display Options Section */}

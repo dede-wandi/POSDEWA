@@ -484,3 +484,33 @@ export const testBluetoothPrint = async (receiptSize = '58mm') => {
     return { success: false, error: e.message };
   }
 };
+
+export const testWebPrint = async (receiptSize = '58mm') => {
+  try {
+    const is80mm = receiptSize === '80mm';
+    const pageWidth = is80mm ? '80mm' : '58mm';
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Uji Cetak</title>
+        <style>
+          @page { size: ${pageWidth} auto; margin: 0; }
+          body { font-family: 'Courier New', monospace; width: ${pageWidth}; margin: 0; padding: 4px; }
+        </style>
+      </head>
+      <body>
+        <div>Uji Cetak ${receiptSize}</div>
+        <div>POSDEWA</div>
+        <div>------------------------------</div>
+        <div>Berhasil mencetak uji coba via browser.</div>
+      </body>
+      </html>
+    `;
+    await Print.printAsync({ html });
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+};
