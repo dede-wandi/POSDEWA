@@ -279,16 +279,26 @@ export default function PaymentScreen({ navigation, route }) {
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.container}>
 
-        {/* Order Summary */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Ringkasan Pesanan</Text>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Total Item:</Text>
-            <Text style={styles.summaryValue}>{cart.reduce((sum, item) => sum + item.qty, 0)} item</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Total Harga:</Text>
-            <Text style={styles.summaryValue}>{formatIDR(total)}</Text>
+          {cart.map((item, index) => (
+            <View
+              key={index}
+              style={[
+                styles.summaryRow,
+                { borderBottomWidth: 1, borderBottomColor: Colors.border, paddingBottom: 8, marginBottom: 8 }
+              ]}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.summaryValue, { marginBottom: 4 }]}>{item.name}</Text>
+                <Text style={styles.summaryLabel}>{item.qty} x {formatIDR(item.price)}</Text>
+              </View>
+              <Text style={styles.summaryValue}>{formatIDR(item.price * item.qty)}</Text>
+            </View>
+          ))}
+          <View style={[styles.summaryRow, { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: Colors.border }]}>
+            <Text style={[styles.summaryLabel, { fontWeight: 'bold', color: Colors.text }]}>Total Bayar:</Text>
+            <Text style={[styles.summaryValue, { fontSize: 16, fontWeight: 'bold', color: Colors.primary }]}>{formatIDR(total)}</Text>
           </View>
         </View>
 
@@ -361,6 +371,14 @@ export default function PaymentScreen({ navigation, route }) {
               placeholder="Masukkan jumlah uang"
               keyboardType="numeric"
             />
+
+            {/* Uang Pas Button */}
+            <TouchableOpacity
+              style={[styles.quickAmountButton, { width: '100%', marginTop: 10, backgroundColor: Colors.primary }]}
+              onPress={() => setCashAmount(total.toString())}
+            >
+              <Text style={[styles.quickAmountText, { color: '#fff' }]}>Uang Pas ({formatIDR(total)})</Text>
+            </TouchableOpacity>
             
             {/* Quick Amount Buttons */}
             {quickAmounts.length > 0 && (

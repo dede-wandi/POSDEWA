@@ -9,8 +9,7 @@ import {
   TextInput,
   Modal,
   ScrollView,
-  RefreshControl,
-  Platform
+  RefreshControl
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,12 +17,13 @@ import { Calendar } from 'react-native-calendars';
 import { formatIDR } from '../../utils/currency';
 import { useAuth } from '../../context/AuthContext';
 import { getSalesHistory, getSaleById } from '../../services/salesSupabase';
-import { printInvoiceToPDF, shareInvoicePDF, shareToWhatsApp } from '../../utils/invoicePrint';
+import { printInvoiceToPDF, shareInvoicePDF } from '../../utils/invoicePrint';
 
 export default function HistoryScreen({ navigation }) {
   const { user } = useAuth();
   const [sales, setSales] = useState([]);
   const [filteredSales, setFilteredSales] = useState([]);
+  const [topItems, setTopItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -151,6 +151,22 @@ export default function HistoryScreen({ navigation }) {
     filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     
     setFilteredSales(filtered);
+
+    const itemMap = {};
+    filtered.forEach(sale => {
+      (sale.items || []).forEach(it => {
+        const key = it.product_name;
+        if (!itemMap[key]) {
+          itemMap[key] = { name: it.product_name, totalQty: 0, transactionCount: 0 };
+        }
+        itemMap[key].totalQty += Number(it.qty) || 0;
+        itemMap[key].transactionCount += 1;
+      });
+    });
+    const top = Object.values(itemMap)
+      .sort((a, b) => b.totalQty - a.totalQty)
+      .slice(0, 5);
+    setTopItems(top);
   };
 
   const showSaleDetail = async (saleId) => {
@@ -227,15 +243,6 @@ export default function HistoryScreen({ navigation }) {
             const result = await shareInvoicePDF(sale, user?.id, receiptSize);
             if (!result.success) {
               Alert.alert('Error', result.error || 'Gagal share PDF');
-            }
-          }
-        },
-        {
-          text: '📱 Share ke WhatsApp',
-          onPress: async () => {
-            const result = await shareToWhatsApp(sale, user?.id, receiptSize);
-            if (!result.success) {
-              Alert.alert('Error', result.error || 'Gagal share ke WhatsApp');
             }
           }
         }
@@ -391,9 +398,6 @@ export default function HistoryScreen({ navigation }) {
         </View>
         <View style={styles.totalContainer}>
           <Text style={styles.saleTotal}>{formatIDR(item.total)}</Text>
-          <Text style={[styles.saleTotal, { fontSize: 12, color: '#34C759', marginTop: 4 }]}>
-            Profit: {formatIDR(item.profit)}
-          </Text>
         </View>
       </View>
       
@@ -485,6 +489,20 @@ export default function HistoryScreen({ navigation }) {
       </View>
 
       {/* Sales List */}
+      {topItems.length > 0 && (
+        <View style={styles.insightSection}>
+          <Text style={styles.sectionTitle}>Insight Performa</Text>
+          {topItems.map((it, idx) => (
+            <View key={`${it.name}-${idx}`} style={styles.insightItemRow}>
+              <View style={{ flex: 1, marginRight: 10 }}>
+                <Text style={styles.insightItemName}>{it.name}</Text>
+                <Text style={styles.insightItemInfo}>{it.totalQty}x dibeli • {it.transactionCount} transaksi</Text>
+              </View>
+              <Ionicons name="trending-up" size={20} color="#28a745" />
+            </View>
+          ))}
+        </View>
+      )}
       <FlatList
         data={filteredSales}
         keyExtractor={(item) => item.id}
@@ -594,8 +612,8 @@ export default function HistoryScreen({ navigation }) {
                 </View>
               )}
 
-              <View style={styles.detailSection}>
-                <Text style={styles.detailLabel}>Items:</Text>
+              <View style={[styles.detailSection, { flexDirection: 'column', alignItems: 'flex-start' }]}>
+                <Text style={[styles.detailLabel, { marginBottom: 8 }]}>Items:</Text>
                 {selectedSale.items?.map((item, index) => (
                   <View key={index} style={styles.itemDetail}>
                     <Text style={styles.itemName}>{item.product_name}</Text>
@@ -611,10 +629,6 @@ export default function HistoryScreen({ navigation }) {
                   <Text style={styles.totalLabel}>Total:</Text>
                   <Text style={styles.totalValue}>{formatIDR(selectedSale.total)}</Text>
                 </View>
-                <View style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>Profit:</Text>
-                  <Text style={styles.totalValue}>{formatIDR(selectedSale.profit)}</Text>
-                </View>
               </View>
 
               <TouchableOpacity
@@ -627,46 +641,6 @@ export default function HistoryScreen({ navigation }) {
                 <Text style={styles.modalPrintButtonText}>🖨️ Cetak Invoice</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[styles.modalPrintButton, { backgroundColor: '#28a745', marginTop: 10 }]}
-                onPress={() => {
-                   setShowDetailModal(false);
-                   setTimeout(() => {
-                     // Ask for receipt size first
-                     Alert.alert(
-                       'Pilih Ukuran Struk',
-                       'Pilih ukuran struk thermal untuk WhatsApp:',
-                       [
-                         {
-                           text: 'Batal',
-                           style: 'cancel'
-                         },
-                         {
-                           text: '📄 58mm',
-                           onPress: async () => {
-                             const result = await shareToWhatsApp(selectedSale, user?.id, '58mm');
-                             if (!result.success) {
-                               Alert.alert('Error', result.error || 'Gagal share ke WhatsApp');
-                             }
-                           }
-                         },
-                         {
-                           text: '📄 80mm',
-                           onPress: async () => {
-                             const result = await shareToWhatsApp(selectedSale, user?.id, '80mm');
-                             if (!result.success) {
-                               Alert.alert('Error', result.error || 'Gagal share ke WhatsApp');
-                             }
-                           }
-                         }
-                       ],
-                       { cancelable: true }
-                     );
-                   }, 300);
-                 }}
-              >
-                <Text style={styles.modalPrintButtonText}>📱 Share ke WhatsApp</Text>
-              </TouchableOpacity>
             </ScrollView>
           )}
         </View>
@@ -771,6 +745,36 @@ const styles = StyleSheet.create({
   },
   placeholder: {
     width: 40,
+  },
+  insightSection: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  insightItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f3f5',
+  },
+  insightItemName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  insightItemInfo: {
+    fontSize: 12,
+    color: '#6c757d',
+    marginTop: 4,
   },
   searchSection: {
     paddingHorizontal: 16,
