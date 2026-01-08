@@ -45,6 +45,9 @@ export const generateInvoiceHTML = async (sale, userId, receiptSize = '58mm') =>
   const footerText = invoiceSettings?.footer_text || '*** THANK YOU ***';
   const showBusinessInfo = invoiceSettings?.show_business_info !== false;
   const showFooterText = invoiceSettings?.show_footer_text !== false;
+  const headerText = invoiceSettings?.header_text || '';
+  const logoUrl = invoiceSettings?.header_logo_url || '';
+  const showLogo = invoiceSettings?.show_header_logo || false;
 
   // Determine sizes based on receipt size
   const is80mm = receiptSize === '80mm';
@@ -123,22 +126,25 @@ export const generateInvoiceHTML = async (sale, userId, receiptSize = '58mm') =>
           font-size: ${infoLineSize};
           line-height: 1.0;
         }
-        .items-section {
-          margin: 1px 0;
-        }
-        .item-line {
-          margin-bottom: 0px;
-        }
-        .item-name {
-          font-size: ${itemNameSize};
-          line-height: 1.0;
-        }
-        .item-details {
-          display: flex;
-          justify-content: space-between;
+        .items-section { margin: 2px 0; }
+        .items-table {
+          width: 100%;
+          border-collapse: collapse;
           font-size: ${itemDetailsSize};
-          line-height: 1.0;
         }
+        .items-table thead th {
+          text-align: left;
+          border-bottom: 1px dashed #000;
+          padding: 2px 0;
+          font-size: ${itemNameSize};
+        }
+        .items-table tbody td {
+          padding: 2px 0;
+        }
+        .col-name { width: 52%; }
+        .col-qty { width: 12%; text-align: left; }
+        .col-price { width: 16%; text-align: right; }
+        .col-total { width: 20%; text-align: right; }
         .total-section {
           margin-top: 1px;
         }
@@ -170,12 +176,12 @@ export const generateInvoiceHTML = async (sale, userId, receiptSize = '58mm') =>
     </head>
     <body>
       <div class="receipt">
-        ${showBusinessInfo ? `
         <div class="header">
+          ${showLogo && logoUrl ? `<div style="margin-bottom: 2px;"><img src="${logoUrl}" alt="Logo" style="max-width: 90%; height: auto;" /></div>` : ''}
           <div class="business-name">${businessName}</div>
-          <div class="business-address">${businessAddress}</div>
+          ${showBusinessInfo ? `<div class="business-address">${businessAddress}${businessPhone ? ' • ' + businessPhone : ''}</div>` : ''}
+          ${headerText && invoiceSettings?.show_header_text ? `<div style="font-size: ${infoLineSize}; margin-top: 1px;">${headerText}</div>` : ''}
         </div>
-        ` : ''}
         
         <div class="divider"></div>
         
@@ -191,16 +197,28 @@ export const generateInvoiceHTML = async (sale, userId, receiptSize = '58mm') =>
         <div class="divider"></div>
         
         <div class="items-section">
-          ${sale.items?.map(item => `
-            <div class="item-line">
-              <div class="item-name">${item.qty}x ${item.product_name}</div>
-              ${item.token_code ? `<div style="font-size: 8px; color: #666; margin-left: 10px;">🔑 Token: ${item.token_code}</div>` : ''}
-              <div class="item-details">
-                <span>${formatIDR(item.price)}</span>
-                <span>${formatIDR(item.line_total)}</span>
-              </div>
-            </div>
-          `).join('') || '<div class="text-center">Tidak ada item</div>'}
+          ${Array.isArray(sale.items) && sale.items.length > 0 ? `
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th class="col-name">Produk</th>
+                <th class="col-qty">Qty</th>
+                <th class="col-price">Harga</th>
+                <th class="col-total">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${sale.items.map(item => `
+                <tr>
+                  <td class="col-name">${item.product_name}${item.token_code ? `<div style="font-size: 8px; color: #666;">🔑 ${item.token_code}</div>` : ''}</td>
+                  <td class="col-qty">${item.qty}</td>
+                  <td class="col-price">${formatIDR(item.price)}</td>
+                  <td class="col-total">${formatIDR(item.line_total)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          ` : '<div class="text-center">Tidak ada item</div>'}
         </div>
         
         <div class="divider"></div>
@@ -225,8 +243,8 @@ export const generateInvoiceHTML = async (sale, userId, receiptSize = '58mm') =>
         
         ${sale.payment_method && sale.payment_method !== 'cash' ? `
         <div class="total-line">
-          <span>Pembayaran</span>
-          <span>${sale.payment_method}${sale.payment_channel ? ` - ${sale.payment_channel.name}` : ''}</span>
+          <span>Metode</span>
+          <span>${(sale.payment_method || '').toUpperCase()}${sale.payment_channel ? ` - ${sale.payment_channel.name}` : ''}</span>
         </div>
         ${sale.change_amount > 0 ? `
         <div class="total-line">
