@@ -17,13 +17,14 @@ import { Calendar } from 'react-native-calendars';
 import { formatIDR } from '../../utils/currency';
 import { useAuth } from '../../context/AuthContext';
 import { getSalesHistory, getSaleById } from '../../services/salesSupabase';
-import { printInvoiceToPDF, shareInvoicePDF } from '../../utils/invoicePrint';
+import { printInvoiceToPDF, shareInvoicePDF, printToSelectedPrinter } from '../../utils/invoicePrint';
 
 export default function HistoryScreen({ navigation }) {
   const { user } = useAuth();
   const [sales, setSales] = useState([]);
   const [filteredSales, setFilteredSales] = useState([]);
   const [topItems, setTopItems] = useState([]);
+  const [showAllTopItems, setShowAllTopItems] = useState(false);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -75,12 +76,17 @@ export default function HistoryScreen({ navigation }) {
   const filterSales = () => {
     let filtered = [...sales];
 
-    // Filter by search query (sale ID)
+    // Filter by search query (invoice/id/nama item)
     if (searchQuery) {
-      filtered = filtered.filter(sale => 
-        (sale.no_invoice && sale.no_invoice.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        sale.id?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      const q = String(searchQuery).toLowerCase();
+      filtered = filtered.filter(sale => {
+        const matchInvoice = (sale.no_invoice && sale.no_invoice.toLowerCase().includes(q)) ||
+          (sale.id || '').toLowerCase().includes(q);
+        const matchItems = (sale.items || []).some(it =>
+          (it.product_name || '').toLowerCase().includes(q)
+        );
+        return matchInvoice || matchItems;
+      });
     }
 
     // Filter by period
@@ -234,6 +240,17 @@ export default function HistoryScreen({ navigation }) {
               Alert.alert('Berhasil', `Invoice ${receiptSize} berhasil disimpan sebagai PDF`);
             } else {
               Alert.alert('Error', result.error || 'Gagal menyimpan PDF');
+            }
+          }
+        },
+        {
+          text: '🖨️ Print ke Printer',
+          onPress: async () => {
+            const result = await printToSelectedPrinter(sale, user?.id, receiptSize);
+            if (!result.success) {
+              Alert.alert('Error', result.error || 'Gagal mencetak. Pilih printer di Pengaturan Invoice.');
+            } else {
+              Alert.alert('Berhasil', 'Invoice dikirim ke printer');
             }
           }
         },
@@ -492,7 +509,7 @@ export default function HistoryScreen({ navigation }) {
       {topItems.length > 0 && (
         <View style={styles.insightSection}>
           <Text style={styles.sectionTitle}>Insight Performa</Text>
-          {topItems.map((it, idx) => (
+          {topItems.slice(0, showAllTopItems ? 5 : 3).map((it, idx) => (
             <View key={`${it.name}-${idx}`} style={styles.insightItemRow}>
               <View style={{ flex: 1, marginRight: 10 }}>
                 <Text style={styles.insightItemName}>{it.name}</Text>
@@ -501,6 +518,11 @@ export default function HistoryScreen({ navigation }) {
               <Ionicons name="trending-up" size={20} color="#28a745" />
             </View>
           ))}
+          {!showAllTopItems && topItems.length > 3 && (
+            <TouchableOpacity style={styles.insightMoreButton} onPress={() => setShowAllTopItems(true)}>
+              <Text style={styles.insightMoreText}>More+</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
       <FlatList
@@ -775,6 +797,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6c757d',
     marginTop: 4,
+  },
+  insightMoreButton: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6
+  },
+  insightMoreText: {
+    color: '#007AFF',
+    fontSize: 12,
+    fontWeight: '600'
   },
   searchSection: {
     paddingHorizontal: 16,

@@ -17,6 +17,8 @@ import {
   updateInvoiceSettings, 
   resetInvoiceSettings 
 } from '../../services/invoiceSettingsSupabase';
+import * as Print from 'expo-print';
+import { getItemAsync, setItemAsync, deleteItemAsync } from '../../utils/storage';
 
 export default function InvoiceSettingsScreen({ navigation }) {
   const { user } = useAuth();
@@ -35,9 +37,15 @@ export default function InvoiceSettingsScreen({ navigation }) {
     show_header_text: true,
     show_footer_text: true
   });
+  const [selectedPrinter, setSelectedPrinter] = useState({ name: '', url: '' });
 
   useEffect(() => {
     loadSettings();
+    (async () => {
+      const name = await getItemAsync('printer.name');
+      const url = await getItemAsync('printer.url');
+      setSelectedPrinter({ name: name || '', url: url || '' });
+    })();
   }, []);
 
   const loadSettings = async () => {
@@ -140,6 +148,29 @@ export default function InvoiceSettingsScreen({ navigation }) {
       ...prev,
       [key]: value
     }));
+  };
+  
+  const selectPrinter = async () => {
+    try {
+      const result = await Print.selectPrinterAsync();
+      if (result && result.name && result.url) {
+        await setItemAsync('printer.name', result.name);
+        await setItemAsync('printer.url', result.url);
+        setSelectedPrinter({ name: result.name, url: result.url });
+        Alert.alert('Berhasil', `Printer dipilih: ${result.name}`);
+      } else {
+        Alert.alert('Info', 'Pemilihan printer tidak tersedia di perangkat ini.');
+      }
+    } catch (e) {
+      Alert.alert('Error', e.message || 'Gagal memilih printer');
+    }
+  };
+  
+  const clearPrinter = async () => {
+    await deleteItemAsync('printer.name');
+    await deleteItemAsync('printer.url');
+    setSelectedPrinter({ name: '', url: '' });
+    Alert.alert('Selesai', 'Pilihan printer dihapus');
   };
 
   if (loading) {
@@ -273,6 +304,23 @@ export default function InvoiceSettingsScreen({ navigation }) {
                 keyboardType="url"
                 autoCapitalize="none"
               />
+            </View>
+          </View>
+          
+          {/* Printer Settings */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>🖨️ Printer Bluetooth</Text>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Printer Terpilih</Text>
+              <Text style={styles.selectedPrinterText}>{selectedPrinter.name || 'Belum dipilih'}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity style={styles.saveButton} onPress={selectPrinter}>
+                <Text style={styles.saveButtonText}>Pilih Printer</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.resetButton, { marginLeft: 10 }]} onPress={clearPrinter}>
+                <Text style={styles.resetButtonText}>Hapus Pilihan</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -417,6 +465,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#000',
     marginBottom: 16,
+  },
+  selectedPrinterText: {
+    fontSize: 14,
+    color: '#333',
+    marginTop: 6
   },
   inputGroup: {
     marginBottom: 16,

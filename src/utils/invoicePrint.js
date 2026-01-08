@@ -2,6 +2,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as Linking from 'expo-linking';
 import { formatIDR } from './currency';
+import { getItemAsync, setItemAsync } from '../utils/storage';
 import { getInvoiceSettings } from '../services/invoiceSettingsSupabase';
 
 // Generate HTML template for invoice (Receipt format)
@@ -330,6 +331,22 @@ export const shareToWhatsApp = async (sale, userId = null, receiptSize = '58mm')
     }
   } catch (error) {
     console.error('❌ Error sharing to WhatsApp:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const printToSelectedPrinter = async (sale, userId = null, receiptSize = '58mm') => {
+  try {
+    const htmlContent = await generateInvoiceHTML(sale, userId, receiptSize);
+    const printerUrl = await getItemAsync('printer.url');
+    if (printerUrl) {
+      await Print.printAsync({ html: htmlContent, printerUrl });
+      return { success: true };
+    } else {
+      await Print.printAsync({ html: htmlContent });
+      return { success: true };
+    }
+  } catch (error) {
     return { success: false, error: error.message };
   }
 };
