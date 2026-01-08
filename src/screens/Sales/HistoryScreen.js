@@ -17,7 +17,7 @@ import { Calendar } from 'react-native-calendars';
 import { formatIDR } from '../../utils/currency';
 import { useAuth } from '../../context/AuthContext';
 import { getSalesHistory, getSaleById } from '../../services/salesSupabase';
-import { printInvoiceToPDF, shareInvoicePDF, printToSelectedPrinter } from '../../utils/invoicePrint';
+import { printInvoiceToPDF, shareInvoicePDF, printToSelectedPrinter, printToBluetoothPrinter, checkPrinterConnection } from '../../utils/invoicePrint';
 
 export default function HistoryScreen({ navigation }) {
   const { user } = useAuth();
@@ -31,6 +31,7 @@ export default function HistoryScreen({ navigation }) {
   const [filterPeriod, setFilterPeriod] = useState('today'); // all, today, yesterday, week, month, year, custom
   const [selectedSale, setSelectedSale] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedPrinterStatus, setSelectedPrinterStatus] = useState(null);
 
   // Custom Date Picker State
   const [customDateRange, setCustomDateRange] = useState({
@@ -182,6 +183,8 @@ export default function HistoryScreen({ navigation }) {
       if (saleDetail) {
         setSelectedSale(saleDetail);
         setShowDetailModal(true);
+        const status = await checkPrinterConnection();
+        setSelectedPrinterStatus(status);
       } else {
         Alert.alert('Error', 'Detail penjualan tidak ditemukan');
       }
@@ -572,6 +575,14 @@ export default function HistoryScreen({ navigation }) {
 
           {selectedSale && (
             <ScrollView style={styles.modalContent}>
+              {selectedPrinterStatus && (
+                <View style={[styles.detailSection, { flexDirection: 'row', justifyContent: 'space-between' }]}>
+                  <Text style={styles.detailLabel}>Status Printer</Text>
+                  <Text style={[styles.detailValue, { color: selectedPrinterStatus.connected ? '#28a745' : '#FF3B30' }]}>
+                    {selectedPrinterStatus.connected ? '✅ Terhubung' : '❌ Tidak Terhubung'}
+                  </Text>
+                </View>
+              )}
               <View style={styles.detailSection}>
                 <Text style={styles.detailLabel}>No. Invoice:</Text>
                 <Text style={styles.detailValue}>{selectedSale.no_invoice || selectedSale.id}</Text>

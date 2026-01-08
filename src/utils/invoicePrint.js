@@ -442,3 +442,45 @@ export const printToSelectedPrinter = async (sale, userId = null, receiptSize = 
     return { success: false, error: error.message };
   }
 };
+
+export const getSelectedPrinterInfo = async () => {
+  const name = await getItemAsync('printer.name');
+  const address = await getItemAsync('printer.address');
+  const url = await getItemAsync('printer.url');
+  return { name: name || '', address: address || '', url: url || '' };
+};
+
+export const checkPrinterConnection = async () => {
+  const info = await getSelectedPrinterInfo();
+  if (!BluetoothManager || !info.address) {
+    return { connected: false, ...info };
+  }
+  try {
+    await BluetoothManager.connect(info.address);
+    return { connected: true, ...info };
+  } catch (e) {
+    return { connected: false, ...info, error: e.message };
+  }
+};
+
+export const testBluetoothPrint = async (receiptSize = '58mm') => {
+  if (!BluetoothEscposPrinter) return { success: false, error: 'Bluetooth printer tidak tersedia' };
+  try {
+    const addr = await getItemAsync('printer.address');
+    if (addr) {
+      await BluetoothManager.connect(addr);
+    }
+    await BluetoothEscposPrinter.init({
+      encoding: 'GBK',
+      codepage: 0,
+      width: receiptSize === '80mm' ? 576 : 384
+    });
+    await BluetoothEscposPrinter.printText('Uji Cetak 58mm\n', {});
+    await BluetoothEscposPrinter.printText('POSDEWA\n', {});
+    await BluetoothEscposPrinter.printText('------------------------------\n', {});
+    await BluetoothEscposPrinter.printText('Berhasil mencetak uji coba.\n\n', {});
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+};
