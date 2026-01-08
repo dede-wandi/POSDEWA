@@ -12,11 +12,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
-import { 
-  getInvoiceSettings, 
-  updateInvoiceSettings, 
-  resetInvoiceSettings 
-} from '../../services/invoiceSettingsSupabase';
+import { getInvoiceSettings, updateInvoiceSettings, resetInvoiceSettings } from '../../services/invoiceSettingsSupabase';
+import { detectPairedPrinters, connectBluetoothPrinter } from '../../utils/invoicePrint';
 import * as Print from 'expo-print';
 import { getItemAsync, setItemAsync, deleteItemAsync } from '../../utils/storage';
 
@@ -38,6 +35,8 @@ export default function InvoiceSettingsScreen({ navigation }) {
     show_footer_text: true
   });
   const [selectedPrinter, setSelectedPrinter] = useState({ name: '', url: '' });
+  const [pairedPrinters, setPairedPrinters] = useState([]);
+  const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -171,6 +170,28 @@ export default function InvoiceSettingsScreen({ navigation }) {
     await deleteItemAsync('printer.url');
     setSelectedPrinter({ name: '', url: '' });
     Alert.alert('Selesai', 'Pilihan printer dihapus');
+  };
+  
+  const detectPrinters = async () => {
+    setScanning(true);
+    const list = await detectPairedPrinters();
+    setPairedPrinters(list);
+    setScanning(false);
+    if (list.length === 0) {
+      Alert.alert('Info', 'Tidak ada printer bluetooth yang terdeteksi');
+    }
+  };
+  
+  const connectPrinterBluetooth = async (device) => {
+    const result = await connectBluetoothPrinter(device.address);
+    if (result.success) {
+      await setItemAsync('printer.name', device.name || device.device || '');
+      await setItemAsync('printer.address', device.address);
+      setSelectedPrinter({ name: device.name || device.device || '', url: '' });
+      Alert.alert('Berhasil', `Terhubung ke ${device.name || device.device}`);
+    } else {
+      Alert.alert('Error', result.error || 'Gagal menghubungkan printer');
+    }
   };
 
   if (loading) {
@@ -321,6 +342,19 @@ export default function InvoiceSettingsScreen({ navigation }) {
               <TouchableOpacity style={[styles.resetButton, { marginLeft: 10 }]} onPress={clearPrinter}>
                 <Text style={styles.resetButtonText}>Hapus Pilihan</Text>
               </TouchableOpacity>
+            </View>
+            <View style={{ marginTop: 12 }}>
+              <TouchableOpacity style={styles.saveButton} onPress={detectPrinters}>
+                <Text style={styles.saveButtonText}>{scanning ? 'Mencari…' : 'Deteksi Printer Bluetooth'}</Text>
+              </TouchableOpacity>
+              {pairedPrinters.map((dev, idx) => (
+                <View key={`${dev.address}-${idx}`} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8 }}>
+                  <Text style={{ flex: 1 }}>{(dev.name || dev.device || 'Printer') + ' (' + dev.address + ')'}</Text>
+                  <TouchableOpacity style={[styles.saveButton, { paddingHorizontal: 10 }]} onPress={() => connectPrinterBluetooth(dev)}>
+                    <Text style={styles.saveButtonText}>Hubungkan</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
             </View>
           </View>
 

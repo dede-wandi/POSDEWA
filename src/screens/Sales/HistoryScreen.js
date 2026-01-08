@@ -518,9 +518,9 @@ export default function HistoryScreen({ navigation }) {
               <Ionicons name="trending-up" size={20} color="#28a745" />
             </View>
           ))}
-          {!showAllTopItems && topItems.length > 3 && (
-            <TouchableOpacity style={styles.insightMoreButton} onPress={() => setShowAllTopItems(true)}>
-              <Text style={styles.insightMoreText}>More+</Text>
+          {topItems.length > 3 && (
+            <TouchableOpacity style={styles.insightMoreButton} onPress={() => setShowAllTopItems(prev => !prev)}>
+              <Text style={styles.insightMoreText}>{showAllTopItems ? 'Hide' : 'More+'}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -655,9 +655,18 @@ export default function HistoryScreen({ navigation }) {
 
               <TouchableOpacity
                 style={styles.modalPrintButton}
-                onPress={() => {
+                onPress={async () => {
                   setShowDetailModal(false);
-                  setTimeout(() => printInvoice(selectedSale), 300);
+                  try {
+                    const resultBt = await printToBluetoothPrinter(selectedSale, '58mm');
+                    if (!resultBt.success) {
+                      setTimeout(() => printInvoice(selectedSale), 300);
+                    } else {
+                      Alert.alert('Berhasil', 'Invoice dicetak ke printer bluetooth');
+                    }
+                  } catch {
+                    setTimeout(() => printInvoice(selectedSale), 300);
+                  }
                 }}
               >
                 <Text style={styles.modalPrintButtonText}>🖨️ Cetak Invoice</Text>

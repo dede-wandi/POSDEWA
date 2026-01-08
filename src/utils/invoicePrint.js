@@ -3,6 +3,16 @@ import * as Sharing from 'expo-sharing';
 import * as Linking from 'expo-linking';
 import { formatIDR } from './currency';
 import { getItemAsync, setItemAsync } from '../utils/storage';
+let BluetoothManager = null;
+let BluetoothEscposPrinter = null;
+try {
+  const bt = require('react-native-bluetooth-escpos-printer');
+  BluetoothManager = bt.BluetoothManager;
+  BluetoothEscposPrinter = bt.BluetoothEscposPrinter;
+} catch (e) {
+  BluetoothManager = null;
+  BluetoothEscposPrinter = null;
+}
 import { getInvoiceSettings } from '../services/invoiceSettingsSupabase';
 
 // Generate HTML template for invoice (Receipt format)
@@ -237,6 +247,88 @@ export const generateInvoiceHTML = async (sale, userId, receiptSize = '58mm') =>
   `;
 };
 
+export const detectPairedPrinters = async () => {
+  if (!BluetoothManager) return [];
+  try {
+    const result = await BluetoothManager.enableBluetooth();
+    const paired = [];
+    if (result && result.length > 0) {
+      for (let i = 0; i < result.length; i++) {
+        try {
+          paired.push(JSON.parse(result[i]));
+        } catch {}
+      }
+    }
+    return paired;
+  } catch {
+    return [];
+  }
+};
+
+export const connectBluetoothPrinter = async (address) => {
+  if (!BluetoothManager) return { success: false, error: 'Bluetooth tidak tersedia' };
+  try {
+    await BluetoothManager.connect(address);
+    await setItemAsync('printer.address', address);
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+};
+
+export const printToBluetoothPrinter = async (sale, receiptSize = '58mm') => {
+  if (!BluetoothEscposPrinter) return { success: false, error: 'Bluetooth printer tidak tersedia' };
+  try {
+    const addr = await getItemAsync('printer.address');
+    if (addr) {
+      await BluetoothManager.connect(addr);
+    }
+    await BluetoothEscposPrinter.init({
+      encoding: 'GBK',
+      codepage: 0,
+      width: receiptSize === '80mm' ? 576 : 384
+    });
+    await BluetoothEscposPrinter.printText(`${sale.no_invoice || sale.id}\n`, {});
+    const saleDate = new Date(sale.created_at);
+    const header = saleDate.toLocaleDateString('id-ID') + ' ' + saleDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    await BluetoothEscposPrinter.printText(`${header}\n`, {});
+    await BluetoothEscposPrinter.printText(`------------------------------\n`, {});
+    for (const item of sale.items || []) {
+      await BluetoothEscposPrinter.printText(`${item.qty}x ${item.product_name}\n`, {});
+      await BluetoothEscposPrinter.printColumn(
+        [12, 20],
+        [BluetoothEscposPrinter.ALIGN.LEFT, BluetoothEscposPrinter.ALIGN.RIGHT],
+        [formatIDR(item.price), formatIDR(item.line_total)],
+        {}
+      );
+    }
+    await BluetoothEscposPrinter.printText(`------------------------------\n`, {});
+    await BluetoothEscposPrinter.printColumn(
+      [12, 20],
+      [BluetoothEscposPrinter.ALIGN.LEFT, BluetoothEscposPrinter.ALIGN.RIGHT],
+      ['Total', formatIDR(sale.total)],
+      { bold: true }
+    );
+    if (sale.payment_method === 'cash' && sale.cash_amount) {
+      await BluetoothEscposPrinter.printColumn(
+        [12, 20],
+        [BluetoothEscposPrinter.ALIGN.LEFT, BluetoothEscposPrinter.ALIGN.RIGHT],
+        ['Tunai', formatIDR(sale.cash_amount)],
+        {}
+      );
+      await BluetoothEscposPrinter.printColumn(
+        [12, 20],
+        [BluetoothEscposPrinter.ALIGN.LEFT, BluetoothEscposPrinter.ALIGN.RIGHT],
+        ['Kembalian', formatIDR(sale.change_amount || 0)],
+        {}
+      );
+    }
+    await BluetoothEscposPrinter.printText(`\n`, {});
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+};
 // Print invoice to PDF
 export const printInvoiceToPDF = async (sale, userId = null, receiptSize = '58mm') => {
   try {
