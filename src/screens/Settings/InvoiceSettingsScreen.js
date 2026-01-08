@@ -41,6 +41,7 @@ export default function InvoiceSettingsScreen({ navigation }) {
   const [scanning, setScanning] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [checkingConn, setCheckingConn] = useState(false);
+  const [selectPrompt, setSelectPrompt] = useState('');
 
   useEffect(() => {
     loadSettings();
@@ -155,27 +156,23 @@ export default function InvoiceSettingsScreen({ navigation }) {
   };
   
   const selectPrinter = async () => {
-    const addr = await getItemAsync('printer.address');
-    if (!addr) {
-      setScanning(true);
-      const list = await detectPairedPrinters();
-      setPairedPrinters(list);
-      setScanning(false);
-      if (list.length === 0) {
+    setScanning(true);
+    const list = await detectPairedPrinters();
+    setPairedPrinters(list);
+    setScanning(false);
+    if (list.length === 0) {
+      setSelectPrompt('');
+      try {
+        await Linking.openSettings();
+      } catch (e) {
         try {
-          await Linking.openSettings();
-        } catch (e) {
-          try {
-            await Linking.openURL('app-settings:');
-          } catch {}
-        }
-        Alert.alert('Info', 'Buka pengaturan Bluetooth dan sambungkan printer dulu.');
-      } else {
-        Alert.alert('Pilih Printer', 'Silakan pilih dari daftar printer yang terdeteksi di bawah.');
+          await Linking.openURL('app-settings:');
+        } catch {}
       }
-      return;
+      Alert.alert('Info', 'Buka pengaturan Bluetooth dan sambungkan printer dulu.');
+    } else {
+      setSelectPrompt('Silakan pilih perangkat dari daftar di bawah untuk digunakan mencetak.');
     }
-    Alert.alert('Info', 'Printer sudah dipilih dan siap digunakan.');
   };
   
   const clearPrinter = async () => {
@@ -208,6 +205,7 @@ export default function InvoiceSettingsScreen({ navigation }) {
       await setItemAsync('printer.name', device.name || device.device || '');
       await setItemAsync('printer.address', device.address);
       setSelectedPrinter({ name: device.name || device.device || '', url: '' });
+      setIsConnected(true);
       Alert.alert('Berhasil', `Terhubung ke ${device.name || device.device}`);
     } else {
       Alert.alert('Error', result.error || 'Gagal menghubungkan printer');
@@ -374,6 +372,12 @@ export default function InvoiceSettingsScreen({ navigation }) {
             <View style={{ marginTop: 12 }}>
               <TouchableOpacity style={styles.saveButton} onPress={detectPrinters}>
                 <Text style={styles.saveButtonText}>{scanning ? 'Mencari…' : 'Deteksi Printer Bluetooth'}</Text>
+              </TouchableOpacity>
+              {selectPrompt ? (
+                <Text style={{ marginTop: 8, color: '#6c757d' }}>{selectPrompt}</Text>
+              ) : null}
+              <TouchableOpacity style={[styles.saveButton, { marginTop: 8 }]} onPress={selectPrinter}>
+                <Text style={styles.saveButtonText}>Pilih Printer</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.saveButton, { marginTop: 8 }]} onPress={async () => {
                 const res = await testBluetoothPrint('58mm');
