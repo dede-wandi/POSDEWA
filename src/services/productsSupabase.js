@@ -221,6 +221,7 @@ export async function createProduct(payload) {
       price: Number(payload.price || 0),
       cost_price: Number(payload.costPrice || 0), // Gunakan cost_price sesuai schema database
       stock: Number(payload.stock || 0),
+      image_urls: Array.isArray(payload.image_urls) ? payload.image_urls : [],
       owner_id: session.user.id,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -286,6 +287,7 @@ export async function updateProduct(userId, id, payload) {
     if (payload.price != null) patch.price = Number(payload.price);
     if (payload.costPrice != null) patch.cost_price = Number(payload.costPrice);
     if (payload.stock != null) patch.stock = Number(payload.stock);
+    if (payload.image_urls != null) patch.image_urls = payload.image_urls;
 
     console.log('📤 productsSupabase: Updating product with patch:', patch);
 
@@ -357,7 +359,7 @@ export async function adjustStockOnSale(userId, cartItems) {
       // Update stock
       const { error: updateError } = await supabase
         .from('products')
-        .update({ stock: newStock })
+        .update({ stock: newStock, last_change_reason: 'penjualan' })
         .eq('id', item.productId)
         .eq('owner_id', session.user.id);
 

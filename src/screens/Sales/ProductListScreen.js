@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, Alert, StyleSheet, Dimensions, RefreshControl } from 'react-native';
+import { View, Text, TextInput, FlatList, TouchableOpacity, Alert, StyleSheet, Dimensions, RefreshControl, Image } from 'react-native';
 import { findByBarcodeOrName } from '../../services/products';
 import { formatIDR } from '../../utils/currency';
 import { useAuth } from '../../context/AuthContext';
@@ -125,11 +125,19 @@ export default function ProductListScreen({ navigation, route }) {
             placeholderTextColor={Colors.muted}
           />
         </View>
+        <TouchableOpacity
+          style={styles.viewToggle}
+          onPress={() => setIsGrid(prev => !prev)}
+        >
+          <Ionicons name={isGrid ? 'grid' : 'list'} size={18} color={Colors.primary} />
+        </TouchableOpacity>
       </View>
 
       {/* Products List */}
       <FlatList
         data={products}
+        key={isGrid ? 'GRID' : 'LIST'}
+        numColumns={isGrid ? 2 : 1}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContainer}
@@ -145,9 +153,49 @@ export default function ProductListScreen({ navigation, route }) {
           const inCart = localCart.find(cartItem => cartItem.productId === item.id);
           const qtyInCart = inCart ? inCart.qty : 0;
           const availableStock = item.stock - qtyInCart;
-          
+          if (isGrid) {
+            return (
+              <View style={styles.productCardGrid}>
+                {inCart && qtyInCart > 0 && (
+                  <View style={styles.qtyBadgeGrid}>
+                    <Text style={styles.qtyBadgeText}>{qtyInCart}</Text>
+                  </View>
+                )}
+                {item.image_urls && item.image_urls[0] ? (
+                  <Image 
+                    source={{ uri: item.image_urls[0] }} 
+                    style={{ width: '100%', height: 120, borderRadius: 8, marginBottom: 8, backgroundColor: Colors.background }} 
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <View style={{ width: '100%', height: 120, borderRadius: 8, marginBottom: 8, backgroundColor: Colors.background }} />
+                )}
+                <View style={styles.productInfoGrid}>
+                  <Text style={styles.productNameGrid} numberOfLines={2}>{item.name}</Text>
+                  <Text style={styles.productPriceGrid}>{formatIDR(item.price)}</Text>
+                  <Text style={styles.productStockGrid}>Stok: {item.stock}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.addButtonGrid}
+                  onPress={() => addToCart(item)}
+                  disabled={availableStock <= 0}
+                >
+                  <Ionicons name={availableStock <= 0 ? 'close' : 'add'} size={18} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            );
+          }
           return (
             <View style={styles.productCard}>
+              {item.image_urls && item.image_urls[0] ? (
+                <Image 
+                  source={{ uri: item.image_urls[0] }} 
+                  style={{ width: 64, height: 64, borderRadius: 8, marginRight: 12, backgroundColor: Colors.background }} 
+                  resizeMode="contain"
+                />
+              ) : (
+                <View style={{ width: 64, height: 64, borderRadius: 8, marginRight: 12, backgroundColor: Colors.background }} />
+              )}
               <View style={styles.productInfo}>
                 <Text style={styles.productName}>{item.name}</Text>
                 <Text style={styles.productBarcode}>

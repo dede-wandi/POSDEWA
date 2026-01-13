@@ -45,7 +45,7 @@ export async function addStock(productId, quantity, reason = '', notes = '') {
     // Update product stock
     const { error: updateError } = await supabase
       .from('products')
-      .update({ stock: newStock })
+      .update({ stock: newStock, last_change_reason: reason || 'penyesuaian' })
       .eq('id', productId)
       .eq('owner_id', session.user.id);
 
@@ -199,7 +199,7 @@ export async function adjustStock(productId, newStock, reason = '', notes = '') 
     // Update product stock
     const { error: updateError } = await supabase
       .from('products')
-      .update({ stock: newStock })
+      .update({ stock: newStock, last_change_reason: reason || 'penyesuaian' })
       .eq('id', productId)
       .eq('owner_id', session.user.id);
 

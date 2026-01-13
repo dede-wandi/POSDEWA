@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../theme';
 import { createProduct, getProductById, updateProduct } from '../../services/products';
@@ -14,6 +14,8 @@ export default function FormScreen({ navigation, route }) {
   const [price, setPrice] = useState('');
   const [costPrice, setCostPrice] = useState('');
   const [stock, setStock] = useState('');
+  const [imageUrls, setImageUrls] = useState(['', '', '', '', '']);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -25,6 +27,12 @@ export default function FormScreen({ navigation, route }) {
           setPrice(String(prod.price || ''));
           setCostPrice(String(prod.costPrice ?? prod.cost_price ?? ''));
           setStock(String(prod.stock || ''));
+          
+          if (prod.image_urls && Array.isArray(prod.image_urls)) {
+            const urls = [...prod.image_urls];
+            while (urls.length < 5) urls.push('');
+            setImageUrls(urls);
+          }
         }
       }
     })();
@@ -46,6 +54,7 @@ export default function FormScreen({ navigation, route }) {
       price: Number(price || 0),
       costPrice: Number(costPrice || 0),
       stock: Number(stock || 0),
+      image_urls: imageUrls.filter(u => u.trim() !== ''),
     };
 
     if (!payload.name) {
@@ -93,6 +102,41 @@ export default function FormScreen({ navigation, route }) {
           </Text>
         </View>
       )}
+
+      <View style={styles.imagePreviewSection}>
+        {imageUrls.filter(u => u).length > 0 ? (
+          <View style={styles.imagePreviewContainer}>
+            <Image
+              source={{ uri: imageUrls[selectedImageIndex] || imageUrls.find(u => u) }}
+              style={styles.mainImage}
+              resizeMode="contain"
+            />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbnailScroll}>
+              {imageUrls.map((u, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  onPress={() => setSelectedImageIndex(idx)}
+                  style={[
+                    styles.thumbnailWrapper,
+                    selectedImageIndex === idx && styles.thumbnailActive
+                  ]}
+                >
+                  {u ? (
+                    <Image source={{ uri: u }} style={styles.thumbnailImage} />
+                  ) : (
+                    <View style={styles.thumbnailPlaceholder} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        ) : (
+          <View style={styles.imagePlaceholder}>
+            <Ionicons name="image" size={28} color={Colors.muted} />
+            <Text style={styles.imagePlaceholderText}>Tambahkan URL gambar produk</Text>
+          </View>
+        )}
+      </View>
 
       <View style={styles.form}>
         <View style={styles.inputGroup}>
@@ -171,6 +215,24 @@ export default function FormScreen({ navigation, route }) {
           />
         </View>
 
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Image URLs (Max 5)</Text>
+          {imageUrls.map((url, index) => (
+            <TextInput 
+              key={index}
+              value={url} 
+              onChangeText={(text) => {
+                const newUrls = [...imageUrls];
+                newUrls[index] = text;
+                setImageUrls(newUrls);
+              }} 
+              style={[styles.input, { marginBottom: 8 }]}
+              placeholder={`URL Image ${index + 1}`}
+              placeholderTextColor={Colors.muted}
+            />
+          ))}
+        </View>
+
         <TouchableOpacity style={styles.saveButton} onPress={save}>
           <View style={styles.buttonContent}>
             <Ionicons name={id ? 'save' : 'add-circle'} size={18} color="#ffffff" style={styles.buttonIcon} />
@@ -188,6 +250,63 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  imagePreviewSection: {
+    padding: 16,
+    backgroundColor: Colors.card,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  imagePreviewContainer: {
+    alignItems: 'center',
+  },
+  mainImage: {
+    width: 410,
+    height: 410,
+    borderRadius: 12,
+    backgroundColor: Colors.background,
+    alignSelf: 'center',
+  },
+  thumbnailScroll: {
+    marginTop: 12,
+  },
+  thumbnailWrapper: {
+    width: 54,
+    height: 54,
+    borderRadius: 10,
+    marginRight: 8,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+  },
+  thumbnailActive: {
+    borderColor: Colors.primary,
+  },
+  thumbnailImage: {
+    width: '100%',
+    height: '100%',
+  },
+  thumbnailPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: Colors.background,
+  },
+  imagePlaceholder: {
+    height: 220,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imagePlaceholderText: {
+    fontSize: 12,
+    color: Colors.muted,
+    marginTop: 6,
   },
   header: {
     backgroundColor: Colors.card,

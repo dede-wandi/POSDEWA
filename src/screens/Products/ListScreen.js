@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, Alert, StyleSheet, Dimensions, RefreshControl } from 'react-native';
+import { View, Text, TextInput, FlatList, TouchableOpacity, Alert, StyleSheet, Dimensions, RefreshControl, Image } from 'react-native';
 import { getProducts, deleteProduct, findProducts } from '../../services/products';
 import { useAuth } from '../../context/AuthContext';
 import { formatIDR } from '../../utils/currency';
@@ -187,6 +187,9 @@ export default function ListScreen({ navigation, route }) {
               style={styles.productCard}
             >
               <View style={styles.productHeader}>
+        {item.image_urls && item.image_urls.length > 0 && item.image_urls[0] ? (
+          <Image source={{ uri: item.image_urls[0] }} style={styles.productImage} resizeMode="contain" />
+        ) : null}
                 <View style={styles.productInfo}>
                   <Text style={styles.productName}>{item.name}</Text>
                   <Text style={styles.productBarcode}>
@@ -388,6 +391,13 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 12,
   },
+  productImage: {
+          width: 80,
+          height: 80,
+          borderRadius: 10,
+          marginRight: 12,
+          backgroundColor: '#f5f5f5',
+        },
   productInfo: {
     flex: 1,
   },

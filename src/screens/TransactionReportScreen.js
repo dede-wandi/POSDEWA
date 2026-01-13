@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../context/AuthContext';
 import { getTransactionReport } from '../services/financeSupabase';
 import { formatCurrency, formatDate } from '../utils/helpers';
@@ -30,6 +31,8 @@ export default function TransactionReportScreen({ navigation }) {
   const [dateFilter, setDateFilter] = useState('month'); // 'all', 'today', 'week', 'month', 'year', 'custom'
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
   
   // Summary data
   const [totalTransactions, setTotalTransactions] = useState(0);
@@ -337,22 +340,58 @@ export default function TransactionReportScreen({ navigation }) {
               <View style={styles.customDateContainer}>
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>Tanggal Mulai</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={customStartDate}
-                    onChangeText={setCustomStartDate}
-                    placeholder="YYYY-MM-DD"
-                  />
+                  <TouchableOpacity
+                    style={styles.dateButton}
+                    onPress={() => setShowStartPicker(true)}
+                  >
+                    <Ionicons name="calendar" size={18} color="#007AFF" />
+                    <Text style={styles.dateButtonText}>
+                      {customStartDate || 'Pilih tanggal mulai'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>Tanggal Akhir</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={customEndDate}
-                    onChangeText={setCustomEndDate}
-                    placeholder="YYYY-MM-DD"
-                  />
+                  <TouchableOpacity
+                    style={styles.dateButton}
+                    onPress={() => setShowEndPicker(true)}
+                  >
+                    <Ionicons name="calendar" size={18} color="#007AFF" />
+                    <Text style={styles.dateButtonText}>
+                      {customEndDate || 'Pilih tanggal akhir'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
+                {showStartPicker && (
+                  <DateTimePicker
+                    value={customStartDate ? new Date(customStartDate) : new Date()}
+                    mode="date"
+                    display="default"
+                    onChange={(event, date) => {
+                      setShowStartPicker(false);
+                      if (date) {
+                        const d = new Date(date);
+                        const str = d.toISOString().slice(0, 10);
+                        setCustomStartDate(str);
+                      }
+                    }}
+                  />
+                )}
+                {showEndPicker && (
+                  <DateTimePicker
+                    value={customEndDate ? new Date(customEndDate) : new Date()}
+                    mode="date"
+                    display="default"
+                    onChange={(event, date) => {
+                      setShowEndPicker(false);
+                      if (date) {
+                        const d = new Date(date);
+                        const str = d.toISOString().slice(0, 10);
+                        setCustomEndDate(str);
+                      }
+                    }}
+                  />
+                )}
               </View>
             )}
           </ScrollView>

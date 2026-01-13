@@ -202,6 +202,53 @@ export default function DashboardScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
+        {/* Menu Grid */}
+        <View style={styles.menuContainer}>
+          <View style={styles.menuGrid}>
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Penjualan')}>
+              <View style={[styles.menuIcon, { backgroundColor: '#E3F2FD' }]}>
+                <Ionicons name="cart" size={24} color="#2196F3" />
+              </View>
+              <Text style={styles.menuLabel}>Kasir</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Produk', { screen: 'DaftarProduk' })}>
+              <View style={[styles.menuIcon, { backgroundColor: '#E8F5E9' }]}>
+                <Ionicons name="cube" size={24} color="#4CAF50" />
+              </View>
+              <Text style={styles.menuLabel}>Produk</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('History')}>
+              <View style={[styles.menuIcon, { backgroundColor: '#FFF3E0' }]}>
+                <Ionicons name="time" size={24} color="#FF9800" />
+              </View>
+              <Text style={styles.menuLabel}>Riwayat</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('TransactionReport')}>
+              <View style={[styles.menuIcon, { backgroundColor: '#F3E5F5' }]}>
+                <Ionicons name="bar-chart" size={24} color="#9C27B0" />
+              </View>
+              <Text style={styles.menuLabel}>Laporan</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('StockManagement')}>
+              <View style={[styles.menuIcon, { backgroundColor: '#FFEBEE' }]}>
+                <Ionicons name="layers" size={24} color="#F44336" />
+              </View>
+              <Text style={styles.menuLabel}>Stok</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('InvoiceSettings')}>
+              <View style={[styles.menuIcon, { backgroundColor: '#ECEFF1' }]}>
+                <Ionicons name="settings" size={24} color="#607D8B" />
+              </View>
+              <Text style={styles.menuLabel}>Pengaturan</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Today's Stats */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Hari Ini</Text>
@@ -565,5 +612,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.muted,
     marginTop: Spacing.sm,
+  },
+  menuContainer: {
+    paddingHorizontal: Spacing.lg,
+    marginTop: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  menuGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.card,
+    borderRadius: Radii.lg,
+    padding: Spacing.md,
+    ...Shadows.card,
+  },
+  menuItem: {
+    width: '30%',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  menuIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.xs,
+  },
+  menuLabel: {
+    fontSize: 12,
+    color: Colors.text,
+    textAlign: 'center',
+    fontWeight: '500',
   },
 });

@@ -440,19 +440,18 @@ export async function getTransactionReport(userId, dateRange = null) {
   }
 
   try {
-    // Build the query for finance transactions
     let query = supabase
       .from('finance_transactions')
       .select(`
         *,
-        payment_channels (
+        payment_channels:payment_channel_id (
           id,
           name,
           type
         )
       `)
-      .eq('payment_channels.owner_id', userId)
-      .in('transaction_type', ['sale', 'payment']);
+      .eq('owner_id', userId)
+      .eq('reference_type', 'sale');
 
     // Apply date filter if provided
     if (dateRange && dateRange.startDate && dateRange.endDate) {
@@ -495,8 +494,8 @@ export async function getTransactionReport(userId, dateRange = null) {
     transactionData.forEach(transaction => {
       if (transaction && transaction.payment_channels) {
         const channelId = transaction.payment_channels.id;
-        const channelName = transaction.payment_channels.channel_name;
-        const channelType = transaction.payment_channels.channel_type;
+        const channelName = transaction.payment_channels.name;
+        const channelType = transaction.payment_channels.type;
         const amount = parseFloat(transaction.amount) || 0;
 
         if (!channelStats[channelId]) {

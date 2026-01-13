@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, Alert, StyleSheet, Dimensions, RefreshControl, Modal } from 'react-native';
+import { View, Text, TextInput, FlatList, TouchableOpacity, Alert, StyleSheet, Dimensions, RefreshControl, Modal, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../theme';
 import { findByBarcodeOrName, findByBarcodeExact } from '../../services/products';
@@ -274,6 +274,11 @@ export default function SalesScreen({ navigation, route }) {
             }
             renderItem={({ item }) => (
               <View style={styles.resultCard}>
+                {item.image_urls && item.image_urls[0] ? (
+                  <Image source={{ uri: item.image_urls[0] }} style={{ width: 56, height: 56, borderRadius: 8, marginRight: 12, backgroundColor: Colors.background }} />
+                ) : (
+                  <View style={{ width: 56, height: 56, borderRadius: 8, marginRight: 12, backgroundColor: Colors.background }} />
+                )}
                 <View style={styles.resultInfo}>
                   <Text style={styles.resultName}>{item.name}</Text>
                   <View style={styles.resultBarcodeRow}>
