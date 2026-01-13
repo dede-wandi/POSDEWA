@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../context/AuthContext';
 import { getTransactionReport } from '../services/financeSupabase';
+import { getSalesAnalytics } from '../services/salesSupabase';
 import { formatCurrency, formatDate } from '../utils/helpers';
 
 const { width } = Dimensions.get('window');
@@ -38,6 +39,9 @@ export default function TransactionReportScreen({ navigation }) {
   const [totalTransactions, setTotalTransactions] = useState(0);
   const [totalAmount, setTotalAmount] = useState(0);
   const [topPaymentChannel, setTopPaymentChannel] = useState(null);
+  const [salesTotal, setSalesTotal] = useState(0);
+  const [salesProfit, setSalesProfit] = useState(0);
+  const [salesTransactions, setSalesTransactions] = useState(0);
 
   // Date filter helper functions
   const getDateFilterLabel = () => {
@@ -94,8 +98,27 @@ export default function TransactionReportScreen({ navigation }) {
     }
   };
 
+  const getFilterDescription = () => {
+    const baseLabel = getDateFilterLabel();
+    const range = getDateRange();
+    if (!range || dateFilter === 'all') {
+      return baseLabel;
+    }
+    return `${baseLabel} (${formatDate(range.startDate)} - ${formatDate(range.endDate)})`;
+  };
+
   const applyDateFilterAndClose = () => {
     setShowDateFilterModal(false);
+    if (dateFilter === 'custom' && (!customStartDate || !customEndDate)) {
+      setReportData([]);
+      setTotalTransactions(0);
+      setTotalAmount(0);
+      setTopPaymentChannel(null);
+      setSalesTotal(0);
+      setSalesProfit(0);
+      setSalesTransactions(0);
+      return;
+    }
     loadReportData();
   };
 
@@ -109,6 +132,19 @@ export default function TransactionReportScreen({ navigation }) {
       setTotalTransactions(data.totalTransactions || 0);
       setTotalAmount(data.totalAmount || 0);
       setTopPaymentChannel(data.topChannel || null);
+
+      const salesPeriod = dateFilter === 'all' ? 'year' : dateFilter;
+      const customRange = dateFilter === 'custom' && dateRange ? { startDate: dateRange.startDate, endDate: dateRange.endDate } : null;
+      const analytics = await getSalesAnalytics(user.id, salesPeriod, customRange);
+      if (analytics?.success && analytics.data) {
+        setSalesTotal(analytics.data.total || 0);
+        setSalesProfit(analytics.data.profit || 0);
+        setSalesTransactions(analytics.data.transactions || 0);
+      } else {
+        setSalesTotal(0);
+        setSalesProfit(0);
+        setSalesTransactions(0);
+      }
     } catch (error) {
       console.error('Error loading report data:', error);
     } finally {
@@ -223,21 +259,26 @@ export default function TransactionReportScreen({ navigation }) {
       {/* Filter Info */}
       <View style={styles.filterInfo}>
         <Text style={styles.filterInfoText}>
-          Period: {getDateFilterLabel()}
+          Periode: {getFilterDescription()}
         </Text>
       </View>
 
       {/* Summary Cards */}
       <View style={styles.summaryContainer}>
         <View style={styles.summaryCard}>
-          <Ionicons name="receipt-outline" size={24} color="#007AFF" />
-          <Text style={styles.summaryValue}>{totalTransactions}</Text>
-          <Text style={styles.summaryLabel}>Total Transaksi</Text>
+          <Ionicons name="cash-outline" size={24} color="#34C759" />
+          <Text style={styles.summaryValue}>{formatCurrency(salesTotal)}</Text>
+          <Text style={styles.summaryLabel}>Total Penjualan</Text>
         </View>
         <View style={styles.summaryCard}>
-          <Ionicons name="cash-outline" size={24} color="#34C759" />
-          <Text style={styles.summaryValue}>{formatCurrency(totalAmount)}</Text>
-          <Text style={styles.summaryLabel}>Total Nilai</Text>
+          <Ionicons name="trending-up-outline" size={24} color="#FF9500" />
+          <Text style={styles.summaryValue}>{formatCurrency(salesProfit)}</Text>
+          <Text style={styles.summaryLabel}>Total Profit</Text>
+        </View>
+        <View style={styles.summaryCard}>
+          <Ionicons name="receipt-outline" size={24} color="#007AFF" />
+          <Text style={styles.summaryValue}>{salesTransactions}</Text>
+          <Text style={styles.summaryLabel}>Jumlah Transaksi</Text>
         </View>
       </View>
 

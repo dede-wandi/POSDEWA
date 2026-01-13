@@ -19,6 +19,7 @@ import { useAuth } from '../context/AuthContext';
 import { getStockHistory } from '../services/stockSupabase';
 import { getProductById } from '../services/products';
 import { formatCurrency } from '../utils/currency';
+import { getProductSalesMetrics } from '../services/salesSupabase';
 
 const { width } = Dimensions.get('window');
 
@@ -47,6 +48,12 @@ export default function ProductReportScreen({ navigation, route }) {
     totalAdjustments: 0,
     netChange: 0
   });
+  const [salesMetrics, setSalesMetrics] = useState({
+    totalSales: 0,
+    totalQuantitySold: 0,
+    dailySales: [],
+    maxSalesDay: null
+  });
 
   const loadData = async () => {
     try {
@@ -68,6 +75,16 @@ export default function ProductReportScreen({ navigation, route }) {
       } else {
         console.log('❌ ProductReportScreen: Error loading history:', historyResult.error);
         Alert.alert('Error', 'Gagal memuat riwayat stock: ' + historyResult.error);
+      }
+
+      if (productResult?.barcode) {
+        const metrics = await getProductSalesMetrics(user?.id, productResult.barcode, {
+          startDate,
+          endDate
+        });
+        if (metrics.success) {
+          setSalesMetrics(metrics);
+        }
       }
     } catch (error) {
       console.log('❌ ProductReportScreen: Exception loading data:', error);
@@ -170,6 +187,72 @@ export default function ProductReportScreen({ navigation, route }) {
       loadData();
     }
   }, [productId, user?.id]);
+
+  const computeDateRange = () => {
+    const now = new Date();
+    if (selectedPeriod === 'all') return null;
+    if (selectedPeriod === 'today') {
+      const s = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const e = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      return { startDate: s, endDate: e };
+    }
+    if (selectedPeriod === 'week') {
+      const s = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      s.setHours(0, 0, 0, 0);
+      const e = new Date();
+      e.setHours(23, 59, 59, 999);
+      return { startDate: s, endDate: e };
+    }
+    if (selectedPeriod === 'month') {
+      const s = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      s.setHours(0, 0, 0, 0);
+      const e = new Date();
+      e.setHours(23, 59, 59, 999);
+      return { startDate: s, endDate: e };
+    }
+    if (selectedPeriod === 'custom') {
+      const s = new Date(startDate);
+      s.setHours(0, 0, 0, 0);
+      const e = new Date(endDate);
+      e.setHours(23, 59, 59, 999);
+      return { startDate: s, endDate: e };
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    const run = async () => {
+      if (!product || !user?.id) return;
+      const range = computeDateRange();
+      try {
+        const metrics = await getProductSalesMetrics(
+          user.id,
+          product?.barcode || null,
+          range,
+          product?.name || null
+        );
+        if (metrics.success) {
+          setSalesMetrics(metrics);
+        } else {
+          setSalesMetrics({
+            totalSales: 0,
+            totalQuantitySold: 0,
+            dailySales: [],
+            maxSalesDay: null
+          });
+        }
+      } catch (e) {
+        setSalesMetrics({
+          totalSales: 0,
+          totalQuantitySold: 0,
+          dailySales: [],
+          maxSalesDay: null
+        });
+      }
+    };
+    run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPeriod, startDate, endDate, product?.barcode, product?.name, user?.id]);
 
   const PeriodFilter = () => {
     const periods = [
@@ -382,6 +465,56 @@ export default function ProductReportScreen({ navigation, route }) {
               color={stats.netChange >= 0 ? '#34C759' : '#FF3B30'}
             />
           </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>💰 Statistik Penjualan</Text>
+          <View style={styles.statsGrid}>
+            <StatsCard
+              title="Total Penjualan"
+              value={formatCurrency(salesMetrics.totalSales)}
+              subtitle="Jumlah keseluruhan"
+              icon="cash-outline"
+              color="#007AFF"
+            />
+            <StatsCard
+              title="Terjual"
+              value={salesMetrics.totalQuantitySold.toString()}
+              subtitle="Jumlah produk"
+              icon="cart-outline"
+              color="#34C759"
+            />
+          </View>
+          {salesMetrics.maxSalesDay && (
+            <View style={styles.maxSalesDayContainer}>
+              <Text style={styles.maxSalesDayTitle}>Hari Penjualan Terbanyak</Text>
+              <Text style={styles.maxSalesDayDate}>
+                {salesMetrics.maxSalesDay.date.toLocaleDateString('id-ID')}
+              </Text>
+              <Text style={styles.maxSalesDayValue}>
+                {salesMetrics.maxSalesDay.quantity} produk • {formatCurrency(salesMetrics.maxSalesDay.amount)}
+              </Text>
+            </View>
+          )}
+          {salesMetrics.dailySales.length > 0 && (
+            <View style={styles.dailySalesContainer}>
+              <Text style={styles.dailySalesTitle}>Penjualan Harian</Text>
+              <FlatList
+                data={salesMetrics.dailySales}
+                keyExtractor={(item) => item.date.toISOString()}
+                renderItem={({ item }) => (
+                  <View style={styles.dailySalesItem}>
+                    <Text style={styles.dailySalesDate}>{item.date.toLocaleDateString('id-ID')}</Text>
+                    <View style={styles.dailySalesValues}>
+                      <Text style={styles.dailySalesQuantity}>{item.quantity} produk</Text>
+                      <Text style={styles.dailySalesAmount}>{formatCurrency(item.amount)}</Text>
+                    </View>
+                  </View>
+                )}
+                showsVerticalScrollIndicator={false}
+              />
+            </View>
+          )}
         </View>
 
         {/* History List */}
@@ -651,6 +784,67 @@ const styles = StyleSheet.create({
   statsCardSubtitle: {
     fontSize: 10,
     color: '#6c757d',
+  },
+  maxSalesDayContainer: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#34C759',
+  },
+  maxSalesDayTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6c757d',
+    marginBottom: 4,
+  },
+  maxSalesDayDate: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#212529',
+  },
+  maxSalesDayValue: {
+    fontSize: 14,
+    color: '#212529',
+    marginTop: 2,
+  },
+  dailySalesContainer: {
+    marginTop: 8,
+  },
+  dailySalesTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6c757d',
+    marginBottom: 8,
+  },
+  dailySalesItem: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#007AFF',
+  },
+  dailySalesDate: {
+    fontSize: 12,
+    color: '#6c757d',
+    marginBottom: 6,
+  },
+  dailySalesValues: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dailySalesQuantity: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#212529',
+  },
+  dailySalesAmount: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#34C759',
   },
 
   // History Styles

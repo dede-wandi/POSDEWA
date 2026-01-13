@@ -335,3 +335,120 @@ export const getSalesPerformance = async (userId, customStartDate = null, custom
     return { success: false, error: error.message };
   }
 };
+
+export const getProductSalesMetrics = async (userId, productBarcode, dateRange = null, productName = null) => {
+  console.log('📊 salesSupabase: Getting product sales metrics for user:', userId, 'barcode:', productBarcode, 'productName:', productName);
+  try {
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+      return { success: false, error: 'Supabase tidak tersedia' };
+    }
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData?.session;
+    if (!session || !session.user) {
+      return { success: false, error: 'User tidak ter-autentikasi' };
+    }
+
+    let startDate = null;
+    let endDate = null;
+    if (dateRange && dateRange.startDate && dateRange.endDate) {
+      startDate = new Date(dateRange.startDate);
+      endDate = new Date(dateRange.endDate);
+      endDate.setHours(23, 59, 59, 999);
+    }
+
+    let salesQuery = supabase
+      .from('sales')
+      .select('id, created_at')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false });
+
+    if (startDate) {
+      salesQuery = salesQuery.gte('created_at', startDate.toISOString());
+    }
+    if (endDate) {
+      salesQuery = salesQuery.lte('created_at', endDate.toISOString());
+    }
+
+    const { data: salesData, error: salesError } = await salesQuery;
+    if (salesError) {
+      return { success: false, error: salesError.message };
+    }
+    const saleIds = (salesData || []).map(s => s.id);
+    if (saleIds.length === 0) {
+      return {
+        success: true,
+        totalSales: 0,
+        totalQuantitySold: 0,
+        dailySales: [],
+        maxSalesDay: null
+      };
+    }
+
+    let itemsQuery = supabase
+      .from('sale_items')
+      .select('sale_id, qty, line_total, product_name, barcode')
+      .in('sale_id', saleIds);
+
+    if (productBarcode) {
+      itemsQuery = itemsQuery.eq('barcode', String(productBarcode).trim());
+    } else if (productName) {
+      itemsQuery = itemsQuery.eq('product_name', String(productName).trim());
+    } else {
+      // Tanpa identitas produk, tidak bisa lanjut
+      return {
+        success: true,
+        totalSales: 0,
+        totalQuantitySold: 0,
+        dailySales: [],
+        maxSalesDay: null
+      };
+    }
+
+    const { data: itemsData, error: itemsError } = await itemsQuery;
+    if (itemsError) {
+      return { success: false, error: itemsError.message };
+    }
+
+    const saleDateMap = {};
+    (salesData || []).forEach(s => {
+      saleDateMap[s.id] = new Date(s.created_at);
+    });
+
+    const totalSales = (itemsData || []).reduce((sum, it) => sum + (Number(it.line_total) || 0), 0);
+    const totalQuantitySold = (itemsData || []).reduce((sum, it) => sum + (Number(it.qty) || 0), 0);
+
+    const dailySalesMap = {};
+    (itemsData || []).forEach(it => {
+      const saleDate = saleDateMap[it.sale_id];
+      if (!saleDate) return;
+      const key = saleDate.toISOString().split('T')[0];
+      if (!dailySalesMap[key]) {
+        dailySalesMap[key] = {
+          date: saleDate,
+          quantity: 0,
+          amount: 0
+        };
+      }
+      dailySalesMap[key].quantity += Number(it.qty) || 0;
+      dailySalesMap[key].amount += Number(it.line_total) || 0;
+    });
+
+    const dailySales = Object.values(dailySalesMap).sort((a, b) => b.date - a.date);
+    const maxSalesDay = dailySales.length > 0
+      ? dailySales.reduce((max, day) => (day.quantity > max.quantity ? day : max), dailySales[0])
+      : null;
+
+    return {
+      success: true,
+      totalSales,
+      totalQuantitySold,
+      dailySales,
+      maxSalesDay
+    };
+  } catch (error) {
+    console.error('❌ salesSupabase: Error in getProductSalesMetrics:', error);
+    return { success: false, error: error.message };
+  }
+};

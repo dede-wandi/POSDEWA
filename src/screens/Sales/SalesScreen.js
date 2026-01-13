@@ -14,6 +14,7 @@ export default function SalesScreen({ navigation, route }) {
   const [results, setResults] = useState([]);
   const [cart, setCart] = useState([]); // Each item: { id, name, price, costPrice, qty, lineTotal, tokenCode? }
   const [refreshing, setRefreshing] = useState(false);
+  const [productLayout, setProductLayout] = useState('grid');
   
   // Token modal states
   const [showTokenModal, setShowTokenModal] = useState(false);
@@ -233,21 +234,37 @@ export default function SalesScreen({ navigation, route }) {
     <View style={styles.container}>
       {/* Search Section */}
       <View style={styles.searchSection}>
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={18} color={Colors.muted} style={styles.searchIcon} />
-          <TextInput
-            placeholder="Cari produk dengan nama atau barcode..."
-            value={query}
-            onChangeText={setQuery}
-            style={styles.searchInput}
-            placeholderTextColor={Colors.muted}
-            onSubmitEditing={handleSearch}
-            returnKeyType="search"
-          />
+        <View style={styles.searchRow}>
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={18} color={Colors.muted} style={styles.searchIcon} />
+            <TextInput
+              placeholder="Cari produk dengan nama atau barcode..."
+              value={query}
+              onChangeText={setQuery}
+              style={styles.searchInput}
+              placeholderTextColor={Colors.muted}
+              onSubmitEditing={handleSearch}
+              returnKeyType="search"
+            />
+          </View>
+          <View style={styles.toggleGroup}>
+            <TouchableOpacity
+              style={[styles.toggleButton, productLayout === 'list' && styles.toggleButtonActive]}
+              onPress={() => setProductLayout('list')}
+            >
+              <Ionicons name="list" size={16} color={productLayout === 'list' ? '#fff' : Colors.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.toggleButton, productLayout === 'grid' && styles.toggleButtonActive]}
+              onPress={() => setProductLayout('grid')}
+            >
+              <Ionicons name="grid" size={16} color={productLayout === 'grid' ? '#fff' : Colors.primary} />
+            </TouchableOpacity>
+          </View>
         </View>
         <TouchableOpacity 
           style={styles.viewAllButton} 
-          onPress={() => navigation.navigate('ProductList', { cart })}
+          onPress={() => navigation.navigate('ProductList', { cart, initialLayout: productLayout === 'grid' })}
         >
           <View style={styles.viewAllButtonContent}>
             <Ionicons name="list" size={16} color="#ffffff" style={{ marginRight: 8 }} />
@@ -472,6 +489,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -481,6 +504,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderWidth: 1,
     borderColor: Colors.border,
+    flex: 1,
   },
   searchIcon: {
     fontSize: 18,
@@ -491,6 +515,23 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: Colors.text,
+  },
+  toggleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  toggleButton: {
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    marginLeft: 8,
+  },
+  toggleButtonActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   resultsSection: {
     flex: 1,

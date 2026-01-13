@@ -8,11 +8,15 @@ import { Colors } from '../../theme';
 
 const { width } = Dimensions.get('window');
 
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
+
 export default function ListScreen({ navigation, route }) {
   const { user } = useAuth();
   const [products, setProducts] = useState([]);
   const [query, setQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [isGrid, setIsGrid] = useState(false);
 
   const load = async () => {
     console.log('🔄 ListScreen: Loading products for user:', user?.id);
@@ -114,43 +118,106 @@ export default function ListScreen({ navigation, route }) {
 
   return (
     <View style={styles.container}>
-      {/* Search and Add Section */}
+      {/* Search and Actions Section */}
       <View style={styles.searchSection}>
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={16} color={Colors.muted} style={styles.searchIcon} />
-          <TextInput
-            placeholder="Cari nama produk atau barcode..."
-            value={query}
-            onChangeText={setQuery}
-            style={styles.searchInput}
-            placeholderTextColor={Colors.muted}
-          />
-          {Boolean(query) && (
+        <View style={styles.searchRow}>
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={16} color={Colors.muted} style={styles.searchIcon} />
+            <TextInput
+              placeholder="Cari nama produk atau barcode..."
+              value={query}
+              onChangeText={setQuery}
+              style={styles.searchInput}
+              placeholderTextColor={Colors.muted}
+            />
+            {Boolean(query) && (
+              <TouchableOpacity
+                onPress={() => setQuery('')}
+                accessibilityRole="button"
+                accessibilityLabel="Hapus pencarian"
+                style={{ marginLeft: 8, padding: 6 }}
+              >
+                <Ionicons name="close-circle" size={18} color={Colors.muted} />
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
-              onPress={() => setQuery('')}
-              accessibilityRole="button"
-              accessibilityLabel="Hapus pencarian"
-              style={{ marginLeft: 8, padding: 6 }}
+              onPress={() => navigation.navigate('Scan', { mode: 'pick', returnTo: 'DaftarProduk' })}
+              style={{ marginLeft: 8, backgroundColor: Colors.primary, padding: 10, borderRadius: 10 }}
             >
-              <Ionicons name="close-circle" size={18} color={Colors.muted} />
+              <Ionicons name="scan" size={18} color="#fff" />
             </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Scan', { mode: 'pick', returnTo: 'DaftarProduk' })}
-            style={{ marginLeft: 8, backgroundColor: Colors.primary, padding: 10, borderRadius: 10 }}
+          </View>
+          <View style={styles.viewToggleGroup}>
+            <TouchableOpacity
+              style={[styles.viewToggleButton, !isGrid && styles.viewToggleButtonActive]}
+              onPress={() => setIsGrid(false)}
+            >
+              <Ionicons name="list" size={16} color={!isGrid ? '#fff' : Colors.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.viewToggleButton, isGrid && styles.viewToggleButtonActive]}
+              onPress={() => setIsGrid(true)}
+            >
+              <Ionicons name="grid" size={16} color={isGrid ? '#fff' : Colors.primary} />
+            </TouchableOpacity>
+          </View>
+        </View>
+        <View style={styles.actionRight}>
+          <TouchableOpacity 
+            style={styles.exportButton} 
+            onPress={async () => {
+              try {
+                if (!products || products.length === 0) {
+                  Alert.alert('Export Produk', 'Tidak ada data produk untuk diexport');
+                  return;
+                }
+
+                const header = ['Nama', 'Barcode', 'Harga Jual', 'Harga Modal', 'Stok', 'Margin'];
+                const rows = products.map(p => {
+                  const price = Number(p.price || 0);
+                  const cost = Number(p.costPrice ?? p.cost_price ?? 0);
+                  const margin = price - cost;
+                  return [
+                    `"${(p.name || '').replace(/"/g, '""')}"`,
+                    `"${(p.barcode || '').replace(/"/g, '""')}"`,
+                    price,
+                    cost,
+                    p.stock ?? 0,
+                    margin
+                  ].join(',');
+                });
+
+                const csv = [header.join(','), ...rows].join('\n');
+                const fileUri = `${FileSystem.cacheDirectory}produk.csv`;
+                await FileSystem.writeAsStringAsync(fileUri, csv, { encoding: FileSystem.EncodingType.UTF8 });
+                const canShare = await Sharing.isAvailableAsync();
+                if (canShare) {
+                  await Sharing.shareAsync(fileUri, {
+                    mimeType: 'text/csv',
+                    dialogTitle: 'Export Produk ke CSV',
+                  });
+                } else {
+                  Alert.alert('Export Produk', `File disimpan di cache:\n${fileUri}`);
+                }
+              } catch (error) {
+                console.error('❌ Export produk error:', error);
+                Alert.alert('Export Produk', 'Terjadi kesalahan saat export data');
+              }
+            }}
           >
-            <Ionicons name="scan" size={18} color="#fff" />
+            <Ionicons name="download-outline" size={18} color="#ffffff" style={styles.buttonIcon} />
+            <Text style={styles.exportButtonText}>Export Excel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.addButton} 
+            onPress={() => navigation.navigate('FormProduk')}
+          >
+            <View style={styles.buttonContent}>
+              <Ionicons name="add-circle" size={18} color="#ffffff" style={styles.buttonIcon} />
+              <Text style={styles.addButtonText}>Tambah</Text>
+            </View>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity 
-          style={styles.addButton} 
-          onPress={() => navigation.navigate('FormProduk')}
-        >
-          <View style={styles.buttonContent}>
-            <Ionicons name="add-circle" size={18} color="#ffffff" style={styles.buttonIcon} />
-            <Text style={styles.addButtonText}>Tambah</Text>
-          </View>
-        </TouchableOpacity>
       </View>
 
       {/* Status Message */}
@@ -166,6 +233,8 @@ export default function ListScreen({ navigation, route }) {
       {/* Products List */}
       <FlatList
         data={products}
+        key={isGrid ? 'GRID' : 'LIST'}
+        numColumns={isGrid ? 2 : 1}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContainer}
@@ -181,6 +250,24 @@ export default function ListScreen({ navigation, route }) {
           const margin = Number(item.price || 0) - Number(item.costPrice || item.cost_price || 0);
           const marginPercentage = item.price ? ((margin / item.price) * 100).toFixed(1) : 0;
           
+          if (isGrid) {
+            return (
+              <TouchableOpacity 
+                onPress={() => navigation.navigate('FormProduk', { id: item.id })} 
+                style={styles.productCardGrid}
+              >
+                {item.image_urls && item.image_urls.length > 0 && item.image_urls[0] ? (
+                  <Image source={{ uri: item.image_urls[0] }} style={styles.productImageGrid} resizeMode="contain" />
+                ) : null}
+                <View style={styles.productInfoGrid}>
+                  <Text style={styles.productNameGrid} numberOfLines={2}>{item.name}</Text>
+                  <Text style={styles.productPriceGrid}>{formatIDR(item.price)}</Text>
+                  <Text style={styles.productStockGrid}>Stok: {item.stock}</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          }
+
           return (
             <TouchableOpacity 
               onPress={() => navigation.navigate('FormProduk', { id: item.id })} 
@@ -306,12 +393,15 @@ const styles = StyleSheet.create({
     color: Colors.muted,
   },
   searchSection: {
-    flexDirection: 'row',
     padding: 16,
     backgroundColor: Colors.card,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
+  },
+  searchRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   searchContainer: {
     flex: 1,
@@ -341,6 +431,26 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     justifyContent: 'center',
+  },
+  actionRight: {
+    flexDirection: 'row',
+    marginTop: 12,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 8,
+  },
+  exportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.info,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  exportButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   addButtonText: {
     color: '#ffffff',
@@ -570,5 +680,66 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  viewToggleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 12,
+  },
+  viewToggleButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+    marginLeft: 6,
+  },
+  viewToggleButtonActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  productCardGrid: {
+    flex: 1,
+    backgroundColor: Colors.card,
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 12,
+    marginHorizontal: 4,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+    width: (width - 16 * 2 - 8) / 2,
+  },
+  productImageGrid: {
+    width: '100%',
+    height: 100,
+    borderRadius: 10,
+    marginBottom: 8,
+    backgroundColor: '#f5f5f5',
+  },
+  productInfoGrid: {
+    flex: 1,
+  },
+  productNameGrid: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  productPriceGrid: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.success,
+    marginBottom: 2,
+  },
+  productStockGrid: {
+    fontSize: 12,
+    color: Colors.muted,
   },
 });

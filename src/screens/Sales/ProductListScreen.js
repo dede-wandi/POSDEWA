@@ -15,7 +15,7 @@ export default function ProductListScreen({ navigation, route }) {
   const [query, setQuery] = useState('');
   const [products, setProducts] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [isGrid, setIsGrid] = useState(false);
+  const [isGrid, setIsGrid] = useState(Boolean(route?.params?.initialLayout));
 
   const loadProducts = async () => {
     console.log('🔄 ProductListScreen: Loading products for user:', user?.id, 'query:', query);
@@ -115,22 +115,24 @@ export default function ProductListScreen({ navigation, route }) {
 
       {/* Search Section */}
       <View style={styles.searchSection}>
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={16} color={Colors.muted} style={styles.searchIcon} />
-          <TextInput
-            placeholder="Cari nama produk atau barcode..."
-            value={query}
-            onChangeText={setQuery}
-            style={styles.searchInput}
-            placeholderTextColor={Colors.muted}
-          />
+        <View style={styles.searchRow}>
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={16} color={Colors.muted} style={styles.searchIcon} />
+            <TextInput
+              placeholder="Cari nama produk atau barcode..."
+              value={query}
+              onChangeText={setQuery}
+              style={styles.searchInput}
+              placeholderTextColor={Colors.muted}
+            />
+          </View>
+          <TouchableOpacity
+            style={styles.viewToggle}
+            onPress={() => setIsGrid(prev => !prev)}
+          >
+            <Ionicons name={isGrid ? 'grid' : 'list'} size={18} color={Colors.primary} />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          style={styles.viewToggle}
-          onPress={() => setIsGrid(prev => !prev)}
-        >
-          <Ionicons name={isGrid ? 'grid' : 'list'} size={18} color={Colors.primary} />
-        </TouchableOpacity>
       </View>
 
       {/* Products List */}
@@ -309,6 +311,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -318,6 +325,7 @@ const styles = StyleSheet.create({
     height: 44,
     borderWidth: 1,
     borderColor: Colors.border,
+    flex: 1,
   },
   searchIcon: {
     fontSize: 16,
@@ -433,6 +441,7 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 8,
     backgroundColor: Colors.background,
+    marginLeft: 12,
   },
   productCardGrid: {
     flex: 1,
