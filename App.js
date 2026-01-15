@@ -11,6 +11,10 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import ListScreen from './src/screens/Products/ListScreen';
 import FormScreen from './src/screens/Products/FormScreen';
 import ProductReportScreen from './src/screens/ProductReportScreen';
+import PublicProductsAdminListScreen from './src/screens/PublicProducts/AdminListScreen';
+import PublicProductsAdminFormScreen from './src/screens/PublicProducts/AdminFormScreen';
+import PublicProductsPublicListScreen from './src/screens/PublicProducts/PublicListScreen';
+import PublicDetailScreen from './src/screens/PublicProducts/PublicDetailScreen';
 import BarcodeScanScreen from './src/screens/Scan/BarcodeScanScreen';
 import SalesScreen from './src/screens/Sales/SalesScreen';
 import ProductListScreen from './src/screens/Sales/ProductListScreen';
@@ -41,6 +45,23 @@ function ProductsStack() {
       <Stack.Screen name="DaftarProduk" component={ListScreen} options={{ title: 'Produk' }} />
       <Stack.Screen name="FormProduk" component={FormScreen} options={{ title: 'Form Produk' }} />
       <Stack.Screen name="ProductReport" component={ProductReportScreen} options={{ title: 'Report Produk' }} />
+      <Stack.Screen 
+        name="PublicProductsAdmin" 
+        component={PublicProductsAdminListScreen} 
+        options={({ navigation }) => ({
+          title: 'Produk Publik',
+          headerRight: () => (
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('PublicProductForm')}
+              style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, backgroundColor: Colors.primary, borderRadius: 16, marginRight: 8 }}
+            >
+              <Ionicons name="add-circle" size={18} color="#fff" />
+              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600', marginLeft: 4 }}>Tambah</Text>
+            </TouchableOpacity>
+          ),
+        })}
+      />
+      <Stack.Screen name="PublicProductForm" component={PublicProductsAdminFormScreen} options={{ title: 'Form Produk Publik', headerShown: false }} />
     </Stack.Navigator>
   );
 }
@@ -246,6 +267,8 @@ function AppNavigator() {
         <MainStack />
       ) : (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="PublicProducts" component={PublicProductsPublicListScreen} />
+          <Stack.Screen name="PublicProductDetail" component={PublicDetailScreen} />
           <Stack.Screen name="Auth" component={AuthScreen} />
         </Stack.Navigator>
       )}

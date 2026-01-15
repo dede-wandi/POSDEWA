@@ -219,6 +219,13 @@ export default function DashboardScreen({ navigation }) {
               <Text style={styles.menuLabel}>Produk</Text>
             </TouchableOpacity>
 
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Produk', { screen: 'PublicProductsAdmin' })}>
+              <View style={[styles.menuIcon, { backgroundColor: '#F3E5F5' }]}>
+                <Ionicons name="globe" size={24} color="#9C27B0" />
+              </View>
+              <Text style={styles.menuLabel}>Produk Publik</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('History')}>
               <View style={[styles.menuIcon, { backgroundColor: '#FFF3E0' }]}>
                 <Ionicons name="time" size={24} color="#FF9800" />
