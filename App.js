@@ -27,6 +27,7 @@ import AccountScreen from './src/screens/Auth/AccountScreen';
 import ProfileEditScreen from './src/screens/Auth/ProfileEditScreen';
 import InvoiceSettingsScreen from './src/screens/Settings/InvoiceSettingsScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
+import MoreMenuScreen from './src/screens/MoreMenuScreen';
 import StockManagementScreen from './src/screens/StockManagementScreen';
 import SalesAnalyticsScreen from './src/screens/SalesAnalyticsScreen';
 import FinanceScreen from './src/screens/FinanceScreen';
@@ -51,6 +52,14 @@ function ProductsStack() {
         component={PublicProductsAdminListScreen} 
         options={({ navigation }) => ({
           title: 'Produk Publik',
+          headerLeft: () => (
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={{ paddingHorizontal: 8 }}
+            >
+              <Ionicons name="arrow-back" size={20} color={Colors.primary} />
+            </TouchableOpacity>
+          ),
           headerRight: () => (
             <TouchableOpacity 
               onPress={() => navigation.navigate('PublicProductForm')}
@@ -176,12 +185,20 @@ function MainStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MainTabs" component={MainTabs} />
       {/* Tetap sediakan screen Stock & Finance, tetapi tidak muncul di Tab Bar */}
+      <Stack.Screen
+        name="MoreMenu"
+        component={MoreMenuScreen}
+        options={{
+          presentation: 'modal',
+          headerShown: false,
+        }}
+      />
       <Stack.Screen 
         name="StockManagement" 
         component={StockManagementScreen}
         options={{
           presentation: 'modal',
-          headerShown: true,
+          headerShown: false,
           title: 'Manajemen Stok',
         }}
       />
@@ -306,10 +323,24 @@ function AppNavigator() {
       {user ? (
         <MainStack />
       ) : (
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="PublicProducts" component={PublicProductsPublicListScreen} />
-          <Stack.Screen name="PublicProductDetail" component={PublicDetailScreen} />
-          <Stack.Screen name="Auth" component={AuthScreen} />
+        <Stack.Navigator>
+          <Stack.Screen
+            name="PublicProducts"
+            component={PublicProductsPublicListScreen}
+            options={{
+              title: 'Katalog Produk',
+            }}
+          />
+          <Stack.Screen
+            name="PublicProductDetail"
+            component={PublicDetailScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Auth"
+            component={AuthScreen}
+            options={{ headerShown: false }}
+          />
         </Stack.Navigator>
       )}
     </NavigationContainer>

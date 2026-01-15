@@ -309,44 +309,34 @@ export default function ListScreen({ navigation, route }) {
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Ionicons name="trending-up" size={14} color={Colors.info} style={styles.inlineIcon} />
                     <Text style={styles.marginLabel}>Margin</Text>
+                    <Text style={styles.marginValue}>
+                      {`  ${formatIDR(margin)} (${marginPercentage}%)`}
+                    </Text>
                   </View>
-                  <Text style={styles.marginValue}>
-                    {formatIDR(margin)} ({marginPercentage}%)
-                  </Text>
+                  <View style={styles.actionButtons}>
+                    <TouchableOpacity 
+                      style={styles.reportButton}
+                      onPress={() => navigation.navigate('ProductReport', { 
+                        productId: item.id, 
+                        productName: item.name 
+                      })}
+                    >
+                      <Ionicons name="analytics" size={18} color="#ffffff" />
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={styles.editButton}
+                      onPress={() => navigation.navigate('FormProduk', { id: item.id })}
+                    >
+                      <Ionicons name="create" size={18} color="#ffffff" />
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={styles.deleteButton}
+                      onPress={() => confirmDelete(item.id)}
+                    >
+                      <Ionicons name="trash" size={18} color="#ffffff" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
-
-              <View style={styles.actionButtons}>
-                <TouchableOpacity 
-                  style={styles.reportButton}
-                  onPress={() => navigation.navigate('ProductReport', { 
-                    productId: item.id, 
-                    productName: item.name 
-                  })}
-                >
-                  <View style={styles.buttonContent}>
-                    <Ionicons name="analytics" size={16} color="#ffffff" style={styles.buttonIcon} />
-                    <Text style={styles.reportButtonText}>Report</Text>
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.editButton}
-                  onPress={() => navigation.navigate('FormProduk', { id: item.id })}
-                >
-                  <View style={styles.buttonContent}>
-                    <Ionicons name="create" size={16} color="#ffffff" style={styles.buttonIcon} />
-                    <Text style={styles.editButtonText}>Edit</Text>
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.deleteButton}
-                  onPress={() => confirmDelete(item.id)}
-                >
-                  <View style={styles.buttonContent}>
-                    <Ionicons name="trash" size={16} color="#ffffff" style={styles.buttonIcon} />
-                    <Text style={styles.deleteButtonText}>Hapus</Text>
-                  </View>
-                </TouchableOpacity>
               </View>
             </TouchableOpacity>
           );
@@ -578,13 +568,15 @@ const styles = StyleSheet.create({
   actionButtons: {
     flexDirection: 'row',
     gap: 8,
+    justifyContent: 'flex-end',
   },
   reportButton: {
-    flex: 1,
     backgroundColor: Colors.info,
-    paddingVertical: 12,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -600,11 +592,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   editButton: {
-    flex: 1,
     backgroundColor: Colors.primary,
-    paddingVertical: 12,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -620,11 +613,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   deleteButton: {
-    flex: 1,
     backgroundColor: Colors.danger,
-    paddingVertical: 12,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,

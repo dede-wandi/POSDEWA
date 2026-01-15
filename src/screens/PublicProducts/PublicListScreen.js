@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -63,6 +63,19 @@ export default function PublicListScreen({ navigation }) {
     await load();
     setRefreshing(false);
   };
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={onRefresh}
+          style={{ paddingHorizontal: 8 }}
+        >
+          <Ionicons name="refresh" size={20} color={Colors.primary} />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, onRefresh]);
 
   useEffect(() => {
     let data = [...allProducts];
@@ -130,9 +143,6 @@ export default function PublicListScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Katalog Produk</Text>
-      </View>
       <View style={styles.filterBar}>
         <TouchableOpacity
           style={styles.filterToggle}
@@ -331,6 +341,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 14,
     backgroundColor: Colors.card,
@@ -341,6 +354,10 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: Colors.text,
+  },
+  headerIconButton: {
+    padding: 6,
+    borderRadius: 16,
   },
   filterBar: {
     flexDirection: 'row',

@@ -191,15 +191,25 @@ export default function DashboardScreen({ navigation }) {
       >
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>Dashboard</Text>
-            <Text style={styles.headerSubtitle}>
-              Selamat datang, {user?.email?.split('@')[0] || 'Admin'}
-            </Text>
+          <View style={styles.headerLeft}>
+            <View style={styles.shopBadge}>
+              <Ionicons name="bag-handle" size={18} color="#fff" />
+            </View>
+            <View style={styles.shopInfo}>
+              <Text style={styles.shopName}>POS Dewa Store</Text>
+              <Text style={styles.shopSubtitle}>
+                {user?.email?.split('@')[0] || 'Admin'} • Dashboard Toko
+              </Text>
+            </View>
           </View>
-          <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
-             <Ionicons name="refresh" size={24} color={Colors.primary} />
-          </TouchableOpacity>
+          <View style={styles.headerRight}>
+            <TouchableOpacity style={styles.headerIconButton} activeOpacity={0.8}>
+              <Ionicons name="notifications-outline" size={20} color={Colors.text} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerIconButton} activeOpacity={0.8}>
+              <Ionicons name="person-circle" size={26} color={Colors.primary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Menu Grid */}
@@ -252,6 +262,13 @@ export default function DashboardScreen({ navigation }) {
                 <Ionicons name="settings" size={24} color="#607D8B" />
               </View>
               <Text style={styles.menuLabel}>Pengaturan</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('MoreMenu')}>
+              <View style={[styles.menuIcon, { backgroundColor: '#E3F2FD' }]}>
+                <Ionicons name="grid" size={24} color={Colors.primary} />
+              </View>
+              <Text style={styles.menuLabel}>More</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -426,16 +443,45 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: Spacing.xl,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.lg,
     backgroundColor: Colors.card,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
-  headerContent: {
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
   },
-  refreshButton: {
-    padding: 8,
+  shopBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.md,
+  },
+  shopInfo: {
+    flex: 1,
+  },
+  shopName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  shopSubtitle: {
+    marginTop: 2,
+    fontSize: 12,
+    color: Colors.muted,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerIconButton: {
+    paddingHorizontal: 8,
   },
   comparisonContainer: {
     marginTop: 8,
@@ -461,16 +507,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
     marginLeft: 2,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: Colors.text,
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: Colors.muted,
   },
   section: {
     marginTop: Spacing.xl,
@@ -635,7 +671,7 @@ const styles = StyleSheet.create({
     ...Shadows.card,
   },
   menuItem: {
-    width: '30%',
+    width: '23%',
     alignItems: 'center',
     marginBottom: Spacing.md,
   },
