@@ -7,6 +7,7 @@ import { enableScreens } from 'react-native-screens';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import * as Linking from 'expo-linking';
 
 import ListScreen from './src/screens/Products/ListScreen';
 import FormScreen from './src/screens/Products/FormScreen';
@@ -261,8 +262,47 @@ function AppNavigator() {
 
   console.log('🧭 App: Rendering navigation', user ? 'Main Stack' : 'Auth Screen');
 
+  const linking = {
+    prefixes: [Linking.createURL('/')],
+    config: {
+      screens: {
+        // Not logged-in stack
+        PublicProducts: '',
+        PublicProductDetail: 'produk/:id',
+        Auth: 'admin',
+        // Logged-in stack and nested tabs
+        MainTabs: {
+          screens: {
+            Home: 'dashboard',
+            Produk: {
+              screens: {
+                DaftarProduk: 'produk-admin',
+                PublicProductsAdmin: 'produk-publik-admin',
+                PublicProductForm: 'produk-publik-admin/form',
+                ProductReport: 'produk/report/:id?',
+                FormProduk: 'produk/form/:id?',
+              },
+            },
+            Penjualan: 'penjualan',
+            Akun: 'akun',
+            Scan: 'scan',
+          },
+        },
+        // Modals/routes accessible when logged-in
+        StockManagement: 'stok',
+        Finance: 'keuangan',
+        SalesAnalytics: 'analitik',
+        History: 'riwayat',
+        TransactionHistory: 'riwayat-transaksi',
+        TransactionReport: 'laporan-transaksi',
+        InvoiceSettings: 'pengaturan-invoice',
+        ProfileEdit: 'profil/edit',
+      },
+    },
+  };
+
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       {user ? (
         <MainStack />
       ) : (
