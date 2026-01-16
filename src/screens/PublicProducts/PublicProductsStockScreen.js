@@ -116,7 +116,7 @@ export default function PublicProductsStockScreen() {
   const renderHeader = () => (
     <View style={styles.headerRow}>
       <View style={[styles.cell, styles.nameCell]}>
-        <Text style={styles.headerText}>Produk</Text>
+        <Text style={styles.headerText}>Produkss</Text>
       </View>
       <View style={[styles.cell, styles.brandCell]}>
         <Text style={styles.headerText}>Brand</Text>
