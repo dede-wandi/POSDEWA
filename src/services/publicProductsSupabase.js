@@ -164,6 +164,7 @@ export async function getPublicProductByIdPublic(id) {
         id,
         title,
         price,
+        stock,
         description,
         image_urls,
         is_active,
@@ -185,6 +186,7 @@ export async function getPublicProductByIdPublic(id) {
       id: data.id,
       title: data.title,
       price: data.price,
+      stock: data.stock,
       description: data.description,
       image_urls: Array.isArray(data.image_urls) ? data.image_urls : [],
       is_active: data.is_active,
@@ -204,6 +206,7 @@ export async function createPublicProduct(payload) {
     owner_id: user.id,
     title: String(payload.title || '').trim(),
     price: Number(payload.price || 0),
+    stock: Number(payload.stock || 0),
     image_urls: imageUrls,
     brand_id: payload.brand_id || null,
     category_id: payload.category_id || null,
@@ -237,6 +240,9 @@ export async function updatePublicProduct(id, payload) {
   }
   if (payload.image_urls !== undefined) {
     patch.image_urls = Array.isArray(payload.image_urls) ? payload.image_urls.slice(0, 5) : [];
+  }
+  if (payload.stock !== undefined) {
+    patch.stock = Number(payload.stock || 0);
   }
   if (payload.brand_id !== undefined) {
     patch.brand_id = payload.brand_id || null;
@@ -291,6 +297,7 @@ export async function listPublicProductsPublic() {
         id,
         title,
         price,
+        stock,
         description,
         image_urls,
         is_active,
@@ -307,6 +314,7 @@ export async function listPublicProductsPublic() {
     id: p.id,
     title: p.title,
     price: p.price,
+    stock: p.stock,
     description: p.description,
     image_urls: Array.isArray(p.image_urls) ? p.image_urls : [],
     brand: p.public_brands || null,

@@ -16,6 +16,7 @@ import PublicProductsAdminListScreen from './src/screens/PublicProducts/AdminLis
 import PublicProductsAdminFormScreen from './src/screens/PublicProducts/AdminFormScreen';
 import PublicProductsPublicListScreen from './src/screens/PublicProducts/PublicListScreen';
 import PublicDetailScreen from './src/screens/PublicProducts/PublicDetailScreen';
+import PublicProductsStockScreen from './src/screens/PublicProducts/PublicProductsStockScreen';
 import BarcodeScanScreen from './src/screens/Scan/BarcodeScanScreen';
 import SalesScreen from './src/screens/Sales/SalesScreen';
 import ProductListScreen from './src/screens/Sales/ProductListScreen';
@@ -61,17 +62,42 @@ function ProductsStack() {
             </TouchableOpacity>
           ),
           headerRight: () => (
-            <TouchableOpacity 
-              onPress={() => navigation.navigate('PublicProductForm')}
-              style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, backgroundColor: Colors.primary, borderRadius: 16, marginRight: 8 }}
-            >
-              <Ionicons name="add-circle" size={18} color="#fff" />
-              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600', marginLeft: 4 }}>Tambah</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('PublicProductsStock')}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: Colors.primary,
+                  marginRight: 8,
+                  backgroundColor: 'transparent',
+                }}
+              >
+                <Text style={{ color: Colors.primary, fontSize: 12, fontWeight: '600' }}>
+                  Stok
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => navigation.navigate('PublicProductForm')}
+                style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, backgroundColor: Colors.primary, borderRadius: 16, marginRight: 8 }}
+              >
+                <Ionicons name="add-circle" size={18} color="#fff" />
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600', marginLeft: 4 }}>Tambah</Text>
+              </TouchableOpacity>
+            </View>
           ),
         })}
       />
       <Stack.Screen name="PublicProductForm" component={PublicProductsAdminFormScreen} options={{ title: 'Form Produk Publik', headerShown: false }} />
+      <Stack.Screen
+        name="PublicProductsStock"
+        component={PublicProductsStockScreen}
+        options={{ title: 'Stok Produk Publik' }}
+      />
     </Stack.Navigator>
   );
 }

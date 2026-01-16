@@ -153,7 +153,9 @@ export default function AdminListScreen({ navigation }) {
         <View style={styles.cardFooter}>
           <View style={styles.statusWrapper}>
             <View style={[styles.statusDot, { backgroundColor: item.is_active ? '#34C759' : Colors.muted }]} />
-            <Text style={styles.statusText}>{item.is_active ? 'Aktif' : 'Nonaktif'}</Text>
+            <Text style={styles.statusText}>
+              {item.is_active ? 'Aktif' : 'Nonaktif'} • Stok: {Number(item.stock ?? 0)}
+            </Text>
           </View>
           <View style={styles.actions}>
             <TouchableOpacity

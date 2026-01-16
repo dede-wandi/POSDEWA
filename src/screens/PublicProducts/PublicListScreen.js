@@ -113,6 +113,7 @@ export default function PublicListScreen({ navigation }) {
         <View style={styles.cardBody}>
           <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
           <Text style={styles.price}>Rp {Number(item.price || 0).toLocaleString('id-ID')}</Text>
+          <Text style={styles.stock}>Stok: {Number(item.stock ?? 0)}</Text>
           
           <View style={styles.metaRow}>
            <View style={styles.ratingContainer}>
@@ -505,6 +506,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#E91E63',
+    marginBottom: 4,
+  },
+  stock: {
+    fontSize: 11,
+    color: '#555',
     marginBottom: 4,
   },
   metaRow: {

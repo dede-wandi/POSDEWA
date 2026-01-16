@@ -28,6 +28,7 @@ export default function AdminFormScreen({ navigation, route }) {
   const id = route.params?.id || null;
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
+  const [stock, setStock] = useState('');
   const [description, setDescription] = useState('');
   const [imageUrls, setImageUrls] = useState(['', '', '', '', '']);
   const [brands, setBrands] = useState([]);
@@ -70,6 +71,7 @@ export default function AdminFormScreen({ navigation, route }) {
     const data = result.data;
     setTitle(data.title || '');
     setPrice(String(data.price || ''));
+    setStock(String(data.stock || ''));
     setDescription(data.description || '');
     const imgs = Array.isArray(data.image_urls) ? data.image_urls.slice(0, 5) : [];
     const padded = [...imgs, '', '', '', '', ''].slice(0, 5);
@@ -98,6 +100,11 @@ export default function AdminFormScreen({ navigation, route }) {
       Alert.alert('Validasi', 'Harga tidak valid');
       return;
     }
+    const numericStock = Number(stock || 0);
+    if (Number.isNaN(numericStock) || numericStock < 0) {
+      Alert.alert('Validasi', 'Stok tidak valid');
+      return;
+    }
     const urls = imageUrls
       .map((u) => String(u || '').trim())
       .filter((u) => u.length > 0)
@@ -106,6 +113,7 @@ export default function AdminFormScreen({ navigation, route }) {
     const payload = {
       title: title.trim(),
       price: numericPrice,
+      stock: numericStock,
       description: description.trim() || null,
       image_urls: urls,
       brand_id: brandId,
@@ -301,6 +309,15 @@ export default function AdminFormScreen({ navigation, route }) {
           style={[styles.input, styles.inputSpacing]}
           value={price}
           onChangeText={setPrice}
+          placeholder="0"
+          keyboardType="numeric"
+        />
+
+        <Text style={styles.label}>Stok</Text>
+        <TextInput
+          style={[styles.input, styles.inputSpacing]}
+          value={stock}
+          onChangeText={setStock}
           placeholder="0"
           keyboardType="numeric"
         />

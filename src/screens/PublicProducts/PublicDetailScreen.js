@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Linking,
   Share,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +25,8 @@ export default function PublicDetailScreen({ navigation, route }) {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const scrollRef = useRef(null);
   const [descImageRatios, setDescImageRatios] = useState({});
+  const [imageModalVisible, setImageModalVisible] = useState(false);
+  const [imageModalIndex, setImageModalIndex] = useState(0);
 
   useEffect(() => {
     if (id && (!product || !product.description)) {
@@ -132,7 +135,16 @@ export default function PublicDetailScreen({ navigation, route }) {
               ref={scrollRef}
             >
               {images.map((img, index) => (
-                <Image key={index} source={{ uri: img }} style={styles.productImage} resizeMode="cover" />
+                <TouchableOpacity
+                  key={index}
+                  activeOpacity={0.9}
+                  onPress={() => {
+                    setImageModalIndex(index);
+                    setImageModalVisible(true);
+                  }}
+                >
+                  <Image source={{ uri: img }} style={styles.productImage} resizeMode="cover" />
+                </TouchableOpacity>
               ))}
             </ScrollView>
           ) : (
@@ -195,6 +207,8 @@ export default function PublicDetailScreen({ navigation, route }) {
             <Text style={styles.price}>Rp {Number(product.price).toLocaleString('id-ID')}</Text>
           </View>
 
+          <Text style={styles.stock}>Stok: {Number(product.stock ?? 0)}</Text>
+
           <Text style={styles.title}>{product.title}</Text>
 
           <View style={styles.ratingRow}>
@@ -228,8 +242,6 @@ export default function PublicDetailScreen({ navigation, route }) {
               <Text style={styles.description}>Tidak ada deskripsi.</Text>
             ) : (
               (() => {
-                let imageCount = 0;
-                const maxImages = 5;
                 return String(product.description || '')
                 .split('\n')
                 .filter((line) => line.trim().length > 0)
@@ -241,8 +253,6 @@ export default function PublicDetailScreen({ navigation, route }) {
                       {tokens.map((tok, idxTok) => {
                         const isUrl = /^https?:\/\/\S+/i.test(tok);
                         if (isUrl) {
-                          if (imageCount >= maxImages) return null;
-                          imageCount += 1;
                           const ratio = descImageRatios[tok];
                           const baseStyle = hasMultipleUrls ? styles.descImageFull : styles.descImageSpaced;
                           const imgStyle = ratio ? [baseStyle, { aspectRatio: ratio }] : baseStyle;
@@ -285,7 +295,6 @@ export default function PublicDetailScreen({ navigation, route }) {
         </View>
       </ScrollView>
 
-      {/* Bottom Action Bar */}
       <View style={styles.bottomBar}>
         <TouchableOpacity style={styles.chatButton} onPress={handleChat}>
           <Ionicons name="chatbubble-ellipses-outline" size={24} color={Colors.primary} />
@@ -294,6 +303,28 @@ export default function PublicDetailScreen({ navigation, route }) {
           <Text style={styles.buyButtonText}>Beli Sekarang</Text>
         </TouchableOpacity>
       </View>
+
+      <Modal
+        visible={imageModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setImageModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <TouchableOpacity style={styles.modalCloseArea} onPress={() => setImageModalVisible(false)}>
+            <Ionicons name="close" size={28} color="#fff" />
+          </TouchableOpacity>
+          <View style={styles.modalImageWrapper}>
+            {images && images.length > 0 && (
+              <Image
+                source={{ uri: images[imageModalIndex] }}
+                style={styles.modalImage}
+                resizeMode="contain"
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -372,6 +403,28 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     width: 24,
   },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCloseArea: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    zIndex: 2,
+  },
+  modalImageWrapper: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalImage: {
+    width: '100%',
+    height: '80%',
+  },
   arrowButton: {
     position: 'absolute',
     top: '50%',
@@ -407,6 +460,11 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: Colors.danger || '#e91e63',
+  },
+  stock: {
+    fontSize: 14,
+    color: Colors.muted,
+    marginBottom: 8,
   },
   title: {
     fontSize: 18,
