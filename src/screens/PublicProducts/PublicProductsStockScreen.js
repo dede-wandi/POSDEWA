@@ -175,7 +175,7 @@ export default function PublicProductsStockScreen() {
         ListHeaderComponent={renderHeader}
         stickyHeaderIndices={[0]}
         renderItem={renderItem}
-        contentContainerStyle={rows.length === 0 ? styles.emptyContainer : null}
+        contentContainerStyle={rows.length === 0 ? styles.emptyContainer : styles.listContainer}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
         }
@@ -193,6 +193,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  listContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   centered: {
     flex: 1,

@@ -304,23 +304,28 @@ export default function AdminFormScreen({ navigation, route }) {
           placeholder="Nama produk"
         />
 
-        <Text style={styles.label}>Harga</Text>
-        <TextInput
-          style={[styles.input, styles.inputSpacing]}
-          value={price}
-          onChangeText={setPrice}
-          placeholder="0"
-          keyboardType="numeric"
-        />
-
-        <Text style={styles.label}>Stok</Text>
-        <TextInput
-          style={[styles.input, styles.inputSpacing]}
-          value={stock}
-          onChangeText={setStock}
-          placeholder="0"
-          keyboardType="numeric"
-        />
+        <View style={styles.row}>
+          <View style={styles.halfColumn}>
+            <Text style={styles.label}>Harga</Text>
+            <TextInput
+              style={[styles.input, styles.inputSpacing]}
+              value={price}
+              onChangeText={setPrice}
+              placeholder="0"
+              keyboardType="numeric"
+            />
+          </View>
+          <View style={styles.halfColumn}>
+            <Text style={styles.label}>Stok</Text>
+            <TextInput
+              style={[styles.input, styles.inputSpacing]}
+              value={stock}
+              onChangeText={setStock}
+              placeholder="0"
+              keyboardType="numeric"
+            />
+          </View>
+        </View>
 
         <Text style={styles.label}>Brand</Text>
         <View style={styles.sectionSpacing}>
@@ -437,6 +442,13 @@ const styles = StyleSheet.create({
   formContent: {
     padding: 16,
     paddingBottom: 40,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  halfColumn: {
+    flex: 1,
   },
   label: {
     fontSize: 13,
