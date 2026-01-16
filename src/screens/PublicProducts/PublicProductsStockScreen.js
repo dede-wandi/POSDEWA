@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
   stockCell: {
-    width: 60,
+    Maxwidth: 20,
     flexDirection: 'row',
     alignItems: 'center',
   },
