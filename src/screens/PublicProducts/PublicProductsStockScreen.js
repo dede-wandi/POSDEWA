@@ -13,11 +13,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../theme';
 import { listPublicProductsAdmin, updatePublicProduct } from '../../services/publicProductsSupabase';
 
+const sortRowsByStock = (items, direction = 'asc') => {
+  const dir = direction === 'desc' ? 'desc' : 'asc';
+  return [...items].sort((a, b) => {
+    const aVal = a.stock || 0;
+    const bVal = b.stock || 0;
+    return dir === 'asc' ? aVal - bVal : bVal - aVal;
+  });
+};
+
 export default function PublicProductsStockScreen() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [savingId, setSavingId] = useState(null);
+  const [sortDirection, setSortDirection] = useState('asc');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -28,12 +38,11 @@ export default function PublicProductsStockScreen() {
           ...p,
           stock: p.stock !== undefined && p.stock !== null ? Number(p.stock) : 0,
         }))
-        .sort((a, b) => (a.stock || 0) - (b.stock || 0))
         .map((p) => ({
           ...p,
           stockInput: String(p.stock || 0),
         }));
-      setRows(data);
+      setRows(sortRowsByStock(data, 'asc'));
     } else {
       setRows([]);
     }
@@ -47,6 +56,7 @@ export default function PublicProductsStockScreen() {
   const onRefresh = async () => {
     setRefreshing(true);
     await load();
+    setRows((prev) => sortRowsByStock(prev, sortDirection));
     setRefreshing(false);
   };
 
@@ -100,8 +110,8 @@ export default function PublicProductsStockScreen() {
       );
       return;
     }
-    setRows((prev) =>
-      prev.map((r) =>
+    setRows((prev) => {
+      const updated = prev.map((r) =>
         r.id === row.id
           ? {
               ...r,
@@ -109,8 +119,17 @@ export default function PublicProductsStockScreen() {
               stockInput: String(next),
             }
           : r,
-      ),
-    );
+      );
+      return sortRowsByStock(updated, sortDirection);
+    });
+  };
+
+  const handleToggleSortDirection = () => {
+    setSortDirection((prev) => {
+      const next = prev === 'asc' ? 'desc' : 'asc';
+      setRows((items) => sortRowsByStock(items, next));
+      return next;
+    });
   };
 
   const renderHeader = () => (
@@ -122,7 +141,9 @@ export default function PublicProductsStockScreen() {
         <Text style={styles.headerText}>Brand</Text>
       </View>
       <View style={[styles.cell, styles.stockCell]}>
-        <Text style={styles.headerText}>Stok</Text>
+        <Text style={styles.headerText} onPress={handleToggleSortDirection}>
+          Stok {sortDirection === 'asc' ? '↑' : '↓'}
+        </Text>
       </View>
     </View>
   );
@@ -226,7 +247,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.card,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     paddingVertical: 6,
   },
   cell: {
@@ -241,7 +262,7 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
   stockCell: {
-    Maxwidth: 20,
+    width: 52,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -263,9 +284,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: 8,
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
     paddingVertical: 4,
-    fontSize: 14,
+    fontSize: 13,
     textAlign: 'center',
     backgroundColor: '#fff',
   },
