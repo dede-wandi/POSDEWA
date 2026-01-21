@@ -20,7 +20,7 @@ import { useCart } from '../../contexts/CartContext';
 const { width } = Dimensions.get('window');
 
 export default function PublicDetailScreen({ navigation, route }) {
-  const { addToCart, cartCount } = useCart();
+  const { addToCart, updateQuantity, items, cartCount } = useCart();
   const { id, product: initialProduct } = route.params || {};
   const [product, setProduct] = useState(initialProduct || null);
   const [loading, setLoading] = useState(!initialProduct);
@@ -30,6 +30,9 @@ export default function PublicDetailScreen({ navigation, route }) {
   const [imageModalVisible, setImageModalVisible] = useState(false);
   const [imageModalIndex, setImageModalIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
+
+  const cartItem = product ? items.find(i => i.product.id === product.id) : null;
+  const cartQty = cartItem ? cartItem.quantity : 0;
 
   useEffect(() => {
     if (id && (!product || !product.description)) {
@@ -322,23 +325,31 @@ export default function PublicDetailScreen({ navigation, route }) {
 
         <View style={styles.verticalDivider} />
 
-        <TouchableOpacity 
-          style={styles.addToCartButton} 
-          onPress={() => {
-            addToCart(product, 1);
-            Alert.alert(
-              'Berhasil', 
-              'Produk ditambahkan ke keranjang',
-              [
-                { text: 'Lanjut Belanja', style: 'cancel' },
-                { text: 'Lihat Keranjang', onPress: () => navigation.navigate('Cart') }
-              ]
-            );
-          }}
-        >
-          <Ionicons name="cart-outline" size={24} color={Colors.primary} />
-          <Text style={styles.addToCartButtonText}>+ Keranjang</Text>
-        </TouchableOpacity>
+        {cartQty > 0 ? (
+          <View style={[styles.addToCartButton, { paddingHorizontal: 0, justifyContent: 'space-between', borderColor: Colors.primary, backgroundColor: '#f0f9ff' }]}>
+             <TouchableOpacity 
+               style={{ width: 40, height: '100%', alignItems: 'center', justifyContent: 'center', borderRightWidth: 1, borderColor: Colors.primary }} 
+               onPress={() => updateQuantity(product.id, cartQty - 1)}
+             >
+                <Ionicons name="remove" size={20} color={Colors.primary} />
+             </TouchableOpacity>
+             <Text style={{ fontSize: 16, fontWeight: 'bold', color: Colors.primary }}>{cartQty}</Text>
+             <TouchableOpacity 
+               style={{ width: 40, height: '100%', alignItems: 'center', justifyContent: 'center', borderLeftWidth: 1, borderColor: Colors.primary }} 
+               onPress={() => updateQuantity(product.id, cartQty + 1)}
+             >
+                <Ionicons name="add" size={20} color={Colors.primary} />
+             </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity 
+            style={styles.addToCartButton} 
+            onPress={() => addToCart(product, quantity)}
+          >
+            <Ionicons name="cart-outline" size={24} color={Colors.primary} />
+            <Text style={styles.addToCartButtonText}>+ Keranjang</Text>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity 
           style={styles.buyNowButton} 

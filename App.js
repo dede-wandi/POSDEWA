@@ -36,6 +36,7 @@ import TransactionHistoryScreen from './src/screens/TransactionHistoryScreen';
 import TransactionReportScreen from './src/screens/TransactionReportScreen';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { CartProvider } from './src/contexts/CartContext';
+import { ToastProvider } from './src/contexts/ToastContext';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import CartScreen from './src/screens/PublicProducts/CartScreen';
 
@@ -383,13 +384,15 @@ function AppNavigator() {
 export default function App() {
   return (
     <AuthProvider>
-      <CartProvider>
-        <SafeAreaProvider>
-          <ErrorBoundary>
-            <AppNavigator />
-          </ErrorBoundary>
-        </SafeAreaProvider>
-      </CartProvider>
+      <ToastProvider>
+        <CartProvider>
+          <SafeAreaProvider>
+            <ErrorBoundary>
+              <AppNavigator />
+            </ErrorBoundary>
+          </SafeAreaProvider>
+        </CartProvider>
+      </ToastProvider>
     </AuthProvider>
   );
 }

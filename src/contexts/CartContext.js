@@ -1,20 +1,38 @@
 import React, { createContext, useContext, useState, useMemo } from 'react';
+import { Alert } from 'react-native';
+import { useToast } from './ToastContext';
 
 const CartContext = createContext();
 
 export function CartProvider({ children }) {
   const [items, setItems] = useState([]);
+  const { showToast } = useToast();
 
   const addToCart = (product, quantity = 1) => {
+    const availableStock = Number(product.stock || 0);
+
+    // Cek jika yang diminta langsung melebihi stok
+    if (quantity > availableStock) {
+      showToast(`Stok tidak cukup. Hanya tersedia ${availableStock} unit.`, 'error');
+      return;
+    }
+
     setItems((prev) => {
       const existing = prev.find((item) => item.product.id === product.id);
       if (existing) {
+        const newTotal = existing.quantity + quantity;
+        if (newTotal > availableStock) {
+          showToast(`Stok terbatas. Total di keranjang akan melebihi stok (${availableStock}).`, 'error');
+          return prev;
+        }
+        showToast('Berhasil ditambahkan ke keranjang', 'success');
         return prev.map((item) =>
           item.product.id === product.id
-            ? { ...item, quantity: item.quantity + quantity }
+            ? { ...item, quantity: newTotal }
             : item
         );
       }
+      showToast('Berhasil ditambahkan ke keranjang', 'success');
       return [...prev, { product, quantity }];
     });
   };
@@ -28,11 +46,23 @@ export function CartProvider({ children }) {
       removeFromCart(productId);
       return;
     }
-    setItems((prev) =>
-      prev.map((item) =>
+
+    setItems((prev) => {
+      const targetItem = prev.find((item) => item.product.id === productId);
+      if (targetItem) {
+        const availableStock = Number(targetItem.product.stock || 0);
+        if (quantity > availableStock) {
+           showToast(`Maksimal pembelian ${availableStock} unit.`, 'error');
+           return prev.map((item) => 
+             item.product.id === productId ? { ...item, quantity: availableStock } : item
+           );
+        }
+      }
+      
+      return prev.map((item) =>
         item.product.id === productId ? { ...item, quantity } : item
-      )
-    );
+      );
+    });
   };
 
   const clearCart = () => {

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   Alert,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,10 +34,12 @@ export default function CartScreen({ navigation }) {
     message += `\nTotal Pembayaran: Rp ${cartTotal.toLocaleString('id-ID')}`;
 
     const phoneNumber = '6282125910120';
+    // Gunakan format wa.me yang universal untuk web/mobile
     const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
 
-    Linking.openURL(url).catch(() => {
-      Alert.alert('Error', 'Gagal membuka WhatsApp. Pastikan aplikasi WhatsApp terinstal.');
+    Linking.openURL(url).catch((err) => {
+      console.log('Error opening whatsapp:', err);
+      Alert.alert('Gagal Membuka WhatsApp', 'Pastikan aplikasi WhatsApp terinstal di perangkat Anda.');
     });
   };
 
