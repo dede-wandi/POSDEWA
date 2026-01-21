@@ -4,11 +4,13 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { enableScreens } from 'react-native-screens';
 import { AuthProvider, AuthContext } from '../contexts/AuthContext.web';
+import { CartProvider } from '../contexts/CartContext';
 import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
 import MallScreen from '../screens/MallScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import AccountScreen from '../screens/AccountScreen';
+import CartScreen from '../screens/PublicProducts/CartScreen';
 import { Colors } from '../theme/colors';
 
 const Stack = createNativeStackNavigator();
@@ -50,7 +52,10 @@ function RootNavigator() {
   return (
     <Stack.Navigator>
       {token ? (
-        <Stack.Screen name="AppTabs" component={AppTabs} options={{ headerShown: false }} />
+        <>
+          <Stack.Screen name="AppTabs" component={AppTabs} options={{ headerShown: false }} />
+          <Stack.Screen name="Cart" component={CartScreen} options={{ headerShown: false }} />
+        </>
       ) : (
         <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
       )}
@@ -61,9 +66,11 @@ function RootNavigator() {
 export default function AppNavigator() {
   return (
     <AuthProvider>
-      <NavigationContainer theme={MyTheme}>
-        <RootNavigator />
-      </NavigationContainer>
+      <CartProvider>
+        <NavigationContainer theme={MyTheme}>
+          <RootNavigator />
+        </NavigationContainer>
+      </CartProvider>
     </AuthProvider>
   );
 }

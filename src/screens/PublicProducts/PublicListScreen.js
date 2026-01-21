@@ -14,10 +14,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../theme';
 import { listPublicProductsPublic } from '../../services/publicProductsSupabase';
+import { useCart } from '../../contexts/CartContext';
 
 const { width } = Dimensions.get('window');
 
 export default function PublicListScreen({ navigation }) {
+  const { addToCart, cartCount } = useCart();
   const [products, setProducts] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -67,15 +69,30 @@ export default function PublicListScreen({ navigation }) {
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity
-          onPress={onRefresh}
-          style={{ paddingHorizontal: 8 }}
-        >
-          <Ionicons name="refresh" size={20} color={Colors.primary} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity
+            onPress={onRefresh}
+            style={{ paddingHorizontal: 8 }}
+          >
+            <Ionicons name="refresh" size={20} color={Colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Cart')}
+            style={{ paddingHorizontal: 8, marginLeft: 4 }}
+          >
+            <View>
+              <Ionicons name="cart-outline" size={24} color={Colors.primary} />
+              {cartCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{cartCount > 99 ? '99+' : cartCount}</Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+        </View>
       ),
     });
-  }, [navigation, onRefresh]);
+  }, [navigation, onRefresh, cartCount]);
 
   useEffect(() => {
     let data = [...allProducts];
