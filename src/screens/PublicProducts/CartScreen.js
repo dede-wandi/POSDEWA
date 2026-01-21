@@ -21,20 +21,23 @@ export default function CartScreen({ navigation }) {
       Alert.alert('Keranjang Kosong', 'Silakan tambahkan produk terlebih dahulu.');
       return;
     }
-    // Mock checkout
-    Alert.alert(
-      'Checkout Berhasil',
-      'Pesanan Anda telah diterima! (Simulasi)',
-      [
-        {
-          text: 'OK',
-          onPress: () => {
-            clearCart();
-            navigation.goBack();
-          },
-        },
-      ]
-    );
+
+    // Construct WhatsApp message
+    let message = 'Halo, saya ingin memesan:\n\n';
+    items.forEach((item, index) => {
+      const subtotal = (Number(item.product.price) || 0) * item.quantity;
+      message += `${index + 1}. ${item.product.title}\n`;
+      message += `   ${item.quantity}x @ Rp ${Number(item.product.price).toLocaleString('id-ID')} = Rp ${subtotal.toLocaleString('id-ID')}\n`;
+    });
+    
+    message += `\nTotal Pembayaran: Rp ${cartTotal.toLocaleString('id-ID')}`;
+
+    const phoneNumber = '6282125910120';
+    const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+
+    Linking.openURL(url).catch(() => {
+      Alert.alert('Error', 'Gagal membuka WhatsApp. Pastikan aplikasi WhatsApp terinstal.');
+    });
   };
 
   const renderItem = ({ item }) => {

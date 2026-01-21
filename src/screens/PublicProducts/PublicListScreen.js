@@ -69,30 +69,15 @@ export default function PublicListScreen({ navigation }) {
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <TouchableOpacity
-            onPress={onRefresh}
-            style={{ paddingHorizontal: 8 }}
-          >
-            <Ionicons name="refresh" size={20} color={Colors.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Cart')}
-            style={{ paddingHorizontal: 8, marginLeft: 4 }}
-          >
-            <View>
-              <Ionicons name="cart-outline" size={24} color={Colors.primary} />
-              {cartCount > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{cartCount > 99 ? '99+' : cartCount}</Text>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          onPress={onRefresh}
+          style={{ paddingHorizontal: 8 }}
+        >
+          <Ionicons name="refresh" size={20} color={Colors.primary} />
+        </TouchableOpacity>
       ),
     });
-  }, [navigation, onRefresh, cartCount]);
+  }, [navigation, onRefresh]);
 
   useEffect(() => {
     let data = [...allProducts];
@@ -143,6 +128,14 @@ export default function PublicListScreen({ navigation }) {
           {item.category?.name && (
              <Text style={styles.shopLocation} numberOfLines={1}>{item.category.name}</Text>
           )}
+
+          <TouchableOpacity
+            style={styles.addToCartButton}
+            onPress={() => addToCart(item)}
+          >
+            <Ionicons name="cart-outline" size={16} color="#fff" />
+            <Text style={styles.addToCartText}>+ Keranjang</Text>
+          </TouchableOpacity>
         </View>
       </TouchableOpacity>
     );
