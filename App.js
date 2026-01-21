@@ -35,7 +35,9 @@ import FinanceScreen from './src/screens/FinanceScreen';
 import TransactionHistoryScreen from './src/screens/TransactionHistoryScreen';
 import TransactionReportScreen from './src/screens/TransactionReportScreen';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { CartProvider } from './src/contexts/CartContext';
 import ErrorBoundary from './src/components/ErrorBoundary';
+import CartScreen from './src/screens/PublicProducts/CartScreen';
 
 enableScreens(true);
 
@@ -376,11 +378,13 @@ function AppNavigator() {
 export default function App() {
   return (
     <AuthProvider>
-      <SafeAreaProvider>
-        <ErrorBoundary>
-          <AppNavigator />
-        </ErrorBoundary>
-      </SafeAreaProvider>
+      <CartProvider>
+        <SafeAreaProvider>
+          <ErrorBoundary>
+            <AppNavigator />
+          </ErrorBoundary>
+        </SafeAreaProvider>
+      </CartProvider>
     </AuthProvider>
   );
 }
