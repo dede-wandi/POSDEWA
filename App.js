@@ -365,6 +365,11 @@ function AppNavigator() {
             options={{ headerShown: false }}
           />
           <Stack.Screen
+            name="Cart"
+            component={CartScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
             name="Auth"
             component={AuthScreen}
             options={{ headerShown: false }}

@@ -68,7 +68,9 @@ export default function CartScreen({ navigation }) {
               >
                 <Ionicons name="remove" size={16} color={Colors.text} />
               </TouchableOpacity>
-              <Text style={styles.qtyText}>{quantity}</Text>
+              <View style={styles.qtyTextContainer}>
+                <Text style={styles.qtyText}>{quantity}</Text>
+              </View>
               <TouchableOpacity
                 style={styles.qtyButton}
                 onPress={() => updateQuantity(product.id, quantity + 1)}

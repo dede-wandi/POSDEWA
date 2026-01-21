@@ -19,7 +19,7 @@ import { useCart } from '../../contexts/CartContext';
 const { width } = Dimensions.get('window');
 
 export default function PublicListScreen({ navigation }) {
-  const { addToCart, cartCount } = useCart();
+  const { addToCart, updateQuantity, items, cartCount } = useCart();
   const [products, setProducts] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -69,15 +69,42 @@ export default function PublicListScreen({ navigation }) {
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity
-          onPress={onRefresh}
-          style={{ paddingHorizontal: 8 }}
-        >
-          <Ionicons name="refresh" size={20} color={Colors.primary} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Cart')}
+            style={{ paddingHorizontal: 8, marginRight: 4 }}
+          >
+            <View>
+              <Ionicons name="cart-outline" size={24} color={Colors.primary} />
+              {cartCount > 0 && (
+                <View style={{
+                  position: 'absolute',
+                  top: -4,
+                  right: -4,
+                  backgroundColor: Colors.danger || 'red',
+                  minWidth: 16,
+                  height: 16,
+                  borderRadius: 8,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 1,
+                  borderColor: '#fff',
+                }}>
+                  <Text style={{ color: '#fff', fontSize: 9, fontWeight: 'bold' }}>{cartCount}</Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={onRefresh}
+            style={{ paddingHorizontal: 8 }}
+          >
+            <Ionicons name="refresh" size={24} color={Colors.primary} />
+          </TouchableOpacity>
+        </View>
       ),
     });
-  }, [navigation, onRefresh]);
+  }, [navigation, onRefresh, cartCount]);
 
   useEffect(() => {
     let data = [...allProducts];
@@ -97,6 +124,9 @@ export default function PublicListScreen({ navigation }) {
 
   const renderItem = ({ item }) => {
     const firstImage = Array.isArray(item.image_urls) && item.image_urls.length > 0 ? item.image_urls[0] : null;
+    const cartItem = items.find((i) => i.product.id === item.id);
+    const quantity = cartItem ? cartItem.quantity : 0;
+
     return (
       <TouchableOpacity 
         style={styles.card}
@@ -114,7 +144,37 @@ export default function PublicListScreen({ navigation }) {
         </View>
         <View style={styles.cardBody}>
           <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
-          <Text style={styles.price}>Rp {Number(item.price || 0).toLocaleString('id-ID')}</Text>
+          
+          <View style={styles.priceRow}>
+            <Text style={styles.price}>Rp {Number(item.price || 0).toLocaleString('id-ID')}</Text>
+          </View>
+
+          {quantity > 0 ? (
+            <View style={styles.qtyControlRow}>
+              <TouchableOpacity
+                style={styles.qtyBtnMini}
+                onPress={() => updateQuantity(item.id, quantity - 1)}
+              >
+                <Ionicons name="remove" size={16} color="#fff" />
+              </TouchableOpacity>
+              <Text style={styles.qtyTextMini}>{quantity}</Text>
+              <TouchableOpacity
+                style={styles.qtyBtnMini}
+                onPress={() => updateQuantity(item.id, quantity + 1)}
+              >
+                <Ionicons name="add" size={16} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.addToCartButton}
+              onPress={() => addToCart(item)}
+            >
+              <Ionicons name="add-circle-outline" size={18} color="#fff" style={{ marginRight: 4 }} />
+              <Text style={styles.addToCartText}>Tambah</Text>
+            </TouchableOpacity>
+          )}
+
           <Text style={styles.stock}>Stok: {Number(item.stock ?? 0)}</Text>
           
           <View style={styles.metaRow}>
@@ -128,14 +188,6 @@ export default function PublicListScreen({ navigation }) {
           {item.category?.name && (
              <Text style={styles.shopLocation} numberOfLines={1}>{item.category.name}</Text>
           )}
-
-          <TouchableOpacity
-            style={styles.addToCartButton}
-            onPress={() => addToCart(item)}
-          >
-            <Ionicons name="cart-outline" size={16} color="#fff" />
-            <Text style={styles.addToCartText}>+ Keranjang</Text>
-          </TouchableOpacity>
         </View>
       </TouchableOpacity>
     );
@@ -512,11 +564,66 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     lineHeight: 18,
   },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
   price: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#E91E63',
-    marginBottom: 4,
+  },
+  qtyControlRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f2f2f7',
+    borderRadius: 8,
+    padding: 4,
+    marginBottom: 8,
+  },
+  qtyBtnMini: {
+    backgroundColor: Colors.primary,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qtyTextMini: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: Colors.text,
+    marginHorizontal: 8,
+  },
+  addToCartButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  addToCartText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  iconCartButton: {
+    backgroundColor: Colors.primary,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
   stock: {
     fontSize: 11,

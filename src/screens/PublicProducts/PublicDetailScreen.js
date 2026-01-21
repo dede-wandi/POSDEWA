@@ -15,10 +15,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../theme';
 import { getPublicProductByIdPublic } from '../../services/publicProductsSupabase';
+import { useCart } from '../../contexts/CartContext';
 
 const { width } = Dimensions.get('window');
 
 export default function PublicDetailScreen({ navigation, route }) {
+  const { addToCart, cartCount } = useCart();
   const { id, product: initialProduct } = route.params || {};
   const [product, setProduct] = useState(initialProduct || null);
   const [loading, setLoading] = useState(!initialProduct);
@@ -27,6 +29,7 @@ export default function PublicDetailScreen({ navigation, route }) {
   const [descImageRatios, setDescImageRatios] = useState({});
   const [imageModalVisible, setImageModalVisible] = useState(false);
   const [imageModalIndex, setImageModalIndex] = useState(0);
+  const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
     if (id && (!product || !product.description)) {
@@ -113,9 +116,19 @@ export default function PublicDetailScreen({ navigation, route }) {
           <TouchableOpacity style={styles.circleButton} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color={Colors.text} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.circleButton} onPress={handleShare}>
-            <Ionicons name="share-social-outline" size={24} color={Colors.text} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <TouchableOpacity style={styles.circleButton} onPress={handleShare}>
+              <Ionicons name="share-social-outline" size={24} color={Colors.text} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.circleButton} onPress={() => navigation.navigate('Cart')}>
+              <Ionicons name="cart-outline" size={24} color={Colors.text} />
+              {cartCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{cartCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Image Carousel */}
@@ -296,11 +309,37 @@ export default function PublicDetailScreen({ navigation, route }) {
       </ScrollView>
 
       <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.chatButton} onPress={handleChat}>
-          <Ionicons name="chatbubble-ellipses-outline" size={24} color={Colors.primary} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.buyButton} onPress={handleBuy}>
-          <Text style={styles.buyButtonText}>Beli Sekarang</Text>
+        <View style={styles.quantityContainer}>
+          <TouchableOpacity 
+            style={styles.qtyBtn} 
+            onPress={() => setQuantity(Math.max(1, quantity - 1))}
+          >
+            <Ionicons name="remove" size={20} color={Colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.qtyValue}>{quantity}</Text>
+          <TouchableOpacity 
+            style={styles.qtyBtn}
+            onPress={() => setQuantity(quantity + 1)}
+          >
+            <Ionicons name="add" size={20} color={Colors.text} />
+          </TouchableOpacity>
+        </View>
+        <TouchableOpacity 
+          style={styles.buyButton} 
+          onPress={() => {
+            addToCart(product, quantity);
+            Alert.alert(
+              'Berhasil', 
+              'Produk ditambahkan ke keranjang',
+              [
+                { text: 'Lanjut Belanja', style: 'cancel' },
+                { text: 'Lihat Keranjang', onPress: () => navigation.navigate('Cart') }
+              ]
+            );
+          }}
+        >
+          <Ionicons name="cart" size={20} color="#fff" style={{ marginRight: 8 }} />
+          <Text style={styles.buyButtonText}>+ Keranjang</Text>
         </TouchableOpacity>
       </View>
 
@@ -554,33 +593,81 @@ const styles = StyleSheet.create({
   },
   bottomBar: {
     flexDirection: 'row',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
     backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingBottom: 24, // for safe area bottom
   },
+  chatButtonContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
   chatButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 4,
+  },
+  chatButtonText: {
+    fontSize: 10,
+    color: Colors.text,
+    marginTop: 2,
+  },
+  verticalDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: Colors.border,
+    marginHorizontal: 8,
+  },
+  addToCartButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: Colors.primary,
+    borderRadius: 8,
+    height: 44,
+    marginRight: 8,
+  },
+  addToCartButtonText: {
+    color: Colors.primary,
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginLeft: 4,
+  },
+  buyNowButton: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
-  },
-  buyButton: {
-    flex: 1,
-    height: 48,
     backgroundColor: Colors.primary,
     borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    height: 44,
   },
-  buyButtonText: {
+  buyNowButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
+  },
+  // Removed old styles to avoid confusion but kept others
+  quantityContainer: {
+    display: 'none',
+  },
+  qtyBtn: {
+    display: 'none',
+  },
+  qtyValueContainer: {
+    display: 'none',
+  },
+  qtyValue: {
+    display: 'none',
+  },
+  buyButton: {
+    display: 'none',
   },
 });
