@@ -586,17 +586,17 @@ const styles = StyleSheet.create({
   },
   qtyBtnMini: {
     backgroundColor: Colors.primary,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   qtyTextMini: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: 'bold',
     color: Colors.text,
-    marginHorizontal: 8,
+    marginHorizontal: 10,
   },
   addToCartButton: {
     flexDirection: 'row',

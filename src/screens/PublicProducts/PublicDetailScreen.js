@@ -57,7 +57,8 @@ export default function PublicDetailScreen({ navigation, route }) {
   };
 
   const handleBuy = () => {
-    const message = `Halo, saya tertarik dengan produk ${product.title} (Rp ${Number(product.price).toLocaleString('id-ID')}).`;
+    const total = (Number(product.price) || 0) * quantity;
+    const message = `Halo, saya ingin memesan produk:\n\n${product.title}\nJumlah: ${quantity}\nHarga Satuan: Rp ${Number(product.price).toLocaleString('id-ID')}\nTotal: Rp ${total.toLocaleString('id-ID')}`;
     const url = `https://wa.me/6282125910120?text=${encodeURIComponent(message)}`;
     Linking.openURL(url).catch(() => {});
   };
@@ -309,25 +310,22 @@ export default function PublicDetailScreen({ navigation, route }) {
       </ScrollView>
 
       <View style={styles.bottomBar}>
-        <View style={styles.quantityContainer}>
+        <View style={styles.chatButtonContainer}>
           <TouchableOpacity 
-            style={styles.qtyBtn} 
-            onPress={() => setQuantity(Math.max(1, quantity - 1))}
+            style={styles.chatButton} 
+            onPress={handleChat}
           >
-            <Ionicons name="remove" size={20} color={Colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.qtyValue}>{quantity}</Text>
-          <TouchableOpacity 
-            style={styles.qtyBtn}
-            onPress={() => setQuantity(quantity + 1)}
-          >
-            <Ionicons name="add" size={20} color={Colors.text} />
+            <Ionicons name="chatbubble-ellipses-outline" size={24} color={Colors.primary} />
+            <Text style={styles.chatButtonText}>Chat</Text>
           </TouchableOpacity>
         </View>
+
+        <View style={styles.verticalDivider} />
+
         <TouchableOpacity 
-          style={styles.buyButton} 
+          style={styles.addToCartButton} 
           onPress={() => {
-            addToCart(product, quantity);
+            addToCart(product, 1);
             Alert.alert(
               'Berhasil', 
               'Produk ditambahkan ke keranjang',
@@ -338,8 +336,15 @@ export default function PublicDetailScreen({ navigation, route }) {
             );
           }}
         >
-          <Ionicons name="cart" size={20} color="#fff" style={{ marginRight: 8 }} />
-          <Text style={styles.buyButtonText}>+ Keranjang</Text>
+          <Ionicons name="cart-outline" size={24} color={Colors.primary} />
+          <Text style={styles.addToCartButtonText}>+ Keranjang</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.buyNowButton} 
+          onPress={handleBuy}
+        >
+          <Text style={styles.buyNowButtonText}>Beli Sekarang</Text>
         </TouchableOpacity>
       </View>
 
@@ -602,6 +607,53 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingBottom: 24, // for safe area bottom
   },
+  quantitySection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  quantityLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  quantityControl: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 8,
+    height: 36,
+  },
+  qtyBtn: {
+    width: 36,
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  qtyBtnDisabled: {
+    backgroundColor: '#f5f5f5',
+  },
+  qtyValue: {
+    minWidth: 40,
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: Colors.text,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 8,
+    height: '100%',
+    textAlignVertical: 'center',
+    lineHeight: 34, // approximate vertical center
+  },
   chatButtonContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -653,21 +705,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: 'bold',
-  },
-  // Removed old styles to avoid confusion but kept others
-  quantityContainer: {
-    display: 'none',
-  },
-  qtyBtn: {
-    display: 'none',
-  },
-  qtyValueContainer: {
-    display: 'none',
-  },
-  qtyValue: {
-    display: 'none',
-  },
-  buyButton: {
-    display: 'none',
   },
 });
