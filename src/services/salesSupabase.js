@@ -118,6 +118,81 @@ export const getSaleById = async (saleId) => {
   }
 };
 
+// Delete sale item by ID
+export const deleteSaleItem = async (itemId) => {
+  console.log('🗑️ salesSupabase: Deleting sale item:', itemId);
+  
+  try {
+    const supabase = getSupabaseClient();
+    
+    // First, get the sale_id and line_total/profit to update the parent sale
+    const { data: itemData, error: fetchError } = await supabase
+      .from('sale_items')
+      .select('sale_id, line_total, line_profit')
+      .eq('id', itemId)
+      .single();
+      
+    if (fetchError) throw fetchError;
+    
+    if (!itemData) {
+      throw new Error('Item not found');
+    }
+
+    const { sale_id, line_total, line_profit } = itemData;
+
+    // Delete the item
+    const { error: deleteError } = await supabase
+      .from('sale_items')
+      .delete()
+      .eq('id', itemId);
+
+    if (deleteError) throw deleteError;
+
+    // Update parent sale totals
+    // Get current sale totals
+    const { data: saleData, error: saleError } = await supabase
+      .from('sales')
+      .select('total, profit')
+      .eq('id', sale_id)
+      .single();
+      
+    if (saleError) throw saleError;
+    
+    // Update sale
+    const newTotal = (saleData.total || 0) - (line_total || 0);
+    const newProfit = (saleData.profit || 0) - (line_profit || 0);
+    
+    const { error: updateError } = await supabase
+      .from('sales')
+      .update({ 
+        total: Math.max(0, newTotal),
+        profit: newProfit
+      })
+      .eq('id', sale_id);
+      
+    if (updateError) throw updateError;
+    
+    // Check if sale has no more items, if so delete the sale?
+    // For now, let's just leave the empty sale or we could check count
+    const { count, error: countError } = await supabase
+      .from('sale_items')
+      .select('id', { count: 'exact', head: true })
+      .eq('sale_id', sale_id);
+      
+    if (!countError && count === 0) {
+      // Delete the empty sale record
+      await supabase.from('sales').delete().eq('id', sale_id);
+      console.log('🗑️ salesSupabase: Deleted empty sale record:', sale_id);
+    }
+
+    console.log('✅ salesSupabase: Sale item deleted successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ salesSupabase: Error deleting sale item:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 // Get sales analytics for different periods
 export const getSalesAnalytics = async (userId, period = 'today', customRange = null) => {
   console.log('📊 salesSupabase: Getting sales analytics for user:', userId, 'period:', period);

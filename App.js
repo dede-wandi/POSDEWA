@@ -34,6 +34,7 @@ import SalesAnalyticsScreen from './src/screens/SalesAnalyticsScreen';
 import FinanceScreen from './src/screens/FinanceScreen';
 import TransactionHistoryScreen from './src/screens/TransactionHistoryScreen';
 import TransactionReportScreen from './src/screens/TransactionReportScreen';
+import SalesReportScreen from './src/screens/SalesReportScreen';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { CartProvider } from './src/contexts/CartContext';
 import { ToastProvider } from './src/contexts/ToastContext';
@@ -267,6 +268,14 @@ function MainStack() {
       <Stack.Screen 
         name="TransactionReport" 
         component={TransactionReportScreen}
+        options={{
+          presentation: 'modal',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen 
+        name="SalesReport" 
+        component={SalesReportScreen}
         options={{
           presentation: 'modal',
           headerShown: false,
