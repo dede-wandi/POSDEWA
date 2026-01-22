@@ -13,6 +13,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
+import * as FileSystem from 'expo-file-system';
+import { shareAsync } from 'expo-sharing';
+import * as XLSX from 'xlsx';
 import { useAuth } from '../context/AuthContext';
 import { getSalesHistory, deleteSaleItem } from '../services/salesSupabase';
 import { Colors } from '../theme';
@@ -363,6 +366,21 @@ const styles = StyleSheet.create({
   },
   backButton: {
     marginRight: 16,
+  },
+  exportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#4CAF50',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    marginRight: 8,
+  },
+  exportButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginLeft: 4,
   },
   selectButton: {
     paddingVertical: 6,
