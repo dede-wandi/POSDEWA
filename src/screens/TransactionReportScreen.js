@@ -9,11 +9,15 @@ import {
   Modal,
   TextInput,
   ActivityIndicator,
-  Dimensions
+  Dimensions,
+  Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import * as XLSX from 'xlsx';
 import { useAuth } from '../context/AuthContext';
 import { getTransactionReport } from '../services/financeSupabase';
 import { getSalesAnalytics } from '../services/salesSupabase';
@@ -152,6 +156,71 @@ export default function TransactionReportScreen({ navigation }) {
     }
   };
 
+  const exportToExcel = async () => {
+    if (reportData.length === 0) {
+      alert('Tidak ada data untuk diekspor');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Prepare data
+      const dataToExport = reportData.map((item, index) => ({
+        'No': index + 1,
+        'Channel': item.channel_name,
+        'Tipe': item.channel_type,
+        'Jumlah Transaksi': item.transaction_count,
+        'Total Nominal': item.total_amount,
+        'Persentase': getPercentage(item.total_amount) + '%'
+      }));
+
+      // Add summary
+      dataToExport.push({});
+      dataToExport.push({
+        'Channel': 'TOTAL',
+        'Jumlah Transaksi': totalTransactions,
+        'Total Nominal': totalAmount
+      });
+      
+      const fileName = `Laporan_Transaksi_${new Date().getTime()}.xlsx`;
+
+      const ws = XLSX.utils.json_to_sheet(dataToExport);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Laporan Transaksi");
+
+      if (Platform.OS === 'web') {
+        XLSX.writeFile(wb, fileName);
+        setLoading(false);
+        return;
+      }
+
+      const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
+      // Use cacheDirectory for temporary files
+      const uri = FileSystem.cacheDirectory + fileName;
+
+      await FileSystem.writeAsStringAsync(uri, wbout, {
+        encoding: FileSystem.EncodingType.Base64
+      });
+
+      if (!(await Sharing.isAvailableAsync())) {
+        alert('Fitur sharing tidak tersedia di perangkat ini');
+        return;
+      }
+
+      await Sharing.shareAsync(uri, {
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        dialogTitle: 'Download Laporan Transaksi',
+        UTI: 'com.microsoft.excel.xlsx'
+      });
+
+    } catch (error) {
+      console.error('Export Error:', error);
+      alert('Gagal mengekspor data: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
     await loadReportData();
@@ -248,12 +317,20 @@ export default function TransactionReportScreen({ navigation }) {
           <Ionicons name="arrow-back" size={24} color="#007AFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Laporan Transaksi</Text>
-        <TouchableOpacity
-          style={styles.filterButton}
-          onPress={() => setShowDateFilterModal(true)}
-        >
-          <Ionicons name="filter" size={20} color="#007AFF" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row' }}>
+          <TouchableOpacity
+            style={[styles.filterButton, { marginRight: 8 }]}
+            onPress={exportToExcel}
+          >
+            <Ionicons name="download" size={20} color="#007AFF" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.filterButton}
+            onPress={() => setShowDateFilterModal(true)}
+          >
+            <Ionicons name="filter" size={20} color="#007AFF" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Filter Info */}

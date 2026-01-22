@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
 import * as FileSystem from 'expo-file-system';
-import { shareAsync } from 'expo-sharing';
+import * as Sharing from 'expo-sharing';
 import * as XLSX from 'xlsx';
 import { useAuth } from '../context/AuthContext';
 import { getSalesHistory, deleteSaleItem } from '../services/salesSupabase';
@@ -106,6 +106,76 @@ export default function SalesReportScreen({ navigation }) {
     items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     setFlattenedItems(items);
+  };
+
+  const exportToExcel = async () => {
+    if (flattenedItems.length === 0) {
+      Alert.alert('Data Kosong', 'Tidak ada data untuk diekspor');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Prepare data
+      const dataToExport = flattenedItems.map((item, index) => ({
+        'No': index + 1,
+        'Tanggal': formatDateStr(item.created_at),
+        'Nama Produk': item.product_name,
+        'Qty': item.qty,
+        'Harga Satuan': item.price,
+        'Total Harga': item.line_total,
+        'Profit': item.line_profit,
+      }));
+
+      // Add summary row at the bottom
+      dataToExport.push({
+        'No': '',
+        'Tanggal': '',
+        'Nama Produk': 'TOTAL',
+        'Qty': '',
+        'Harga Satuan': '',
+        'Total Harga': totalSales,
+        'Profit': totalProfit,
+      });
+      
+      const fileName = `Laporan_Penjualan_${new Date().getTime()}.xlsx`;
+
+      const ws = XLSX.utils.json_to_sheet(dataToExport);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Laporan Penjualan");
+
+      if (Platform.OS === 'web') {
+        XLSX.writeFile(wb, fileName);
+        setLoading(false);
+        return;
+      }
+
+      const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
+      // Use cacheDirectory for temporary files to be shared
+      const uri = FileSystem.cacheDirectory + fileName;
+
+      await FileSystem.writeAsStringAsync(uri, wbout, {
+        encoding: FileSystem.EncodingType.Base64
+      });
+
+      // Check if sharing is available
+      if (!(await Sharing.isAvailableAsync())) {
+        Alert.alert('Info', 'Fitur sharing tidak tersedia di perangkat ini');
+        return;
+      }
+
+      await Sharing.shareAsync(uri, {
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        dialogTitle: 'Download Laporan Penjualan',
+        UTI: 'com.microsoft.excel.xlsx'
+      });
+
+    } catch (error) {
+      console.error('Export Error:', error);
+      Alert.alert('Error', 'Gagal mengekspor data: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDeleteItem = (item) => {
@@ -229,21 +299,31 @@ export default function SalesReportScreen({ navigation }) {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={Colors.text} />
           </TouchableOpacity>
-          <Text style={styles.title}>Report Penjualan</Text>
+          <Text style={styles.title} numberOfLines={1}>Report Penjualan</Text>
         </View>
         
-        <TouchableOpacity 
-          style={[styles.selectButton, isSelectMode && styles.selectButtonActive]} 
-          onPress={() => setIsSelectMode(!isSelectMode)}
-        >
-          <Text style={[styles.selectButtonText, isSelectMode && styles.selectButtonTextActive]}>
-            {isSelectMode ? 'Selesai' : 'Select'}
-          </Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity 
+            style={styles.exportButton} 
+            onPress={exportToExcel}
+          >
+            <Ionicons name="download" size={20} color="#fff" />
+            <Text style={styles.exportButtonText}>Excel</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.selectButton, isSelectMode && styles.selectButtonActive]} 
+            onPress={() => setIsSelectMode(!isSelectMode)}
+          >
+            <Text style={[styles.selectButtonText, isSelectMode && styles.selectButtonTextActive]}>
+              {isSelectMode ? 'Selesai' : 'Select'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Filters */}
@@ -358,6 +438,9 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    zIndex: 10,
+    elevation: 4,
+    backgroundColor: '#fff',
   },
   title: {
     fontSize: 18,
