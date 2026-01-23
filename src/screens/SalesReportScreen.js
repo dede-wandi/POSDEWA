@@ -515,6 +515,7 @@ export default function SalesReportScreen({ navigation }) {
       {visibleColumns.date && <Text style={[styles.headerCell, { width: 65 }]}>Tanggal</Text>}
       {visibleColumns.invoice && <Text style={[styles.headerCell, { width: 105, marginRight: 8 }]}>No. Inv</Text>}
       {visibleColumns.product && <Text style={[styles.headerCell, { flex: 1 }]}>Nama Produk</Text>}
+      {visibleColumns.capitalPrice && <Text style={[styles.headerCell, { width: 75, textAlign: 'right' }]}>Modal</Text>}
       {visibleColumns.price && <Text style={[styles.headerCell, { width: 75, textAlign: 'right' }]}>Harga</Text>}
       {visibleColumns.profit && <Text style={[styles.headerCell, { width: 75, textAlign: 'right' }]}>Profit</Text>}
       {visibleColumns.action && isSelectMode && (
@@ -531,6 +532,7 @@ export default function SalesReportScreen({ navigation }) {
         {item.original_sale?.no_invoice || '-'}
       </Text>}
       {visibleColumns.product && <Text style={[styles.cell, { flex: 1 }]}>{item.product_name} {item.qty > 1 ? `(${item.qty}x)` : ''}</Text>}
+      {visibleColumns.capitalPrice && <Text style={[styles.cell, { width: 75, textAlign: 'right', fontSize: 10 }]}>{formatCurrency((item.cost_price || 0) * (item.qty || 1))}</Text>}
       {visibleColumns.price && <Text style={[styles.cell, { width: 75, textAlign: 'right', fontSize: 10 }]}>{formatCurrency(item.line_total)}</Text>}
       {visibleColumns.profit && <Text style={[styles.cell, { width: 75, textAlign: 'right', fontSize: 10, color: item.line_profit >= 0 ? 'green' : 'red' }]}>
         {formatCurrency(item.line_profit)}
