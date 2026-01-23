@@ -79,7 +79,7 @@ export default function SalesScreen({ navigation, route }) {
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [query]);
+  }, [query, allProducts]);
 
   useEffect(() => {
     let active = true;
