@@ -598,32 +598,32 @@ export default function SalesReportScreen({ navigation }) {
 
   const renderHeader = () => (
     <View style={styles.tableHeader}>
-      <Text style={[styles.headerCell, { width: 35 }]}>No</Text>
-      <Text style={[styles.headerCell, { width: 75 }]}>Tanggal</Text>
-      <Text style={[styles.headerCell, { width: 90, marginRight: 12 }]}>No. Inv</Text>
+      <Text style={[styles.headerCell, { width: 30 }]}>No</Text>
+      <Text style={[styles.headerCell, { width: 65 }]}>Tanggal</Text>
+      <Text style={[styles.headerCell, { width: 105, marginRight: 8 }]}>No. Inv</Text>
       <Text style={[styles.headerCell, { flex: 1 }]}>Nama Produk</Text>
-      <Text style={[styles.headerCell, { width: 85, textAlign: 'right' }]}>Harga</Text>
-      <Text style={[styles.headerCell, { width: 85, textAlign: 'right' }]}>Profit</Text>
+      <Text style={[styles.headerCell, { width: 75, textAlign: 'right' }]}>Harga</Text>
+      <Text style={[styles.headerCell, { width: 75, textAlign: 'right' }]}>Profit</Text>
       {isSelectMode && (
-        <Text style={[styles.headerCell, { width: 50, textAlign: 'center' }]}>Act</Text>
+        <Text style={[styles.headerCell, { width: 40, textAlign: 'center' }]}>Act</Text>
       )}
     </View>
   );
 
   const renderItem = ({ item, index }) => (
     <View style={styles.row}>
-      <Text style={[styles.cell, { width: 35 }]}>{index + 1}</Text>
-      <Text style={[styles.cell, { width: 75, fontSize: 11 }]}>{formatDateStr(item.created_at)}</Text>
-      <Text style={[styles.cell, { width: 90, fontSize: 10, marginRight: 20 }]} numberOfLines={1} ellipsizeMode="middle">
+      <Text style={[styles.cell, { width: 30 }]}>{index + 1}</Text>
+      <Text style={[styles.cell, { width: 65, fontSize: 10 }]}>{formatDateStr(item.created_at)}</Text>
+      <Text style={[styles.cell, { width: 105, fontSize: 9, marginRight: 8, color: '#555' }]}>
         {item.original_sale?.no_invoice || '-'}
       </Text>
       <Text style={[styles.cell, { flex: 1 }]}>{item.product_name} {item.qty > 1 ? `(${item.qty}x)` : ''}</Text>
-      <Text style={[styles.cell, { width: 85, textAlign: 'right', fontSize: 11 }]}>{formatCurrency(item.line_total)}</Text>
-      <Text style={[styles.cell, { width: 85, textAlign: 'right', fontSize: 11, color: item.line_profit >= 0 ? 'green' : 'red' }]}>
+      <Text style={[styles.cell, { width: 75, textAlign: 'right', fontSize: 10 }]}>{formatCurrency(item.line_total)}</Text>
+      <Text style={[styles.cell, { width: 75, textAlign: 'right', fontSize: 10, color: item.line_profit >= 0 ? 'green' : 'red' }]}>
         {formatCurrency(item.line_profit)}
       </Text>
       {isSelectMode && (
-        <View style={[styles.cell, { width: 50, alignItems: 'center', justifyContent: 'center' }]}>
+        <View style={[styles.cell, { width: 40, alignItems: 'center', justifyContent: 'center' }]}>
           <TouchableOpacity 
             onPress={() => handleDeleteItem(item)}
             style={styles.deleteButton}
