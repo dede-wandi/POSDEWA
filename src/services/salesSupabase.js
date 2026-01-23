@@ -370,7 +370,7 @@ export const getSalesAnalytics = async (userId, period = 'today', customRange = 
 
     const { data, error } = await supabase
       .from('sales')
-      .select('id, total, profit, created_at, sale_items(line_profit)')
+      .select('id, total, profit, created_at, sale_items(qty, price, cost_price, line_profit)')
       .eq('user_id', userId)
       .gte('created_at', startDate.toISOString())
       .lt('created_at', endDate.toISOString())
@@ -389,11 +389,16 @@ export const getSalesAnalytics = async (userId, period = 'today', customRange = 
       // Strictly use sale_items for profit calculation to match SalesReportScreen
       // If a sale has no items (empty array), it contributes 0 profit (Report ignores empty sales)
       if (sale.sale_items && sale.sale_items.length > 0) {
-        const itemsProfit = sale.sale_items.reduce((is, item) => is + (item.line_profit || 0), 0);
+        const itemsProfit = sale.sale_items.reduce((is, item) => {
+            let p = typeof item.line_profit === 'number'
+               ? item.line_profit
+               : ((Number(item.price) - Number(item.cost_price || 0)) * Number(item.qty || 0));
+            return is + p;
+        }, 0);
         return sum + itemsProfit;
       }
-      // If no items, profit is 0 (ignore sale.profit which might be stale/zombie)
-      return sum + 0;
+      // If no items, try header profit or 0
+      return sum + (sale.profit || 0);
     }, 0);
     
     const transactions = sales.length;
@@ -479,7 +484,7 @@ export const getSalesPerformance = async (userId, customStartDate = null, custom
     
     const { data, error } = await supabase
       .from('sales')
-      .select('created_at, total, profit, sale_items(line_profit)')
+      .select('created_at, total, profit, sale_items(qty, price, cost_price, line_profit)')
       .eq('user_id', userId)
       .gte('created_at', startDate.toISOString())
       .lt('created_at', queryEndDate.toISOString())
@@ -539,9 +544,16 @@ export const getSalesPerformance = async (userId, customStartDate = null, custom
           // Calculate profit from items if available
           let saleProfit = 0;
           if (sale.sale_items && sale.sale_items.length > 0) {
-            saleProfit = sale.sale_items.reduce((sum, item) => sum + (item.line_profit || 0), 0);
+            saleProfit = sale.sale_items.reduce((sum, item) => {
+                let p = typeof item.line_profit === 'number'
+                   ? item.line_profit
+                   : ((Number(item.price) - Number(item.cost_price || 0)) * Number(item.qty || 0));
+                return sum + p;
+            }, 0);
+          } else {
+             // If no items, fallback to header profit
+             saleProfit = sale.profit || 0;
           }
-          // If no items, saleProfit remains 0 (ignoring sale.profit)
           
           dailyStats[dateStr].totalProfit += saleProfit;
           dailyStats[dateStr].transactions += 1;

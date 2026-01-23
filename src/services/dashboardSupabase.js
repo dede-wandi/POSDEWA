@@ -24,10 +24,28 @@ export async function getDashboardStats(userId) {
 
     console.log('📡 dashboardSupabase: Fetching dashboard statistics...');
 
+    // Helper to calculate total profit from sales array
+    const calculateTotalProfit = (sales) => {
+      if (!sales) return 0;
+      return sales.reduce((totalProfit, sale) => {
+        const items = sale.sale_items || [];
+        if (items.length > 0) {
+          const saleProfit = items.reduce((itemSum, item) => {
+            let p = typeof item.line_profit === 'number'
+               ? item.line_profit
+               : ((Number(item.price) - Number(item.cost_price || 0)) * Number(item.qty || 0));
+            return itemSum + p;
+          }, 0);
+          return totalProfit + saleProfit;
+        }
+        return totalProfit + (sale.profit || 0);
+      }, 0);
+    };
+
     // Get today's sales
     const { data: todaySales, error: todayError } = await supabase
       .from('sales')
-      .select('total, profit')
+      .select('total, profit, sale_items (qty, price, cost_price, line_profit)')
       .eq('user_id', session.user.id)
       .gte('created_at', today + 'T00:00:00')
       .lt('created_at', today + 'T23:59:59');
@@ -44,7 +62,7 @@ export async function getDashboardStats(userId) {
 
     const { data: yesterdaySales, error: yesterdayError } = await supabase
       .from('sales')
-      .select('total, profit')
+      .select('total, profit, sale_items (qty, price, cost_price, line_profit)')
       .eq('user_id', session.user.id)
       .gte('created_at', yesterdayStr + 'T00:00:00')
       .lt('created_at', yesterdayStr + 'T23:59:59');
@@ -57,7 +75,7 @@ export async function getDashboardStats(userId) {
     // Get this month's sales
     const { data: monthSales, error: monthError } = await supabase
       .from('sales')
-      .select('total, profit')
+      .select('total, profit, sale_items (qty, price, cost_price, line_profit)')
       .eq('user_id', session.user.id)
       .gte('created_at', startOfMonth + 'T00:00:00');
 
@@ -73,7 +91,7 @@ export async function getDashboardStats(userId) {
 
     const { data: lastMonthSales, error: lastMonthError } = await supabase
       .from('sales')
-      .select('total, profit')
+      .select('total, profit, sale_items (qty, price, cost_price, line_profit)')
       .eq('user_id', session.user.id)
       .gte('created_at', lastMonthStart + 'T00:00:00')
       .lte('created_at', lastMonthEndStr + 'T23:59:59');
@@ -109,18 +127,18 @@ export async function getDashboardStats(userId) {
 
     // Calculate statistics
     const todayTotal = todaySales.reduce((sum, sale) => sum + (sale.total || 0), 0);
-    const todayProfit = todaySales.reduce((sum, sale) => sum + (sale.profit || 0), 0);
+    const todayProfit = calculateTotalProfit(todaySales);
     const todayTransactions = todaySales.length;
 
     const yesterdayTotal = yesterdaySales ? yesterdaySales.reduce((sum, sale) => sum + (sale.total || 0), 0) : 0;
-    const yesterdayProfit = yesterdaySales ? yesterdaySales.reduce((sum, sale) => sum + (sale.profit || 0), 0) : 0;
+    const yesterdayProfit = calculateTotalProfit(yesterdaySales);
 
     const monthTotal = monthSales.reduce((sum, sale) => sum + (sale.total || 0), 0);
-    const monthProfit = monthSales.reduce((sum, sale) => sum + (sale.profit || 0), 0);
+    const monthProfit = calculateTotalProfit(monthSales);
     const monthTransactions = monthSales.length;
 
     const lastMonthTotal = lastMonthSales ? lastMonthSales.reduce((sum, sale) => sum + (sale.total || 0), 0) : 0;
-    const lastMonthProfit = lastMonthSales ? lastMonthSales.reduce((sum, sale) => sum + (sale.profit || 0), 0) : 0;
+    const lastMonthProfit = calculateTotalProfit(lastMonthSales);
 
     const stats = {
       today: {
