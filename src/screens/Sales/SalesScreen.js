@@ -34,17 +34,24 @@ export default function SalesScreen({ navigation, route }) {
 
   const loadInitialProducts = async () => {
     try {
-      const products = await getProducts(user?.id);
+      if (!user?.id) return;
+      setRefreshing(true);
+      const products = await getProducts(user.id);
+      console.log('📦 SalesScreen: Loaded products:', products?.length);
       setAllProducts(products || []);
       setResults(products || []);
     } catch (error) {
       console.error('Error loading products:', error);
       Alert.alert('Error', 'Gagal memuat produk');
+    } finally {
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    loadInitialProducts();
+    if (user?.id) {
+      loadInitialProducts();
+    }
   }, [user?.id]);
 
   const handleSearch = async () => {

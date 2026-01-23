@@ -173,37 +173,14 @@ function MainTabs() {
     >
       <Tab.Screen name="Home" component={DashboardScreen} options={{ title: 'Home' }} />
       <Tab.Screen name="Produk" component={ProductsStack} options={{ title: 'Produk' }} />
-      {/* <Tab.Screen 
+      <Tab.Screen 
         name="Scan" 
         component={BarcodeScanScreen} 
         options={{ 
           title: 'Scan',
-          tabBarLabel: '',
-          tabBarButton: (props) => (
-            <TouchableOpacity
-              {...props}
-              style={{
-                position: 'relative',
-                top: -16,
-                width: 64,
-                height: 64,
-                borderRadius: 32,
-                backgroundColor: Colors.primary,
-                alignItems: 'center',
-                justifyContent: 'center',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.25,
-                shadowRadius: 8,
-                elevation: 8,
-              }}
-              activeOpacity={0.85}
-            >
-              <Ionicons name="scan" size={28} color="#fff" />
-            </TouchableOpacity>
-          ),
+          tabBarButton: () => null, // Hide from tab bar
         }} 
-      /> */}
+      />
       <Tab.Screen name="Penjualan" component={SalesStack} options={{ title: 'Penjualan' }} />
       <Tab.Screen name="Akun" component={AccountScreen} options={{ title: 'Akun' }} />
     </Tab.Navigator>
