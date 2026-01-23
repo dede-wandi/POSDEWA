@@ -19,8 +19,23 @@ export async function getDashboardStats(userId) {
       return { success: false, error: 'User tidak ter-autentikasi' };
     }
 
-    const today = new Date().toISOString().split('T')[0];
-    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+    // Date Helpers (Local -> ISO UTC)
+    const now = new Date();
+    
+    // Today
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    
+    // Yesterday
+    const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    const yesterdayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    // This Month
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    
+    // Last Month
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 1); // Start of this month is end of last month
 
     console.log('📡 dashboardSupabase: Fetching dashboard statistics...');
 
@@ -47,8 +62,8 @@ export async function getDashboardStats(userId) {
       .from('sales')
       .select('total, profit, sale_items (qty, price, cost_price, line_profit)')
       .eq('user_id', session.user.id)
-      .gte('created_at', today + 'T00:00:00')
-      .lt('created_at', today + 'T23:59:59');
+      .gte('created_at', todayStart.toISOString())
+      .lt('created_at', todayEnd.toISOString());
 
     if (todayError) {
       console.log('❌ dashboardSupabase: Error fetching today sales:', todayError);
@@ -56,16 +71,12 @@ export async function getDashboardStats(userId) {
     }
 
     // Get yesterday's sales
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
-
     const { data: yesterdaySales, error: yesterdayError } = await supabase
       .from('sales')
       .select('total, profit, sale_items (qty, price, cost_price, line_profit)')
       .eq('user_id', session.user.id)
-      .gte('created_at', yesterdayStr + 'T00:00:00')
-      .lt('created_at', yesterdayStr + 'T23:59:59');
+      .gte('created_at', yesterdayStart.toISOString())
+      .lt('created_at', yesterdayEnd.toISOString());
 
     if (yesterdayError) {
       console.log('❌ dashboardSupabase: Error fetching yesterday sales:', yesterdayError);
@@ -77,7 +88,7 @@ export async function getDashboardStats(userId) {
       .from('sales')
       .select('total, profit, sale_items (qty, price, cost_price, line_profit)')
       .eq('user_id', session.user.id)
-      .gte('created_at', startOfMonth + 'T00:00:00');
+      .gte('created_at', thisMonthStart.toISOString());
 
     if (monthError) {
       console.log('❌ dashboardSupabase: Error fetching month sales:', monthError);
@@ -85,16 +96,12 @@ export async function getDashboardStats(userId) {
     }
 
     // Get last month's sales
-    const lastMonthStart = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString().split('T')[0];
-    const lastMonthEnd = new Date(new Date().getFullYear(), new Date().getMonth(), 0); // Last day of previous month
-    const lastMonthEndStr = lastMonthEnd.toISOString().split('T')[0];
-
     const { data: lastMonthSales, error: lastMonthError } = await supabase
       .from('sales')
       .select('total, profit, sale_items (qty, price, cost_price, line_profit)')
       .eq('user_id', session.user.id)
-      .gte('created_at', lastMonthStart + 'T00:00:00')
-      .lte('created_at', lastMonthEndStr + 'T23:59:59');
+      .gte('created_at', lastMonthStart.toISOString())
+      .lt('created_at', lastMonthEnd.toISOString());
 
     if (lastMonthError) {
       console.log('❌ dashboardSupabase: Error fetching last month sales:', lastMonthError);
@@ -191,7 +198,10 @@ export async function getRecentSales(userId, limit = 5) {
 
     console.log('📡 dashboardSupabase: Fetching recent sales...');
 
-    const today = new Date().toISOString().split('T')[0];
+    // Today Date (Local -> ISO UTC)
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
 
     const { data: recentSales, error } = await supabase
       .from('sales')
@@ -209,8 +219,8 @@ export async function getRecentSales(userId, limit = 5) {
         )
       `)
       .eq('user_id', session.user.id)
-      .gte('created_at', today + 'T00:00:00')
-      .lt('created_at', today + 'T23:59:59')
+      .gte('created_at', todayStart.toISOString())
+      .lt('created_at', todayEnd.toISOString())
       .order('created_at', { ascending: false })
       .limit(limit);
 
