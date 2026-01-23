@@ -19,7 +19,7 @@ import * as Sharing from 'expo-sharing';
 import * as XLSX from 'xlsx';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { getSalesHistory, deleteSaleItem, deleteSale, checkOrphanItems, deleteOrphanItems } from '../services/salesSupabase';
+import { getSalesHistory, deleteSaleItem, deleteSale } from '../services/salesSupabase';
 import { Colors } from '../theme';
 
 export default function SalesReportScreen({ navigation }) {
@@ -46,9 +46,18 @@ export default function SalesReportScreen({ navigation }) {
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [filteredTotals, setFilteredTotals] = useState({ total: 0, profit: 0 });
 
-  // Orphan Data Check
-  const [orphanItems, setOrphanItems] = useState([]);
-  const [showOrphanModal, setShowOrphanModal] = useState(false);
+  // Column Visibility State
+  const [visibleColumns, setVisibleColumns] = useState({
+    no: true,
+    date: true,
+    invoice: true,
+    product: true,
+    price: true,
+    profit: true,
+    action: true
+  });
+  const [showColumnModal, setShowColumnModal] = useState(false);
+  const [tempVisibleColumns, setTempVisibleColumns] = useState({...visibleColumns});
 
   useEffect(() => {
     loadData();
@@ -456,61 +465,18 @@ export default function SalesReportScreen({ navigation }) {
     setMarkedDates({});
   };
 
-  const handleCheckIntegrity = async () => {
-    setLoading(true);
-    try {
-        const result = await checkOrphanItems();
-        if (result.success) {
-            setOrphanItems(result.orphans);
-            if (result.orphans.length > 0) {
-                setShowOrphanModal(true);
-            } else {
-                Alert.alert('Info', 'Data aman. Tidak ditemukan item tanpa induk (orphan).');
-            }
-        } else {
-            Alert.alert('Error', 'Gagal memeriksa data: ' + result.error);
-        }
-    } catch (error) {
-        Alert.alert('Error', error.message);
-    } finally {
-        setLoading(false);
-    }
+  const openColumnModal = () => {
+    setTempVisibleColumns({...visibleColumns});
+    setShowColumnModal(true);
   };
 
-  const handleDeleteOrphans = async () => {
-    if (orphanItems.length === 0) return;
-    
-    Alert.alert(
-        'Konfirmasi Hapus',
-        `Apakah Anda yakin ingin menghapus ${orphanItems.length} item data sampah ini?`,
-        [
-            { text: 'Batal', style: 'cancel' },
-            { 
-                text: 'Hapus', 
-                style: 'destructive',
-                onPress: async () => {
-                    setLoading(true);
-                    try {
-                        const ids = orphanItems.map(item => item.id);
-                        const result = await deleteOrphanItems(ids);
-                        if (result.success) {
-                            Alert.alert('Sukses', 'Data sampah berhasil dibersihkan.');
-                            setShowOrphanModal(false);
-                            setOrphanItems([]);
-                            // Reload data just in case
-                            loadData();
-                        } else {
-                            Alert.alert('Gagal', 'Gagal menghapus: ' + result.error);
-                        }
-                    } catch (error) {
-                        Alert.alert('Error', error.message);
-                    } finally {
-                        setLoading(false);
-                    }
-                }
-            }
-        ]
-    );
+  const toggleColumn = (key) => {
+    setTempVisibleColumns(prev => ({...prev, [key]: !prev[key]}));
+  };
+
+  const saveColumns = () => {
+    setVisibleColumns(tempVisibleColumns);
+    setShowColumnModal(false);
   };
 
   const renderYearlyContent = () => {
@@ -600,14 +566,6 @@ export default function SalesReportScreen({ navigation }) {
           >
             <Ionicons name="options" size={20} color="#fff" />
             <Text style={styles.exportButtonText}>Atur Kolom</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.exportButton, { backgroundColor: '#FF9800', marginRight: 8 }]} 
-            onPress={handleCheckIntegrity}
-          >
-            <Ionicons name="construct" size={20} color="#fff" />
-            <Text style={styles.exportButtonText}>Cek Data</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
@@ -868,43 +826,51 @@ export default function SalesReportScreen({ navigation }) {
           </View>
         </View>
       </Modal>
-      {/* Orphan Items Modal */}
-      <Modal visible={showOrphanModal} animationType="slide" transparent>
+      {/* Column Settings Modal */}
+      <Modal visible={showColumnModal} animationType="fade" transparent>
         <View style={styles.modalContainer}>
-          <View style={[styles.modalContent, { height: '80%' }]}>
-            <Text style={[styles.modalTitle, { color: 'red' }]}>Data Penjualan Error (Orphan)</Text>
-            <Text style={{ marginBottom: 10, color: '#666', fontSize: 12 }}>
-                Item berikut ada di database tetapi tidak memiliki data transaksi induk (Sales). 
-                Ini menyebabkan ketidaksesuaian data.
-            </Text>
-            
-            <FlatList 
-                data={orphanItems}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item, index }) => (
-                    <View style={[styles.row, { borderBottomWidth: 1, borderColor: '#eee' }]}>
-                        <Text style={{ width: 30, fontSize: 12 }}>{index + 1}</Text>
-                        <View style={{ flex: 1 }}>
-                            <Text style={{ fontWeight: 'bold' }}>{item.product_name}</Text>
-                            <Text style={{ fontSize: 10, color: '#888' }}>ID: {item.id}</Text>
-                        </View>
-                        <Text style={{ fontSize: 12 }}>{formatCurrency(item.line_total)}</Text>
-                    </View>
-                )}
-            />
-
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Atur Tampilan Kolom</Text>
+            <ScrollView style={{maxHeight: 300}}>
+              {Object.keys(visibleColumns).map((key) => {
+                const labels = {
+                  no: 'No',
+                  date: 'Tanggal',
+                  invoice: 'No. Invoice',
+                  product: 'Nama Produk',
+                  price: 'Harga',
+                  profit: 'Profit',
+                  action: 'Action'
+                };
+                if (key === 'action' && !isSelectMode) return null;
+                return (
+                  <TouchableOpacity 
+                    key={key} 
+                    style={{flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#eee'}}
+                    onPress={() => toggleColumn(key)}
+                  >
+                    <Ionicons 
+                      name={tempVisibleColumns[key] ? "checkbox" : "square-outline"} 
+                      size={24} 
+                      color={Colors.primary} 
+                    />
+                    <Text style={{marginLeft: 12, fontSize: 16, color: '#333'}}>{labels[key]}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
             <View style={styles.modalButtons}>
               <TouchableOpacity 
                 style={[styles.modalBtn, styles.cancelBtn]} 
-                onPress={() => setShowOrphanModal(false)}
+                onPress={() => setShowColumnModal(false)}
               >
-                <Text style={styles.modalBtnText}>Tutup</Text>
+                <Text style={styles.modalBtnText}>Batal</Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={[styles.modalBtn, { backgroundColor: 'red' }]} 
-                onPress={handleDeleteOrphans}
+                style={[styles.modalBtn, styles.confirmBtn]} 
+                onPress={saveColumns}
               >
-                <Text style={[styles.modalBtnText, { color: '#fff' }]}>Hapus Semua ({orphanItems.length})</Text>
+                <Text style={[styles.modalBtnText, {color: '#fff'}]}>Simpan</Text>
               </TouchableOpacity>
             </View>
           </View>
