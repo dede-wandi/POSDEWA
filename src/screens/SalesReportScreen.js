@@ -20,7 +20,6 @@ import * as XLSX from 'xlsx';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { getSalesHistory, deleteSaleItem, deleteSale, checkOrphanItems, deleteOrphanItems } from '../services/salesSupabase';
-import { listProducts } from '../services/productsSupabase';
 import { Colors } from '../theme';
 
 export default function SalesReportScreen({ navigation }) {
@@ -29,7 +28,6 @@ export default function SalesReportScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [sales, setSales] = useState([]);
   const [flattenedItems, setFlattenedItems] = useState([]);
-  const [productMap, setProductMap] = useState({}); // Map for cost price correction
   
   // Filter state
   const [filterType, setFilterType] = useState('today'); // 'today', 'yesterday', 'thisMonth', 'custom', 'month', 'year'
@@ -100,45 +98,21 @@ export default function SalesReportScreen({ navigation }) {
     // Reset time to start of day for accurate comparison
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    // Helper to calculate profit with legacy data fallback and cost correction
+    // Helper to calculate profit matching HistoryScreen logic
     const calculateSaleProfit = (sale) => {
       const items = sale.items || sale.sale_items || [];
       if (items.length > 0) {
         const itemsProfit = items.reduce((sum, item) => {
-          let profit = item.line_profit || 0;
-          
-          // Correction logic: If profit == total (100% margin), suspect missing cost
-          if (profit === (item.line_total || 0) && (item.line_total || 0) > 0) {
-             // Try to find current cost from product master
-             // Normalize strings for safer matching
-             const safeBarcode = String(item.barcode || '').trim();
-             const safeName = String(item.product_name || '').trim();
-             
-             const currentCost = productMap[safeBarcode] || productMap[safeName];
-             
-             // Debug log for specific items mentioned by user
-             if (item.product_name.toLowerCase().includes('telkomsel') || item.product_name.toLowerCase().includes('smartfren')) {
-                 console.log(`🔍 Debug Correction: ${item.product_name} | Profit: ${profit} | Total: ${item.line_total} | Map Cost: ${currentCost} | Barcode: ${safeBarcode}`);
-             }
-
-             if (currentCost && currentCost > 0) {
-                 // Recalculate estimated profit
-                 profit = item.line_total - (currentCost * item.qty);
-             }
-          }
+          let profit = typeof item.line_profit === 'number'
+             ? item.line_profit
+             : ((Number(item.price) - Number(item.cost_price || 0)) * Number(item.qty || 0));
           return sum + profit;
         }, 0);
 
-        // Fallback: If items profit is 0 but header profit exists, assume legacy data and use header
-        // Only use header profit if we didn't apply any correction above (implied by itemsProfit check)
-        // But wait, if itemsProfit is corrected, it won't be 0 (unless cost == price).
-        if (itemsProfit === 0 && (sale.profit || 0) !== 0) {
-           return sale.profit || 0;
-        }
         return itemsProfit;
       }
-      // No items - treat as 0 to avoid zombie data (deleted items)
-      return 0;
+      // No items - try header profit or 0
+      return sale.profit || 0;
     };
 
     if (filterType === 'today') {
@@ -598,13 +572,13 @@ export default function SalesReportScreen({ navigation }) {
 
   const renderHeader = () => (
     <View style={styles.tableHeader}>
-      <Text style={[styles.headerCell, { width: 30 }]}>No</Text>
-      <Text style={[styles.headerCell, { width: 65 }]}>Tanggal</Text>
-      <Text style={[styles.headerCell, { width: 105, marginRight: 8 }]}>No. Inv</Text>
-      <Text style={[styles.headerCell, { flex: 1 }]}>Nama Produk</Text>
-      <Text style={[styles.headerCell, { width: 75, textAlign: 'right' }]}>Harga</Text>
-      <Text style={[styles.headerCell, { width: 75, textAlign: 'right' }]}>Profit</Text>
-      {isSelectMode && (
+      {visibleColumns.no && <Text style={[styles.headerCell, { width: 30 }]}>No</Text>}
+      {visibleColumns.date && <Text style={[styles.headerCell, { width: 65 }]}>Tanggal</Text>}
+      {visibleColumns.invoice && <Text style={[styles.headerCell, { width: 105, marginRight: 8 }]}>No. Inv</Text>}
+      {visibleColumns.product && <Text style={[styles.headerCell, { flex: 1 }]}>Nama Produk</Text>}
+      {visibleColumns.price && <Text style={[styles.headerCell, { width: 75, textAlign: 'right' }]}>Harga</Text>}
+      {visibleColumns.profit && <Text style={[styles.headerCell, { width: 75, textAlign: 'right' }]}>Profit</Text>}
+      {visibleColumns.action && isSelectMode && (
         <Text style={[styles.headerCell, { width: 40, textAlign: 'center' }]}>Act</Text>
       )}
     </View>
@@ -612,17 +586,17 @@ export default function SalesReportScreen({ navigation }) {
 
   const renderItem = ({ item, index }) => (
     <View style={styles.row}>
-      <Text style={[styles.cell, { width: 30 }]}>{index + 1}</Text>
-      <Text style={[styles.cell, { width: 65, fontSize: 10 }]}>{formatDateStr(item.created_at)}</Text>
-      <Text style={[styles.cell, { width: 105, fontSize: 9, marginRight: 8, color: '#555' }]}>
+      {visibleColumns.no && <Text style={[styles.cell, { width: 30 }]}>{index + 1}</Text>}
+      {visibleColumns.date && <Text style={[styles.cell, { width: 65, fontSize: 10 }]}>{formatDateStr(item.created_at)}</Text>}
+      {visibleColumns.invoice && <Text style={[styles.cell, { width: 105, fontSize: 9, marginRight: 8, color: '#555' }]}>
         {item.original_sale?.no_invoice || '-'}
-      </Text>
-      <Text style={[styles.cell, { flex: 1 }]}>{item.product_name} {item.qty > 1 ? `(${item.qty}x)` : ''}</Text>
-      <Text style={[styles.cell, { width: 75, textAlign: 'right', fontSize: 10 }]}>{formatCurrency(item.line_total)}</Text>
-      <Text style={[styles.cell, { width: 75, textAlign: 'right', fontSize: 10, color: item.line_profit >= 0 ? 'green' : 'red' }]}>
+      </Text>}
+      {visibleColumns.product && <Text style={[styles.cell, { flex: 1 }]}>{item.product_name} {item.qty > 1 ? `(${item.qty}x)` : ''}</Text>}
+      {visibleColumns.price && <Text style={[styles.cell, { width: 75, textAlign: 'right', fontSize: 10 }]}>{formatCurrency(item.line_total)}</Text>}
+      {visibleColumns.profit && <Text style={[styles.cell, { width: 75, textAlign: 'right', fontSize: 10, color: item.line_profit >= 0 ? 'green' : 'red' }]}>
         {formatCurrency(item.line_profit)}
-      </Text>
-      {isSelectMode && (
+      </Text>}
+      {visibleColumns.action && isSelectMode && (
         <View style={[styles.cell, { width: 40, alignItems: 'center', justifyContent: 'center' }]}>
           <TouchableOpacity 
             onPress={() => handleDeleteItem(item)}
@@ -648,6 +622,14 @@ export default function SalesReportScreen({ navigation }) {
         </View>
         
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity 
+            style={[styles.exportButton, { backgroundColor: '#607D8B', marginRight: 8 }]} 
+            onPress={openColumnModal}
+          >
+            <Ionicons name="options" size={20} color="#fff" />
+            <Text style={styles.exportButtonText}>Atur Kolom</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity 
             style={[styles.exportButton, { backgroundColor: '#FF9800', marginRight: 8 }]} 
             onPress={handleCheckIntegrity}
