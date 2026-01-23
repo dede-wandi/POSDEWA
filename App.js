@@ -173,7 +173,7 @@ function MainTabs() {
     >
       <Tab.Screen name="Home" component={DashboardScreen} options={{ title: 'Home' }} />
       <Tab.Screen name="Produk" component={ProductsStack} options={{ title: 'Produk' }} />
-      <Tab.Screen 
+      {/* <Tab.Screen 
         name="Scan" 
         component={BarcodeScanScreen} 
         options={{ 
@@ -203,7 +203,7 @@ function MainTabs() {
             </TouchableOpacity>
           ),
         }} 
-      />
+      /> */}
       <Tab.Screen name="Penjualan" component={SalesStack} options={{ title: 'Penjualan' }} />
       <Tab.Screen name="Akun" component={AccountScreen} options={{ title: 'Akun' }} />
     </Tab.Navigator>

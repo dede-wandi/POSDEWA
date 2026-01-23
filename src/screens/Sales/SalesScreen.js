@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, Alert, StyleSheet, Dimensions, RefreshControl, Modal, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../theme';
-import { findByBarcodeOrName, findByBarcodeExact } from '../../services/products';
+import { findByBarcodeOrName, findByBarcodeExact, getProducts } from '../../services/products';
 import { formatIDR } from '../../utils/currency';
 import { useAuth } from '../../context/AuthContext';
 
@@ -32,9 +32,24 @@ export default function SalesScreen({ navigation, route }) {
     }, 0);
   }, [cart]);
 
+  const loadInitialProducts = async () => {
+    try {
+      const products = await getProducts(user?.id);
+      setAllProducts(products || []);
+      setResults(products || []);
+    } catch (error) {
+      console.error('Error loading products:', error);
+      Alert.alert('Error', 'Gagal memuat produk');
+    }
+  };
+
+  useEffect(() => {
+    loadInitialProducts();
+  }, [user?.id]);
+
   const handleSearch = async () => {
     if (!query.trim()) {
-      setResults([]);
+      setResults(allProducts);
       return;
     }
 
@@ -164,6 +179,10 @@ export default function SalesScreen({ navigation, route }) {
     const existingItem = cart.find(item => item.id === product.id);
     
     if (existingItem) {
+      if (existingItem.qty >= product.stock) {
+        Alert.alert('Stok Tidak Cukup', `Sisa stok hanya ${product.stock}`);
+        return;
+      }
       setCart(cart.map(item =>
         item.id === product.id
           ? { ...item, qty: item.qty + 1, lineTotal: (item.qty + 1) * item.price }
@@ -177,7 +196,8 @@ export default function SalesScreen({ navigation, route }) {
         costPrice: product.cost_price || product.costPrice || product.cost || 0,
         qty: 1,
         lineTotal: product.price,
-        tokenCode: tokenCode
+        tokenCode: tokenCode,
+        stock: product.stock // Store stock for validation
       };
       setCart([...cart, newItem]);
     }
@@ -201,6 +221,12 @@ export default function SalesScreen({ navigation, route }) {
       return;
     }
 
+    const item = cart.find(i => i.id === id);
+    if (item && item.stock !== undefined && newQty > item.stock) {
+      Alert.alert('Stok Tidak Cukup', `Sisa stok hanya ${item.stock}`);
+      return;
+    }
+
     setCart(cart.map(item =>
       item.id === id
         ? { ...item, qty: newQty, lineTotal: newQty * item.price }
@@ -214,7 +240,11 @@ export default function SalesScreen({ navigation, route }) {
 
   const onRefresh = () => {
     setRefreshing(true);
-    handleSearch().finally(() => setRefreshing(false));
+    if (query.trim()) {
+      handleSearch().finally(() => setRefreshing(false));
+    } else {
+      loadInitialProducts().finally(() => setRefreshing(false));
+    }
   };
 
   const navigateToPayment = () => {
@@ -262,21 +292,11 @@ export default function SalesScreen({ navigation, route }) {
             </TouchableOpacity>
           </View>
         </View>
-        <TouchableOpacity 
-          style={styles.viewAllButton} 
-          onPress={() => navigation.navigate('ProductList', { cart, initialLayout: productLayout === 'grid' })}
-        >
-          <View style={styles.viewAllButtonContent}>
-            <Ionicons name="list" size={16} color="#ffffff" style={{ marginRight: 8 }} />
-            <Text style={styles.viewAllButtonText}>Lihat Semua</Text>
-          </View>
-        </TouchableOpacity>
       </View>
 
-      {/* Search Results */}
-      {query.trim() && results.length > 0 && (
-        <View style={styles.resultsSection}>
-          <Text style={styles.sectionTitle}>Hasil Pencarian</Text>
+      {/* Product List */}
+      <View style={styles.resultsSection}>
+          <Text style={styles.sectionTitle}>{query.trim() ? 'Hasil Pencarian' : 'Daftar Produk'}</Text>
           <FlatList
             data={results}
             keyExtractor={(item) => item.id}
@@ -328,7 +348,6 @@ export default function SalesScreen({ navigation, route }) {
             )}
           />
         </View>
-      )}
 
       {/* Cart Section */}
       {cart.length > 0 && (
