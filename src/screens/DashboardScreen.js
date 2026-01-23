@@ -284,7 +284,7 @@ export default function DashboardScreen({ navigation }) {
               <View style={[styles.menuIcon, { backgroundColor: '#E0F2F1' }]}>
                 <Ionicons name="clipboard" size={24} color="#009688" />
               </View>
-              <Text style={styles.menuLabel}>Report Penjualan</Text>
+              <Text style={styles.menuLabel}>Penjualan</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('MoreMenu')}>

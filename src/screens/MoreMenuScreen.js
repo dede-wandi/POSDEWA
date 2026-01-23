@@ -42,7 +42,7 @@ export default function MoreMenuScreen({ navigation }) {
       onPress: () => navigation.navigate('TransactionReport'),
     },
     {
-      label: 'Report Penjualan',
+      label: 'Penjualan',
       icon: 'clipboard',
       iconColor: '#009688',
       bgColor: '#E0F2F1',
