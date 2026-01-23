@@ -124,7 +124,7 @@ export default function ListScreen({ navigation, route }) {
           <View style={styles.searchContainer}>
             <Ionicons name="search" size={16} color={Colors.muted} style={styles.searchIcon} />
             <TextInput
-              placeholder="Cari nama produk atau barcode..."
+              placeholder="Cari produk..."
               value={query}
               onChangeText={setQuery}
               style={styles.searchInput}
