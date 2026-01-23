@@ -14,6 +14,7 @@ export default function SalesScreen({ navigation, route }) {
   const { showToast } = useToast();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
   const [cart, setCart] = useState([]); // Each item: { id, name, price, costPrice, qty, lineTotal, tokenCode? }
   const [refreshing, setRefreshing] = useState(false);
   const [productLayout, setProductLayout] = useState('grid');
