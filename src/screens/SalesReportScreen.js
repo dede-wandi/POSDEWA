@@ -56,32 +56,12 @@ export default function SalesReportScreen({ navigation }) {
 
   useEffect(() => {
     processData();
-  }, [sales, filterType, customRange, selectedYear, selectedMonth, productMap]);
+  }, [sales, filterType, customRange, selectedYear, selectedMonth]);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [salesData, productsData] = await Promise.all([
-        getSalesHistory(user?.id),
-        listProducts(user?.id)
-      ]);
-      
-      // Create map for cost price correction
-      const pMap = {};
-      if (productsData) {
-        productsData.forEach(p => {
-          // Normalize keys
-          const safeBarcode = String(p.barcode || '').trim();
-          const safeName = String(p.name || '').trim();
-
-          // Map by barcode
-          if (safeBarcode) pMap[safeBarcode] = p.cost_price;
-          // Also map by name as fallback
-          if (safeName) pMap[safeName] = p.cost_price;
-        });
-        console.log(`🗺️ Product Map Created: ${Object.keys(pMap).length} entries`);
-      }
-      setProductMap(pMap);
+      const salesData = await getSalesHistory(user?.id);
       setSales(salesData || []);
     } catch (error) {
       console.error('Error loading sales report:', error);
@@ -250,16 +230,8 @@ export default function SalesReportScreen({ navigation }) {
           let displayedProfit = item.line_profit || 0;
           
           // Correction logic for display
-          if (displayedProfit === (item.line_total || 0) && (item.line_total || 0) > 0) {
-             const safeBarcode = String(item.barcode || '').trim();
-             const safeName = String(item.product_name || '').trim();
-             const currentCost = productMap[safeBarcode] || productMap[safeName];
-             
-             if (currentCost && currentCost > 0) {
-                 displayedProfit = item.line_total - (currentCost * item.qty);
-             }
-          }
-
+          // Removed legacy correction logic to sync with HistoryScreen
+          
           items.push({
             ...item,
             line_profit: displayedProfit,
