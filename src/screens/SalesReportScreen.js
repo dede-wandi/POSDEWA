@@ -8,7 +8,8 @@ import {
   Modal,
   Platform,
   ActivityIndicator,
-  Alert
+  Alert,
+  ScrollView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,23 +18,39 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as XLSX from 'xlsx';
 import { useAuth } from '../context/AuthContext';
-import { getSalesHistory, deleteSaleItem } from '../services/salesSupabase';
+import { useToast } from '../contexts/ToastContext';
+import { getSalesHistory, deleteSaleItem, deleteSale, checkOrphanItems, deleteOrphanItems } from '../services/salesSupabase';
+import { listProducts } from '../services/productsSupabase';
 import { Colors } from '../theme';
 
 export default function SalesReportScreen({ navigation }) {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [sales, setSales] = useState([]);
   const [flattenedItems, setFlattenedItems] = useState([]);
+  const [productMap, setProductMap] = useState({}); // Map for cost price correction
   
   // Filter state
-  const [filterType, setFilterType] = useState('today'); // 'today', 'yesterday', 'custom'
+  const [filterType, setFilterType] = useState('today'); // 'today', 'yesterday', 'thisMonth', 'custom', 'month', 'year'
   const [showCalendar, setShowCalendar] = useState(false);
   const [customRange, setCustomRange] = useState({ startDate: null, endDate: null });
   const [markedDates, setMarkedDates] = useState({});
+  
+  // Year/Month Picker State
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [showYearPicker, setShowYearPicker] = useState(false);
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [monthlyData, setMonthlyData] = useState([]);
 
   // Selection mode
   const [isSelectMode, setIsSelectMode] = useState(false);
+  const [filteredTotals, setFilteredTotals] = useState({ total: 0, profit: 0 });
+
+  // Orphan Data Check
+  const [orphanItems, setOrphanItems] = useState([]);
+  const [showOrphanModal, setShowOrphanModal] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -41,13 +58,33 @@ export default function SalesReportScreen({ navigation }) {
 
   useEffect(() => {
     processData();
-  }, [sales, filterType, customRange]);
+  }, [sales, filterType, customRange, selectedYear, selectedMonth, productMap]);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const data = await getSalesHistory(user?.id);
-      setSales(data || []);
+      const [salesData, productsData] = await Promise.all([
+        getSalesHistory(user?.id),
+        listProducts(user?.id)
+      ]);
+      
+      // Create map for cost price correction
+      const pMap = {};
+      if (productsData) {
+        productsData.forEach(p => {
+          // Normalize keys
+          const safeBarcode = String(p.barcode || '').trim();
+          const safeName = String(p.name || '').trim();
+
+          // Map by barcode
+          if (safeBarcode) pMap[safeBarcode] = p.cost_price;
+          // Also map by name as fallback
+          if (safeName) pMap[safeName] = p.cost_price;
+        });
+        console.log(`🗺️ Product Map Created: ${Object.keys(pMap).length} entries`);
+      }
+      setProductMap(pMap);
+      setSales(salesData || []);
     } catch (error) {
       console.error('Error loading sales report:', error);
     } finally {
@@ -56,9 +93,53 @@ export default function SalesReportScreen({ navigation }) {
   };
 
   const processData = () => {
+    console.log('🔄 Processing data with filter:', filterType, customRange);
+    
     let filteredSales = [...sales];
     const now = new Date();
+    // Reset time to start of day for accurate comparison
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    // Helper to calculate profit with legacy data fallback and cost correction
+    const calculateSaleProfit = (sale) => {
+      const items = sale.items || sale.sale_items || [];
+      if (items.length > 0) {
+        const itemsProfit = items.reduce((sum, item) => {
+          let profit = item.line_profit || 0;
+          
+          // Correction logic: If profit == total (100% margin), suspect missing cost
+          if (profit === (item.line_total || 0) && (item.line_total || 0) > 0) {
+             // Try to find current cost from product master
+             // Normalize strings for safer matching
+             const safeBarcode = String(item.barcode || '').trim();
+             const safeName = String(item.product_name || '').trim();
+             
+             const currentCost = productMap[safeBarcode] || productMap[safeName];
+             
+             // Debug log for specific items mentioned by user
+             if (item.product_name.toLowerCase().includes('telkomsel') || item.product_name.toLowerCase().includes('smartfren')) {
+                 console.log(`🔍 Debug Correction: ${item.product_name} | Profit: ${profit} | Total: ${item.line_total} | Map Cost: ${currentCost} | Barcode: ${safeBarcode}`);
+             }
+
+             if (currentCost && currentCost > 0) {
+                 // Recalculate estimated profit
+                 profit = item.line_total - (currentCost * item.qty);
+             }
+          }
+          return sum + profit;
+        }, 0);
+
+        // Fallback: If items profit is 0 but header profit exists, assume legacy data and use header
+        // Only use header profit if we didn't apply any correction above (implied by itemsProfit check)
+        // But wait, if itemsProfit is corrected, it won't be 0 (unless cost == price).
+        if (itemsProfit === 0 && (sale.profit || 0) !== 0) {
+           return sale.profit || 0;
+        }
+        return itemsProfit;
+      }
+      // No items - treat as 0 to avoid zombie data (deleted items)
+      return 0;
+    };
 
     if (filterType === 'today') {
       filteredSales = filteredSales.filter(s => {
@@ -68,24 +149,123 @@ export default function SalesReportScreen({ navigation }) {
     } else if (filterType === 'yesterday') {
       const yesterday = new Date(today);
       yesterday.setDate(today.getDate() - 1);
+      
+      const startYesterday = new Date(yesterday);
+      startYesterday.setHours(0, 0, 0, 0);
+      
       const endYesterday = new Date(yesterday);
       endYesterday.setHours(23, 59, 59, 999);
       
       filteredSales = filteredSales.filter(s => {
         const d = new Date(s.created_at);
-        return d >= yesterday && d <= endYesterday;
+        return d >= startYesterday && d <= endYesterday;
       });
-    } else if (filterType === 'custom' && customRange.startDate && customRange.endDate) {
-      const start = new Date(customRange.startDate);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(customRange.endDate);
-      end.setHours(23, 59, 59, 999);
+    } else if (filterType === 'thisMonth') {
+      const startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      startMonth.setHours(0, 0, 0, 0);
+      
+      // End of month is start of next month
+      const endMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      endMonth.setHours(0, 0, 0, 0);
+
+      console.log(`📅 Filtering This Month: ${startMonth.toLocaleString()} - ${endMonth.toLocaleString()}`);
+
+      filteredSales = filteredSales.filter(s => {
+        const d = new Date(s.created_at);
+        return d >= startMonth && d < endMonth;
+      });
+    } else if (filterType === 'month') {
+      const startMonth = new Date(selectedYear, selectedMonth, 1);
+      startMonth.setHours(0, 0, 0, 0);
+      
+      const endMonth = new Date(selectedYear, selectedMonth + 1, 1);
+      endMonth.setHours(0, 0, 0, 0);
+      
+      console.log(`📅 Filtering Month: ${startMonth.toLocaleString()} - ${endMonth.toLocaleString()}`);
+
+      filteredSales = filteredSales.filter(s => {
+        const d = new Date(s.created_at);
+        return d >= startMonth && d < endMonth;
+      });
+    } else if (filterType === 'year') {
+      const startYear = new Date(selectedYear, 0, 1);
+      startYear.setHours(0, 0, 0, 0);
+      
+      const endYear = new Date(selectedYear + 1, 0, 1);
+      endYear.setHours(0, 0, 0, 0);
+      
+      console.log(`📅 Filtering Year: ${startYear.getFullYear()}`);
       
       filteredSales = filteredSales.filter(s => {
         const d = new Date(s.created_at);
-        return d >= start && d <= end;
+        return d >= startYear && d < endYear;
       });
+      
+      // Calculate monthly summary
+      const months = Array(12).fill(0).map((_, i) => ({
+        monthIndex: i,
+        monthName: new Date(selectedYear, i, 1).toLocaleDateString('id-ID', { month: 'long' }),
+        totalSales: 0,
+        totalProfit: 0
+      }));
+      
+      filteredSales.forEach(sale => {
+        const d = new Date(sale.created_at);
+        const m = d.getMonth();
+        
+        // Calculate profit with fallback
+        const saleProfit = calculateSaleProfit(sale);
+
+        months[m].totalSales += (sale.total || 0);
+        months[m].totalProfit += saleProfit;
+      });
+      
+      setMonthlyData(months);
+    } else if (filterType === 'custom') {
+      if (customRange.startDate) {
+        // Parse dates strictly as local YYYY-MM-DD
+        const [sy, sm, sd] = customRange.startDate.split('-').map(Number);
+        const start = new Date(sy, sm - 1, sd, 0, 0, 0, 0); // Start of day 00:00:00
+        
+        let end;
+        if (customRange.endDate) {
+          const [ey, em, ed] = customRange.endDate.split('-').map(Number);
+          // Use next day 00:00:00 as upper bound (exclusive) to match Analytics
+          end = new Date(ey, em - 1, ed);
+          end.setDate(end.getDate() + 1);
+          end.setHours(0, 0, 0, 0);
+        } else {
+          // Single day selection: next day 00:00:00
+          end = new Date(sy, sm - 1, sd);
+          end.setDate(end.getDate() + 1);
+          end.setHours(0, 0, 0, 0);
+        }
+        
+        console.log(`📅 Filtering Custom: ${start.toLocaleString()} - ${end.toLocaleString()}`);
+
+        filteredSales = filteredSales.filter(s => {
+          const d = new Date(s.created_at);
+          // Check if valid date
+          if (isNaN(d.getTime())) return false;
+          // Use >= start and < end for strict consistency
+          return d >= start && d < end;
+        });
+      } else {
+        // If custom is selected but no date provided yet, show empty list
+        filteredSales = [];
+      }
     }
+
+    console.log(`✅ Filtered ${filteredSales.length} sales from ${sales.length} total`);
+
+    // Calculate Totals with Fallback
+    let calcTotal = 0;
+    let calcProfit = 0;
+    filteredSales.forEach(sale => {
+      calcTotal += (sale.total || 0);
+      calcProfit += calculateSaleProfit(sale);
+    });
+    setFilteredTotals({ total: calcTotal, profit: calcProfit });
 
     // Flatten to items
     let items = [];
@@ -93,8 +273,22 @@ export default function SalesReportScreen({ navigation }) {
       const saleItems = sale.items || sale.sale_items || [];
       if (saleItems.length > 0) {
         saleItems.forEach(item => {
+          let displayedProfit = item.line_profit || 0;
+          
+          // Correction logic for display
+          if (displayedProfit === (item.line_total || 0) && (item.line_total || 0) > 0) {
+             const safeBarcode = String(item.barcode || '').trim();
+             const safeName = String(item.product_name || '').trim();
+             const currentCost = productMap[safeBarcode] || productMap[safeName];
+             
+             if (currentCost && currentCost > 0) {
+                 displayedProfit = item.line_total - (currentCost * item.qty);
+             }
+          }
+
           items.push({
             ...item,
+            line_profit: displayedProfit,
             created_at: sale.created_at,
             original_sale: sale
           });
@@ -178,7 +372,14 @@ export default function SalesReportScreen({ navigation }) {
     }
   };
 
-  const handleDeleteItem = (item) => {
+  const handleDeleteItem = async (item) => {
+    console.log('🗑️ Request to delete item:', item.id, item.product_name);
+    
+    if (!item.id) {
+      Alert.alert('Error', 'ID item tidak valid');
+      return;
+    }
+
     Alert.alert(
       'Hapus Item',
       `Apakah Anda yakin ingin menghapus "${item.product_name}" dari riwayat?`,
@@ -188,17 +389,59 @@ export default function SalesReportScreen({ navigation }) {
           text: 'Hapus', 
           style: 'destructive',
           onPress: async () => {
+            console.log('🗑️ User confirmed delete');
             setLoading(true);
             try {
               const result = await deleteSaleItem(item.id);
+              console.log('🗑️ Delete result:', result);
+              
               if (result.success) {
-                // Refresh data
-                await loadData();
+                // Show toast immediately
+                showToast('Item berhasil dihapus', 'success');
+                
+                // Small delay to ensure toast is visible before reload (which might be heavy)
+                setTimeout(async () => {
+                  await loadData();
+                }, 500);
               } else {
-                Alert.alert('Gagal', 'Gagal menghapus item: ' + result.error);
+                // Check if it's the RLS multi-item issue
+                if (result.reason === 'rls_multi_item') {
+                  Alert.alert(
+                    'Hapus Item Gagal',
+                    'Tidak dapat menghapus item ini karena izin database terbatas (Row Level Security). Apakah Anda ingin menghapus SELURUH transaksi (Invoice) ini?',
+                    [
+                      { text: 'Batal', style: 'cancel' },
+                      { 
+                        text: 'Hapus Transaksi', 
+                        style: 'destructive',
+                        onPress: async () => {
+                          setLoading(true);
+                          try {
+                            const saleResult = await deleteSale(result.sale_id);
+                            if (saleResult.success) {
+                              showToast('Transaksi berhasil dihapus', 'success');
+                              setTimeout(async () => {
+                                await loadData();
+                              }, 500);
+                            } else {
+                              Alert.alert('Gagal', 'Gagal menghapus transaksi: ' + saleResult.error);
+                            }
+                          } catch (err) {
+                            Alert.alert('Error', err.message);
+                          } finally {
+                            setLoading(false);
+                          }
+                        }
+                      }
+                    ]
+                  );
+                } else {
+                  Alert.alert('Gagal', 'Gagal menghapus item: ' + (result.error || 'Unknown error'));
+                }
               }
             } catch (error) {
-              Alert.alert('Error', 'Terjadi kesalahan saat menghapus');
+              console.error('❌ Error in handleDeleteItem:', error);
+              Alert.alert('Error', 'Terjadi kesalahan saat menghapus: ' + error.message);
             } finally {
               setLoading(false);
             }
@@ -259,34 +502,132 @@ export default function SalesReportScreen({ navigation }) {
 
   const totalSales = flattenedItems.reduce((sum, item) => sum + (item.line_total || 0), 0);
   const totalProfit = flattenedItems.reduce((sum, item) => sum + (item.line_profit || 0), 0);
+  // We now use filteredTotals for the footer to support legacy data fallback
+  
+  const resetFilters = () => {
+    setFilterType('today');
+    setCustomRange({ startDate: null, endDate: null });
+    setMarkedDates({});
+  };
+
+  const handleCheckIntegrity = async () => {
+    setLoading(true);
+    try {
+        const result = await checkOrphanItems();
+        if (result.success) {
+            setOrphanItems(result.orphans);
+            if (result.orphans.length > 0) {
+                setShowOrphanModal(true);
+            } else {
+                Alert.alert('Info', 'Data aman. Tidak ditemukan item tanpa induk (orphan).');
+            }
+        } else {
+            Alert.alert('Error', 'Gagal memeriksa data: ' + result.error);
+        }
+    } catch (error) {
+        Alert.alert('Error', error.message);
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const handleDeleteOrphans = async () => {
+    if (orphanItems.length === 0) return;
+    
+    Alert.alert(
+        'Konfirmasi Hapus',
+        `Apakah Anda yakin ingin menghapus ${orphanItems.length} item data sampah ini?`,
+        [
+            { text: 'Batal', style: 'cancel' },
+            { 
+                text: 'Hapus', 
+                style: 'destructive',
+                onPress: async () => {
+                    setLoading(true);
+                    try {
+                        const ids = orphanItems.map(item => item.id);
+                        const result = await deleteOrphanItems(ids);
+                        if (result.success) {
+                            Alert.alert('Sukses', 'Data sampah berhasil dibersihkan.');
+                            setShowOrphanModal(false);
+                            setOrphanItems([]);
+                            // Reload data just in case
+                            loadData();
+                        } else {
+                            Alert.alert('Gagal', 'Gagal menghapus: ' + result.error);
+                        }
+                    } catch (error) {
+                        Alert.alert('Error', error.message);
+                    } finally {
+                        setLoading(false);
+                    }
+                }
+            }
+        ]
+    );
+  };
+
+  const renderYearlyContent = () => {
+    return (
+      <View style={styles.tableContainer}>
+        {/* Year Header */}
+        <View style={styles.tableHeader}>
+           <Text style={[styles.headerCell, { width: 40 }]}>No</Text>
+           <Text style={[styles.headerCell, { flex: 1 }]}>Bulan</Text>
+           <Text style={[styles.headerCell, { width: 120, textAlign: 'right' }]}>Total Penjualan</Text>
+           <Text style={[styles.headerCell, { width: 120, textAlign: 'right' }]}>Total Profit</Text>
+        </View>
+        <FlatList
+          data={monthlyData}
+          keyExtractor={(item) => `month-${item.monthIndex}`}
+          renderItem={({ item, index }) => (
+            <View style={styles.row}>
+              <Text style={[styles.cell, { width: 40 }]}>{index + 1}</Text>
+              <Text style={[styles.cell, { flex: 1 }]}>{item.monthName}</Text>
+              <Text style={[styles.cell, { width: 120, textAlign: 'right' }]}>{formatCurrency(item.totalSales)}</Text>
+              <Text style={[styles.cell, { width: 120, textAlign: 'right', color: item.totalProfit >= 0 ? 'green' : 'red' }]}>
+                {formatCurrency(item.totalProfit)}
+              </Text>
+            </View>
+          )}
+          contentContainerStyle={{ paddingBottom: 100 }}
+        />
+      </View>
+    );
+  };
 
   const renderHeader = () => (
     <View style={styles.tableHeader}>
-      <Text style={[styles.headerCell, { width: 40 }]}>No</Text>
-      <Text style={[styles.headerCell, { width: 80 }]}>Tanggal</Text>
+      <Text style={[styles.headerCell, { width: 35 }]}>No</Text>
+      <Text style={[styles.headerCell, { width: 75 }]}>Tanggal</Text>
+      <Text style={[styles.headerCell, { width: 90, marginRight: 12 }]}>No. Inv</Text>
       <Text style={[styles.headerCell, { flex: 1 }]}>Nama Produk</Text>
-      <Text style={[styles.headerCell, { width: 90, textAlign: 'right' }]}>Harga</Text>
-      <Text style={[styles.headerCell, { width: 90, textAlign: 'right' }]}>Profit</Text>
+      <Text style={[styles.headerCell, { width: 85, textAlign: 'right' }]}>Harga</Text>
+      <Text style={[styles.headerCell, { width: 85, textAlign: 'right' }]}>Profit</Text>
       {isSelectMode && (
-        <Text style={[styles.headerCell, { width: 60, textAlign: 'center' }]}>Action</Text>
+        <Text style={[styles.headerCell, { width: 50, textAlign: 'center' }]}>Act</Text>
       )}
     </View>
   );
 
   const renderItem = ({ item, index }) => (
     <View style={styles.row}>
-      <Text style={[styles.cell, { width: 40 }]}>{index + 1}</Text>
-      <Text style={[styles.cell, { width: 80 }]}>{formatDateStr(item.created_at)}</Text>
+      <Text style={[styles.cell, { width: 35 }]}>{index + 1}</Text>
+      <Text style={[styles.cell, { width: 75, fontSize: 11 }]}>{formatDateStr(item.created_at)}</Text>
+      <Text style={[styles.cell, { width: 90, fontSize: 10, marginRight: 20 }]} numberOfLines={1} ellipsizeMode="middle">
+        {item.original_sale?.no_invoice || '-'}
+      </Text>
       <Text style={[styles.cell, { flex: 1 }]}>{item.product_name} {item.qty > 1 ? `(${item.qty}x)` : ''}</Text>
-      <Text style={[styles.cell, { width: 90, textAlign: 'right' }]}>{formatCurrency(item.line_total)}</Text>
-      <Text style={[styles.cell, { width: 90, textAlign: 'right', color: item.line_profit >= 0 ? 'green' : 'red' }]}>
+      <Text style={[styles.cell, { width: 85, textAlign: 'right', fontSize: 11 }]}>{formatCurrency(item.line_total)}</Text>
+      <Text style={[styles.cell, { width: 85, textAlign: 'right', fontSize: 11, color: item.line_profit >= 0 ? 'green' : 'red' }]}>
         {formatCurrency(item.line_profit)}
       </Text>
       {isSelectMode && (
-        <View style={[styles.cell, { width: 60, alignItems: 'center', justifyContent: 'center' }]}>
+        <View style={[styles.cell, { width: 50, alignItems: 'center', justifyContent: 'center' }]}>
           <TouchableOpacity 
             onPress={() => handleDeleteItem(item)}
             style={styles.deleteButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Ionicons name="trash-outline" size={20} color={Colors.danger || '#F44336'} />
           </TouchableOpacity>
@@ -308,6 +649,14 @@ export default function SalesReportScreen({ navigation }) {
         
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity 
+            style={[styles.exportButton, { backgroundColor: '#FF9800', marginRight: 8 }]} 
+            onPress={handleCheckIntegrity}
+          >
+            <Ionicons name="construct" size={20} color="#fff" />
+            <Text style={styles.exportButtonText}>Cek Data</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
             style={styles.exportButton} 
             onPress={exportToExcel}
           >
@@ -328,31 +677,75 @@ export default function SalesReportScreen({ navigation }) {
 
       {/* Filters */}
       <View style={styles.filterContainer}>
-        <TouchableOpacity 
-          style={[styles.filterBtn, filterType === 'today' && styles.activeFilterBtn]}
-          onPress={() => setFilterType('today')}
-        >
-          <Text style={[styles.filterText, filterType === 'today' && styles.activeFilterText]}>Hari Ini</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.filterBtn, filterType === 'yesterday' && styles.activeFilterBtn]}
-          onPress={() => setFilterType('yesterday')}
-        >
-          <Text style={[styles.filterText, filterType === 'yesterday' && styles.activeFilterText]}>Kemarin</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.filterBtn, filterType === 'custom' && styles.activeFilterBtn]}
-          onPress={() => {
-            setFilterType('custom');
-            setShowCalendar(true);
-          }}
-        >
-          <Text style={[styles.filterText, filterType === 'custom' && styles.activeFilterText]}>
-            {customRange.startDate && customRange.endDate 
-              ? `${formatDateStr(customRange.startDate)} - ${formatDateStr(customRange.endDate)}`
-              : 'Custom Tanggal'}
-          </Text>
-        </TouchableOpacity>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <TouchableOpacity 
+            style={[styles.filterBtn, filterType === 'today' && styles.activeFilterBtn]}
+            onPress={() => setFilterType('today')}
+          >
+            <Text style={[styles.filterText, filterType === 'today' && styles.activeFilterText]}>Hari Ini</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.filterBtn, filterType === 'yesterday' && styles.activeFilterBtn]}
+            onPress={() => setFilterType('yesterday')}
+          >
+            <Text style={[styles.filterText, filterType === 'yesterday' && styles.activeFilterText]}>Kemarin</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.filterBtn, filterType === 'thisMonth' && styles.activeFilterBtn]}
+            onPress={() => setFilterType('thisMonth')}
+          >
+            <Text style={[styles.filterText, filterType === 'thisMonth' && styles.activeFilterText]}>Bulan Ini</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.filterBtn, filterType === 'month' && styles.activeFilterBtn]}
+            onPress={() => {
+              setFilterType('month');
+              setShowMonthPicker(true);
+            }}
+          >
+            <Text style={[styles.filterText, filterType === 'month' && styles.activeFilterText]}>
+               {filterType === 'month' 
+                 ? `${new Date(selectedYear, selectedMonth, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}` 
+                 : 'Pilih Bulan'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.filterBtn, filterType === 'year' && styles.activeFilterBtn]}
+            onPress={() => {
+              setFilterType('year');
+              setShowYearPicker(true);
+            }}
+          >
+            <Text style={[styles.filterText, filterType === 'year' && styles.activeFilterText]}>
+               {filterType === 'year' ? `${selectedYear}` : 'Pilih Tahun'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.filterBtn, filterType === 'custom' && styles.activeFilterBtn]}
+            onPress={() => {
+              setFilterType('custom');
+              setShowCalendar(true);
+            }}
+          >
+            <Text style={[styles.filterText, filterType === 'custom' && styles.activeFilterText]}>
+              {customRange.startDate 
+                ? `${formatDateStr(customRange.startDate)}${customRange.endDate ? ' - ' + formatDateStr(customRange.endDate) : ''}`
+                : 'Custom Tanggal'}
+            </Text>
+          </TouchableOpacity>
+          
+          {(filterType !== 'today') && (
+            <TouchableOpacity 
+              style={[styles.filterBtn, { backgroundColor: '#FFEBEE', borderColor: '#FFCDD2' }]}
+              onPress={resetFilters}
+            >
+              <Text style={[styles.filterText, { color: '#D32F2F' }]}>Reset</Text>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
       </View>
 
       {/* Content */}
@@ -360,6 +753,8 @@ export default function SalesReportScreen({ navigation }) {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
+      ) : filterType === 'year' ? (
+        renderYearlyContent()
       ) : (
         <View style={styles.tableContainer}>
           {renderHeader()}
@@ -376,11 +771,19 @@ export default function SalesReportScreen({ navigation }) {
       <View style={styles.footer}>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Total Harga Penjualan:</Text>
-          <Text style={styles.summaryValue}>{formatCurrency(totalSales)}</Text>
+          <Text style={styles.summaryValue}>
+             {filterType === 'year' 
+               ? formatCurrency(monthlyData.reduce((sum, m) => sum + m.totalSales, 0)) 
+               : formatCurrency(filteredTotals.total)}
+          </Text>
         </View>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Total Profit:</Text>
-          <Text style={[styles.summaryValue, { color: 'green' }]}>{formatCurrency(totalProfit)}</Text>
+          <Text style={[styles.summaryValue, { color: 'green' }]}>
+             {filterType === 'year'
+               ? formatCurrency(monthlyData.reduce((sum, m) => sum + m.totalProfit, 0))
+               : formatCurrency(filteredTotals.profit)}
+          </Text>
         </View>
       </View>
 
@@ -409,14 +812,145 @@ export default function SalesReportScreen({ navigation }) {
               <TouchableOpacity 
                 style={[styles.modalBtn, styles.confirmBtn]} 
                 onPress={() => {
-                  if (customRange.startDate && customRange.endDate) {
+                  if (customRange.startDate) {
                     setShowCalendar(false);
                   } else {
-                    alert('Silakan pilih tanggal mulai dan akhir');
+                    Alert.alert('Info', 'Silakan pilih minimal tanggal mulai');
                   }
                 }}
               >
                 <Text style={[styles.modalBtnText, { color: '#fff' }]}>Terapkan</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Year Picker Modal */}
+      <Modal visible={showYearPicker} animationType="slide" transparent>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Pilih Tahun</Text>
+            <ScrollView style={{ maxHeight: 300 }}>
+              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map(year => (
+                <TouchableOpacity
+                  key={year}
+                  style={[
+                    styles.modalBtn, 
+                    selectedYear === year ? styles.confirmBtn : { backgroundColor: '#f0f0f0' },
+                    { marginBottom: 8, width: '100%' }
+                  ]}
+                  onPress={() => {
+                    setSelectedYear(year);
+                    setShowYearPicker(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.modalBtnText, 
+                    selectedYear === year ? { color: '#fff' } : { color: '#333' }
+                  ]}>{year}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <TouchableOpacity 
+              style={[styles.modalBtn, styles.cancelBtn, { marginTop: 10 }]} 
+              onPress={() => setShowYearPicker(false)}
+            >
+              <Text style={styles.modalBtnText}>Batal</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Month Picker Modal */}
+      <Modal visible={showMonthPicker} animationType="slide" transparent>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Pilih Bulan & Tahun</Text>
+            
+            {/* Year Selector in Month Picker */}
+            <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 15, alignItems: 'center' }}>
+              <TouchableOpacity onPress={() => setSelectedYear(selectedYear - 1)} style={{ padding: 10 }}>
+                 <Ionicons name="chevron-back" size={24} color={Colors.primary} />
+              </TouchableOpacity>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', marginHorizontal: 20 }}>{selectedYear}</Text>
+              <TouchableOpacity onPress={() => setSelectedYear(selectedYear + 1)} style={{ padding: 10 }}>
+                 <Ionicons name="chevron-forward" size={24} color={Colors.primary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+              {Array.from({ length: 12 }, (_, i) => i).map(month => (
+                <TouchableOpacity
+                  key={month}
+                  style={[
+                    { 
+                      width: '30%', 
+                      padding: 10, 
+                      marginBottom: 10, 
+                      borderRadius: 8,
+                      alignItems: 'center',
+                      backgroundColor: selectedMonth === month ? Colors.primary : '#f0f0f0'
+                    }
+                  ]}
+                  onPress={() => {
+                    setSelectedMonth(month);
+                    setShowMonthPicker(false);
+                  }}
+                >
+                  <Text style={{ color: selectedMonth === month ? '#fff' : '#333' }}>
+                    {new Date(2024, month, 1).toLocaleDateString('id-ID', { month: 'short' })}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.modalBtn, styles.cancelBtn, { marginTop: 10 }]} 
+              onPress={() => setShowMonthPicker(false)}
+            >
+              <Text style={styles.modalBtnText}>Batal</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      {/* Orphan Items Modal */}
+      <Modal visible={showOrphanModal} animationType="slide" transparent>
+        <View style={styles.modalContainer}>
+          <View style={[styles.modalContent, { height: '80%' }]}>
+            <Text style={[styles.modalTitle, { color: 'red' }]}>Data Penjualan Error (Orphan)</Text>
+            <Text style={{ marginBottom: 10, color: '#666', fontSize: 12 }}>
+                Item berikut ada di database tetapi tidak memiliki data transaksi induk (Sales). 
+                Ini menyebabkan ketidaksesuaian data.
+            </Text>
+            
+            <FlatList 
+                data={orphanItems}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item, index }) => (
+                    <View style={[styles.row, { borderBottomWidth: 1, borderColor: '#eee' }]}>
+                        <Text style={{ width: 30, fontSize: 12 }}>{index + 1}</Text>
+                        <View style={{ flex: 1 }}>
+                            <Text style={{ fontWeight: 'bold' }}>{item.product_name}</Text>
+                            <Text style={{ fontSize: 10, color: '#888' }}>ID: {item.id}</Text>
+                        </View>
+                        <Text style={{ fontSize: 12 }}>{formatCurrency(item.line_total)}</Text>
+                    </View>
+                )}
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalBtn, styles.cancelBtn]} 
+                onPress={() => setShowOrphanModal(false)}
+              >
+                <Text style={styles.modalBtnText}>Tutup</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.modalBtn, { backgroundColor: 'red' }]} 
+                onPress={handleDeleteOrphans}
+              >
+                <Text style={[styles.modalBtnText, { color: '#fff' }]}>Hapus Semua ({orphanItems.length})</Text>
               </TouchableOpacity>
             </View>
           </View>

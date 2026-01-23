@@ -59,6 +59,55 @@ export const getSalesHistory = async (userId) => {
   }
 };
 
+// Check for orphan items (items with no parent sale)
+export const checkOrphanItems = async () => {
+  console.log('🔍 Checking for orphan items...');
+  try {
+    const supabase = getSupabaseClient();
+    
+    // Get all valid sale IDs
+    const { data: sales, error: salesError } = await supabase
+      .from('sales')
+      .select('id');
+      
+    if (salesError) throw salesError;
+    
+    const validSaleIds = new Set(sales.map(s => s.id));
+    
+    // Get all sale items
+    const { data: items, error: itemsError } = await supabase
+      .from('sale_items')
+      .select('id, sale_id, product_name, line_total');
+      
+    if (itemsError) throw itemsError;
+    
+    const orphans = items.filter(item => !validSaleIds.has(item.sale_id));
+    
+    console.log(`🔍 Found ${orphans.length} orphan items out of ${items.length} total items.`);
+    return { success: true, orphans };
+    
+  } catch (error) {
+    console.error('❌ Error checking orphans:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const deleteOrphanItems = async (orphanIds) => {
+    console.log(`🗑️ Deleting ${orphanIds.length} orphan items...`);
+    try {
+        const supabase = getSupabaseClient();
+        const { error } = await supabase
+            .from('sale_items')
+            .delete()
+            .in('id', orphanIds);
+            
+        if (error) throw error;
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
+
 // Get sale by ID with items
 export const getSaleById = async (saleId) => {
   console.log('🔄 salesSupabase: Getting sale by ID:', saleId);
@@ -118,6 +167,28 @@ export const getSaleById = async (saleId) => {
   }
 };
 
+export const deleteSale = async (saleId) => {
+  console.log('🗑️ salesSupabase: Deleting sale (invoice):', saleId);
+  try {
+    const supabase = getSupabaseClient();
+    
+    // Attempt to delete the sale record directly
+    // This relies on CASCADE delete for items, or user ownership of the sale record
+    const { error } = await supabase
+      .from('sales')
+      .delete()
+      .eq('id', saleId);
+      
+    if (error) throw error;
+    
+    console.log('✅ salesSupabase: Sale deleted successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ salesSupabase: Error deleting sale:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 // Delete sale item by ID
 export const deleteSaleItem = async (itemId) => {
   console.log('🗑️ salesSupabase: Deleting sale item:', itemId);
@@ -141,12 +212,45 @@ export const deleteSaleItem = async (itemId) => {
     const { sale_id, line_total, line_profit } = itemData;
 
     // Delete the item
-    const { error: deleteError } = await supabase
+    const { data: deletedData, error: deleteError } = await supabase
       .from('sale_items')
       .delete()
-      .eq('id', itemId);
+      .eq('id', itemId)
+      .select();
 
     if (deleteError) throw deleteError;
+
+    // Check if anything was actually deleted
+    if (!deletedData || deletedData.length === 0) {
+      console.warn('⚠️ salesSupabase: Item deletion returned no data. Possible RLS issue. Attempting fallback...');
+      
+      // Check count of items in this sale
+      const { count } = await supabase
+        .from('sale_items')
+        .select('id', { count: 'exact', head: true })
+        .eq('sale_id', sale_id);
+        
+      // Fallback: If this is the only item in the sale, try deleting the sale record directly
+      if (count === 1) {
+        console.log('🔄 Fallback: Deleting parent sale record directly as it is the last item...');
+        const result = await deleteSale(sale_id);
+        
+        if (result.success) {
+          console.log('✅ Fallback successful: Parent sale deleted');
+          return { success: true };
+        } else {
+          console.error('❌ Fallback failed:', result.error);
+        }
+      }
+      
+      // If we couldn't delete the item and fallback didn't apply/work
+      return { 
+        success: false, 
+        error: 'Gagal menghapus item. Item tidak ditemukan atau izin ditolak.',
+        reason: count > 1 ? 'rls_multi_item' : 'unknown',
+        sale_id: sale_id
+      };
+    }
 
     // Update parent sale totals
     // Get current sale totals
@@ -231,13 +335,29 @@ export const getSalesAnalytics = async (userId, period = 'today', customRange = 
         break;
       case 'custom':
         if (customRange && customRange.startDate && customRange.endDate) {
-          startDate = new Date(customRange.startDate);
-          endDate = new Date(customRange.endDate);
-          // Ensure we cover the full end date by adding 1 day if it's just a date without time or same as start
-          // Assuming the UI passes dates at 00:00:00
-          const endDateTime = new Date(endDate);
-          endDateTime.setHours(23, 59, 59, 999);
-          endDate = endDateTime;
+          // Helper to ensure we have YYYY-MM-DD string
+          const getDateStr = (d) => {
+            if (d instanceof Date) {
+              return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            }
+            return d;
+          };
+
+          const startDateStr = getDateStr(customRange.startDate);
+          const endDateStr = getDateStr(customRange.endDate);
+
+          // Parse dates strictly as local YYYY-MM-DD to match SalesReportScreen
+          const [sy, sm, sd] = startDateStr.split('-').map(Number);
+          startDate = new Date(sy, sm - 1, sd, 0, 0, 0, 0); // Start of day 00:00:00
+          
+          const [ey, em, ed] = endDateStr.split('-').map(Number);
+          // Use next day 00:00:00 as upper bound (exclusive)
+          endDate = new Date(ey, em - 1, ed);
+          endDate.setDate(endDate.getDate() + 1);
+          endDate.setHours(0, 0, 0, 0);
+          
+          console.log(`📅 salesSupabase: Custom range parsed as Local: ${startDate.toLocaleString()} - ${endDate.toLocaleString()}`);
+          console.log(`📅 salesSupabase: Custom range ISO: ${startDate.toISOString()} - ${endDate.toISOString()}`);
         } else {
           startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
           endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
@@ -250,7 +370,7 @@ export const getSalesAnalytics = async (userId, period = 'today', customRange = 
 
     const { data, error } = await supabase
       .from('sales')
-      .select('id, total, profit, created_at')
+      .select('id, total, profit, created_at, sale_items(line_profit)')
       .eq('user_id', userId)
       .gte('created_at', startDate.toISOString())
       .lt('created_at', endDate.toISOString())
@@ -264,7 +384,18 @@ export const getSalesAnalytics = async (userId, period = 'today', customRange = 
     // Calculate analytics
     const sales = data || [];
     const totalSales = sales.reduce((sum, sale) => sum + (sale.total || 0), 0);
-    const totalProfit = sales.reduce((sum, sale) => sum + (sale.profit || 0), 0);
+    // Calculate profit from items if available (more accurate), otherwise use header profit
+    const totalProfit = sales.reduce((sum, sale) => {
+      // Strictly use sale_items for profit calculation to match SalesReportScreen
+      // If a sale has no items (empty array), it contributes 0 profit (Report ignores empty sales)
+      if (sale.sale_items && sale.sale_items.length > 0) {
+        const itemsProfit = sale.sale_items.reduce((is, item) => is + (item.line_profit || 0), 0);
+        return sum + itemsProfit;
+      }
+      // If no items, profit is 0 (ignore sale.profit which might be stale/zombie)
+      return sum + 0;
+    }, 0);
+    
     const transactions = sales.length;
     const average = transactions > 0 ? totalSales / transactions : 0;
     
@@ -306,28 +437,52 @@ export const getSalesPerformance = async (userId, customStartDate = null, custom
     const supabase = getSupabaseClient();
     
     // Calculate date range
-    let startDate, endDate;
+    let startDate, endDate, queryEndDate;
     
     if (customStartDate && customEndDate) {
-       startDate = new Date(customStartDate);
-       endDate = new Date(customEndDate);
-       // Ensure end date includes the full day
-       endDate.setHours(23, 59, 59, 999);
+       // Helper to ensure we have YYYY-MM-DD string
+       const getDateStr = (d) => {
+         if (d instanceof Date) {
+           return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+         }
+         return d;
+       };
+
+       const startDateStr = getDateStr(customStartDate);
+       const endDateStr = getDateStr(customEndDate);
+
+       // Parse strictly as YYYY-MM-DD
+       const [sy, sm, sd] = startDateStr.split('-').map(Number);
+       startDate = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
+
+       const [ey, em, ed] = endDateStr.split('-').map(Number);
+       // We need end of day for the loop logic (last day included)
+       endDate = new Date(ey, em - 1, ed, 23, 59, 59, 999);
+       
+       // For query, we use next day 00:00 as strict upper bound
+       queryEndDate = new Date(ey, em - 1, ed);
+       queryEndDate.setDate(queryEndDate.getDate() + 1);
+       queryEndDate.setHours(0, 0, 0, 0);
     } else {
        // Default 10 days
        endDate = new Date();
+       endDate.setHours(23, 59, 59, 999);
+       
        startDate = new Date();
        startDate.setDate(startDate.getDate() - 10);
+       startDate.setHours(0, 0, 0, 0);
+       
+       queryEndDate = new Date(endDate);
+       queryEndDate.setHours(0, 0, 0, 0);
+       queryEndDate.setDate(queryEndDate.getDate() + 1);
     }
     
-    startDate.setHours(0, 0, 0, 0);
-
     const { data, error } = await supabase
       .from('sales')
-      .select('created_at, total, profit')
+      .select('created_at, total, profit, sale_items(line_profit)')
       .eq('user_id', userId)
       .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString())
+      .lt('created_at', queryEndDate.toISOString())
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -347,7 +502,11 @@ export const getSalesPerformance = async (userId, customStartDate = null, custom
       // Stop if we go before start date (can happen with rough dayCount calculation)
       if (d < startDate) break;
 
-      const dateStr = d.toISOString().split('T')[0];
+      // Use Local Date String YYYY-MM-DD
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
       
       const dayName = d.toLocaleDateString('id-ID', { weekday: 'long' });
       const fullDate = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -367,13 +526,24 @@ export const getSalesPerformance = async (userId, customStartDate = null, custom
     if (data) {
       data.forEach(sale => {
         const saleDate = new Date(sale.created_at);
-        const dateStr = saleDate.toISOString().split('T')[0];
+        // Use Local Date String YYYY-MM-DD
+        const year = saleDate.getFullYear();
+        const month = String(saleDate.getMonth() + 1).padStart(2, '0');
+        const day = String(saleDate.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
         
-        // Find matching key (handling potential timezone mismatches by just using the date part string)
-        // Since we initialized keys with ISO string split, this should match directly
+        // Find matching key
         if (dailyStats[dateStr]) {
           dailyStats[dateStr].totalSales += (sale.total || 0);
-          dailyStats[dateStr].totalProfit += (sale.profit || 0);
+          
+          // Calculate profit from items if available
+          let saleProfit = 0;
+          if (sale.sale_items && sale.sale_items.length > 0) {
+            saleProfit = sale.sale_items.reduce((sum, item) => sum + (item.line_profit || 0), 0);
+          }
+          // If no items, saleProfit remains 0 (ignoring sale.profit)
+          
+          dailyStats[dateStr].totalProfit += saleProfit;
           dailyStats[dateStr].transactions += 1;
         }
       });
@@ -485,6 +655,8 @@ export const getProductSalesMetrics = async (userId, productBarcode, dateRange =
     if (itemsError) {
       return { success: false, error: itemsError.message };
     }
+
+
 
     const saleDateMap = {};
     (salesData || []).forEach(s => {
