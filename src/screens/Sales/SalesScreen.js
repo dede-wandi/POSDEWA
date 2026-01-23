@@ -309,6 +309,8 @@ export default function SalesScreen({ navigation, route }) {
           <Text style={styles.sectionTitle}>{query.trim() ? 'Hasil Pencarian' : 'Daftar Produk'}</Text>
           <FlatList
             data={results}
+            key={productLayout} // Force re-render when layout changes
+            numColumns={productLayout === 'grid' ? 2 : 1}
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
             refreshControl={
@@ -319,43 +321,81 @@ export default function SalesScreen({ navigation, route }) {
                 tintColor={Colors.primary}
               />
             }
-            renderItem={({ item }) => (
-              <View style={styles.resultCard}>
-                {item.image_urls && item.image_urls[0] ? (
-                  <Image source={{ uri: item.image_urls[0] }} style={{ width: 56, height: 56, borderRadius: 8, marginRight: 12, backgroundColor: Colors.background }} />
-                ) : (
-                  <View style={{ width: 56, height: 56, borderRadius: 8, marginRight: 12, backgroundColor: Colors.background }} />
-                )}
-                <View style={styles.resultInfo}>
-                  <Text style={styles.resultName}>{item.name}</Text>
-                  <View style={styles.resultBarcodeRow}>
-                    <Ionicons name="barcode" size={12} color={Colors.muted} style={{ marginRight: 6 }} />
-                    <Text style={styles.resultBarcode}>
-                      {item.barcode || 'Tanpa barcode'}
-                    </Text>
-                  </View>
-                  <Text style={styles.resultPrice}>{formatIDR(item.price)}</Text>
-                  <Text style={styles.resultStock}>Stok: {item.stock}</Text>
-                </View>
-                <TouchableOpacity
-                  style={[
-                    styles.addButton,
-                    item.stock <= 0 && styles.addButtonDisabled
-                  ]}
-                  onPress={() => addToCart(item)}
-                  disabled={item.stock <= 0}
-                >
-                  {item.stock <= 0 ? (
-                    <Text style={[styles.addButtonText, styles.addButtonTextDisabled]}>Habis</Text>
-                  ) : (
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Ionicons name="add" size={14} color="#ffffff" style={{ marginRight: 6 }} />
-                      <Text style={styles.addButtonText}>Tambah</Text>
+            renderItem={({ item }) => {
+              if (productLayout === 'grid') {
+                return (
+                  <View style={styles.resultCardGrid}>
+                    {item.image_urls && item.image_urls[0] ? (
+                      <Image source={{ uri: item.image_urls[0] }} style={styles.resultImageGrid} />
+                    ) : (
+                      <View style={[styles.resultImageGrid, { backgroundColor: Colors.background }]} />
+                    )}
+                    <View style={styles.resultInfoGrid}>
+                      <View>
+                        <Text style={styles.resultNameGrid} numberOfLines={2}>{item.name}</Text>
+                        <Text style={styles.resultPrice}>{formatIDR(item.price)}</Text>
+                        <Text style={styles.resultStock}>Stok: {item.stock}</Text>
+                      </View>
+                      <TouchableOpacity
+                        style={[
+                          styles.addButtonGrid,
+                          item.stock <= 0 && styles.addButtonDisabled
+                        ]}
+                        onPress={() => addToCart(item)}
+                        disabled={item.stock <= 0}
+                      >
+                        {item.stock <= 0 ? (
+                          <Text style={[styles.addButtonText, styles.addButtonTextDisabled]}>Habis</Text>
+                        ) : (
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Ionicons name="add" size={14} color="#ffffff" style={{ marginRight: 6 }} />
+                            <Text style={styles.addButtonText}>Tambah</Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
                     </View>
+                  </View>
+                );
+              }
+
+              return (
+                <View style={styles.resultCard}>
+                  {item.image_urls && item.image_urls[0] ? (
+                    <Image source={{ uri: item.image_urls[0] }} style={{ width: 56, height: 56, borderRadius: 8, marginRight: 12, backgroundColor: Colors.background }} />
+                  ) : (
+                    <View style={{ width: 56, height: 56, borderRadius: 8, marginRight: 12, backgroundColor: Colors.background }} />
                   )}
-                </TouchableOpacity>
-              </View>
-            )}
+                  <View style={styles.resultInfo}>
+                    <Text style={styles.resultName}>{item.name}</Text>
+                    <View style={styles.resultBarcodeRow}>
+                      <Ionicons name="barcode" size={12} color={Colors.muted} style={{ marginRight: 6 }} />
+                      <Text style={styles.resultBarcode}>
+                        {item.barcode || 'Tanpa barcode'}
+                      </Text>
+                    </View>
+                    <Text style={styles.resultPrice}>{formatIDR(item.price)}</Text>
+                    <Text style={styles.resultStock}>Stok: {item.stock}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[
+                      styles.addButton,
+                      item.stock <= 0 && styles.addButtonDisabled
+                    ]}
+                    onPress={() => addToCart(item)}
+                    disabled={item.stock <= 0}
+                  >
+                    {item.stock <= 0 ? (
+                      <Text style={[styles.addButtonText, styles.addButtonTextDisabled]}>Habis</Text>
+                    ) : (
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Ionicons name="add" size={14} color="#ffffff" style={{ marginRight: 6 }} />
+                        <Text style={styles.addButtonText}>Tambah</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              );
+            }}
           />
         </View>
 
@@ -587,6 +627,46 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+  },
+  resultCardGrid: {
+    flex: 1,
+    backgroundColor: Colors.card,
+    borderRadius: 8,
+    padding: 8,
+    margin: 4,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+    width: (width - 60) / 2, // 2 column with safe padding calculation
+  },
+  resultImageGrid: {
+    width: '100%',
+    height: 100,
+    borderRadius: 6,
+    marginBottom: 8,
+  },
+  resultInfoGrid: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  resultNameGrid: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: 4,
+    height: 36, // limit to 2 lines height roughly
+  },
+  addButtonGrid: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 6,
+    borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
   },
   resultInfo: {
     flex: 1,

@@ -141,9 +141,6 @@ function MainTabs() {
             case 'Produk':
               iconName = focused ? 'cube' : 'cube-outline';
               break;
-            case 'Scan':
-              iconName = focused ? 'scan' : 'scan-outline';
-              break;
             case 'Penjualan':
               iconName = focused ? 'cash' : 'cash-outline';
               break;
@@ -173,14 +170,6 @@ function MainTabs() {
     >
       <Tab.Screen name="Home" component={DashboardScreen} options={{ title: 'Home' }} />
       <Tab.Screen name="Produk" component={ProductsStack} options={{ title: 'Produk' }} />
-      {/* <Tab.Screen 
-        name="Scan" 
-        component={BarcodeScanScreen} 
-        options={{ 
-          title: 'Scan',
-          tabBarButton: () => null, // Hide from tab bar
-        }} 
-      /> */}
       <Tab.Screen name="Penjualan" component={SalesStack} options={{ title: 'Penjualan' }} />
       <Tab.Screen name="Akun" component={AccountScreen} options={{ title: 'Akun' }} />
     </Tab.Navigator>
@@ -192,6 +181,14 @@ function MainStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MainTabs" component={MainTabs} />
       {/* Tetap sediakan screen Stock & Finance, tetapi tidak muncul di Tab Bar */}
+      <Stack.Screen
+        name="Scan"
+        component={BarcodeScanScreen}
+        options={{
+          title: 'Scan Barcode',
+          presentation: 'modal',
+        }}
+      />
       <Stack.Screen
         name="MoreMenu"
         component={MoreMenuScreen}
@@ -317,10 +314,10 @@ function AppNavigator() {
             },
             Penjualan: 'penjualan',
             Akun: 'akun',
-            Scan: 'scan',
           },
         },
         // Modals/routes accessible when logged-in
+        Scan: 'scan',
         StockManagement: 'stok',
         Finance: 'keuangan',
         SalesAnalytics: 'analitik',

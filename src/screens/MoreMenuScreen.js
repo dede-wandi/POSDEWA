@@ -69,6 +69,13 @@ export default function MoreMenuScreen({ navigation }) {
       bgColor: '#E3F2FD',
       onPress: () => navigation.navigate('Akun'),
     },
+    {
+      label: 'Scan Barcode',
+      icon: 'scan',
+      iconColor: Colors.text,
+      bgColor: '#F5F5F5',
+      onPress: () => navigation.navigate('Scan'),
+    },
   ];
 
   return (

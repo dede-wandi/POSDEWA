@@ -140,14 +140,23 @@ export default function ListScreen({ navigation, route }) {
                 <Ionicons name="close-circle" size={18} color={Colors.muted} />
               </TouchableOpacity>
             )}
+          </View>
+          <View style={styles.viewToggleGroup}>
             <TouchableOpacity
               onPress={() => navigation.navigate('Scan', { mode: 'pick', returnTo: 'DaftarProduk' })}
-              style={{ marginLeft: 8, backgroundColor: Colors.primary, padding: 10, borderRadius: 10 }}
+              style={{ 
+                marginRight: 8, 
+                backgroundColor: Colors.primary, 
+                padding: 10, 
+                borderRadius: 8,
+                width: 38,
+                height: 38,
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
             >
               <Ionicons name="scan" size={18} color="#fff" />
             </TouchableOpacity>
-          </View>
-          <View style={styles.viewToggleGroup}>
             <TouchableOpacity
               style={[styles.viewToggleButton, !isGrid && styles.viewToggleButtonActive]}
               onPress={() => setIsGrid(false)}
