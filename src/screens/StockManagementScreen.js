@@ -46,6 +46,17 @@ export default function StockManagementScreen({ navigation }) {
   const [newStockValue, setNewStockValue] = useState('');
   const [addingStock, setAddingStock] = useState(false);
 
+  // Initial load
+  useEffect(() => {
+    // Sort products by stock (ascending) initially
+    if (products.length > 0) {
+      const sorted = [...products].sort((a, b) => a.stock - b.stock);
+      // Check if order is different before setting to avoid loop if possible, 
+      // but simplistic set is okay if we trust react diffing or just ensure loadProducts does it.
+      // Actually loadProducts already does it.
+    }
+  }, []);
+
   // Date filter functions
   const getDateFilterLabel = () => {
     switch (dateFilter) {
@@ -514,6 +525,14 @@ export default function StockManagementScreen({ navigation }) {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
+          style={[styles.tab, activeTab === 'all_stock' && styles.activeTab]}
+          onPress={() => setActiveTab('all_stock')}
+        >
+          <Text style={[styles.tabText, activeTab === 'all_stock' && styles.activeTabText]}>
+            Semua Stock
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
           style={[styles.tab, activeTab === 'history' && styles.activeTab]}
           onPress={() => setActiveTab('history')}
         >
@@ -535,6 +554,35 @@ export default function StockManagementScreen({ navigation }) {
             {products.length > 0 ? (
               products.map((product) => (
                 <ProductItem key={product.id} item={product} />
+              ))
+            ) : (
+              <View style={styles.emptyState}>
+                <Ionicons name="cube-outline" size={48} color="#C7C7CC" />
+                <Text style={styles.emptyStateText}>Belum ada produk</Text>
+              </View>
+            )}
+          </View>
+        ) : activeTab === 'all_stock' ? (
+          <View style={styles.productsContainer}>
+            <View style={styles.tableHeader}>
+              <Text style={[styles.tableHeaderText, { flex: 2 }]}>Nama Produk</Text>
+              <Text style={[styles.tableHeaderText, { flex: 1, textAlign: 'center' }]}>Stock</Text>
+              <Text style={[styles.tableHeaderText, { width: 50, textAlign: 'center' }]}>Aksi</Text>
+            </View>
+            {products.length > 0 ? (
+              products.map((item, index) => (
+                <View key={item.id} style={[styles.tableRow, index % 2 === 1 && styles.tableRowAlt]}>
+                  <Text style={[styles.tableCell, { flex: 2 }]}>{item.name}</Text>
+                  <Text style={[styles.tableCell, { flex: 1, textAlign: 'center', fontWeight: 'bold', color: getStockStatusColor(item.stock) }]}>
+                    {item.stock}
+                  </Text>
+                  <TouchableOpacity 
+                    style={styles.editIconBtn} 
+                    onPress={() => handleAdjustStock(item)}
+                  >
+                    <Ionicons name="create-outline" size={20} color="#007AFF" />
+                  </TouchableOpacity>
+                </View>
               ))
             ) : (
               <View style={styles.emptyState}>
@@ -910,6 +958,40 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#E5E5EA',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  tableHeaderText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#000000',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F2F7',
+  },
+  tableRowAlt: {
+    backgroundColor: '#F9F9F9',
+  },
+  tableCell: {
+    fontSize: 14,
+    color: '#000000',
+  },
+  editIconBtn: {
+    width: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   loadingText: {
     fontSize: 16,
