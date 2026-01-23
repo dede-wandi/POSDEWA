@@ -5,11 +5,13 @@ import { Colors } from '../../theme';
 import { findByBarcodeOrName, findByBarcodeExact, getProducts } from '../../services/products';
 import { formatIDR } from '../../utils/currency';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 
 const { width } = Dimensions.get('window');
 
 export default function SalesScreen({ navigation, route }) {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [cart, setCart] = useState([]); // Each item: { id, name, price, costPrice, qty, lineTotal, tokenCode? }
@@ -42,7 +44,7 @@ export default function SalesScreen({ navigation, route }) {
       setResults(products || []);
     } catch (error) {
       console.error('Error loading products:', error);
-      Alert.alert('Error', 'Gagal memuat produk');
+      showToast('Gagal memuat produk', 'error');
     } finally {
       setRefreshing(false);
     }
@@ -65,7 +67,7 @@ export default function SalesScreen({ navigation, route }) {
       setResults(searchResults || []);
     } catch (error) {
       console.error('Search error:', error);
-      Alert.alert('Error', 'Gagal mencari produk');
+      showToast('Gagal mencari produk', 'error');
       setResults([]);
     }
   };
@@ -141,13 +143,13 @@ export default function SalesScreen({ navigation, route }) {
           setQuery('');
           setResults([]);
         } else {
-          Alert.alert('Produk tidak ditemukan', 'Produk belum ada di database');
+          showToast('Produk tidak ditemukan', 'error');
           setQuery(String(scanned));
           await handleSearch();
         }
       } catch (error) {
         console.error('Scan handling error:', error);
-        Alert.alert('Error', 'Terjadi kesalahan saat memproses barcode');
+        showToast('Terjadi kesalahan saat memproses barcode', 'error');
       } finally {
         // Kosongkan param agar tidak berulang
         navigation.setParams({ scannedBarcode: null });
@@ -166,7 +168,7 @@ export default function SalesScreen({ navigation, route }) {
 
   const addToCart = (product) => {
     if (product.stock <= 0) {
-      Alert.alert('Stok Habis', 'Produk ini sudah habis stok');
+      showToast('Stok habis, tidak bisa menambahkan produk', 'error');
       return;
     }
 
@@ -187,7 +189,7 @@ export default function SalesScreen({ navigation, route }) {
     
     if (existingItem) {
       if (existingItem.qty >= product.stock) {
-        Alert.alert('Stok Tidak Cukup', `Sisa stok hanya ${product.stock}`);
+        showToast(`Stok tidak cukup. Sisa stok hanya ${product.stock}`, 'error');
         return;
       }
       setCart(cart.map(item =>
@@ -212,7 +214,7 @@ export default function SalesScreen({ navigation, route }) {
 
   const handleTokenSubmit = () => {
     if (!tokenCode.trim()) {
-      Alert.alert('Error', 'Kode token harus diisi');
+      showToast('Kode token harus diisi', 'error');
       return;
     }
 
@@ -230,7 +232,7 @@ export default function SalesScreen({ navigation, route }) {
 
     const item = cart.find(i => i.id === id);
     if (item && item.stock !== undefined && newQty > item.stock) {
-      Alert.alert('Stok Tidak Cukup', `Sisa stok hanya ${item.stock}`);
+      showToast(`Stok tidak cukup. Sisa stok hanya ${item.stock}`, 'error');
       return;
     }
 
@@ -256,7 +258,7 @@ export default function SalesScreen({ navigation, route }) {
 
   const navigateToPayment = () => {
     if (cart.length === 0) {
-      Alert.alert('Keranjang Kosong', 'Tambahkan produk ke keranjang terlebih dahulu');
+      showToast('Keranjang kosong, silakan tambah produk', 'error');
       return;
     }
 
@@ -275,7 +277,7 @@ export default function SalesScreen({ navigation, route }) {
           <View style={styles.searchContainer}>
             <Ionicons name="search" size={18} color={Colors.muted} style={styles.searchIcon} />
             <TextInput
-              placeholder="Cari produk dengan nama atau barcode..."
+              placeholder="Cari produk..."
               value={query}
               onChangeText={setQuery}
               style={styles.searchInput}
