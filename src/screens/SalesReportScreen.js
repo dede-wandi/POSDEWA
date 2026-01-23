@@ -50,11 +50,12 @@ export default function SalesReportScreen({ navigation }) {
   const [visibleColumns, setVisibleColumns] = useState({
     no: true,
     date: true,
-    invoice: true,
+    invoice: false,
     product: true,
+    capitalPrice: false,
     price: true,
     profit: true,
-    action: true
+    action: false
   });
   const [showColumnModal, setShowColumnModal] = useState(false);
   const [tempVisibleColumns, setTempVisibleColumns] = useState({...visibleColumns});
@@ -838,6 +839,7 @@ export default function SalesReportScreen({ navigation }) {
                   date: 'Tanggal',
                   invoice: 'No. Invoice',
                   product: 'Nama Produk',
+                  capitalPrice: 'Harga Modal',
                   price: 'Harga',
                   profit: 'Profit',
                   action: 'Action'

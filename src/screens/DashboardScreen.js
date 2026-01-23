@@ -203,10 +203,33 @@ export default function DashboardScreen({ navigation }) {
             </View>
           </View>
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.headerIconButton} activeOpacity={0.8}>
-              <Ionicons name="notifications-outline" size={20} color={Colors.text} />
+            <TouchableOpacity 
+              style={styles.headerIconButton} 
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('History')}
+            >
+              <View>
+                <Ionicons name="notifications-outline" size={20} color={Colors.text} />
+                {(stats?.today?.transactions || 0) > 0 && (
+                  <View style={{
+                    position: 'absolute',
+                    top: -2,
+                    right: -2,
+                    backgroundColor: Colors.danger,
+                    borderRadius: 6,
+                    width: 10,
+                    height: 10,
+                    borderWidth: 1,
+                    borderColor: Colors.card
+                  }} />
+                )}
+              </View>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerIconButton} activeOpacity={0.8}>
+            <TouchableOpacity 
+              style={styles.headerIconButton} 
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('Akun')}
+            >
               <Ionicons name="person-circle" size={26} color={Colors.primary} />
             </TouchableOpacity>
           </View>
@@ -257,11 +280,11 @@ export default function DashboardScreen({ navigation }) {
               <Text style={styles.menuLabel}>Stok</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('InvoiceSettings')}>
-              <View style={[styles.menuIcon, { backgroundColor: '#ECEFF1' }]}>
-                <Ionicons name="settings" size={24} color="#607D8B" />
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('SalesReport')}>
+              <View style={[styles.menuIcon, { backgroundColor: '#E0F2F1' }]}>
+                <Ionicons name="clipboard" size={24} color="#009688" />
               </View>
-              <Text style={styles.menuLabel}>Pengaturan</Text>
+              <Text style={styles.menuLabel}>Report Penjualan</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('MoreMenu')}>
