@@ -402,19 +402,21 @@ export default function DashboardScreen({ navigation }) {
           <View style={styles.section}>
             <View style={styles.alertCard}>
               <View style={styles.alertHeader}>
-              <Ionicons name="warning" size={20} color={Colors.danger} />
-              <Text style={styles.alertTitle}>Peringatan Stock</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="warning" size={20} color={Colors.danger} />
+                  <Text style={styles.alertTitle}>Peringatan Stock</Text>
+                </View>
+                <TouchableOpacity 
+                  style={styles.alertButton}
+                  onPress={() => navigation.navigate('StockManagement')}
+                >
+                  <Text style={styles.alertButtonText}>Kelola Stock</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.alertText}>
+                {stats.products.lowStock.length} produk memiliki stock menipis
+              </Text>
             </View>
-            <Text style={styles.alertText}>
-              {stats.products.lowStock.length} produk memiliki stock menipis
-            </Text>
-            <TouchableOpacity 
-              style={styles.alertButton}
-              onPress={() => navigation.navigate('StockManagement')}
-            >
-              <Text style={styles.alertButtonText}>Kelola Stock</Text>
-            </TouchableOpacity>
-          </View>
         </View>
         )}
 
@@ -542,7 +544,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '600',
     color: Colors.text,
     marginBottom: Spacing.md,
@@ -603,6 +605,7 @@ const styles = StyleSheet.create({
   alertHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: Spacing.sm,
   },
   alertTitle: {
@@ -614,14 +617,12 @@ const styles = StyleSheet.create({
   alertText: {
     fontSize: 14,
     color: '#7F1D1D',
-    marginBottom: Spacing.md,
   },
   alertButton: {
     backgroundColor: Colors.danger,
     borderRadius: Radii.sm,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
-    alignSelf: 'flex-start',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
   },
   alertButtonText: {
     color: '#FFFFFF',
@@ -642,12 +643,12 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   saleItemInvoice: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '600',
     color: Colors.text,
   },
   saleItemDate: {
-    fontSize: 12,
+    fontSize: 10,
     color: Colors.muted,
   },
   saleItemDetails: {
@@ -657,17 +658,17 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
   saleItemTotal: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: 'bold',
     color: Colors.success,
   },
   saleItemProfit: {
-    fontSize: 14,
+    fontSize: 10,
     color: Colors.warning,
     fontWeight: '500',
   },
   saleItemCount: {
-    fontSize: 12,
+    fontSize: 10,
     color: Colors.muted,
   },
   emptyState: {

@@ -124,6 +124,7 @@ export async function updatePaymentChannel(channelId, updateData) {
         name: updateData.name,
         type: updateData.type,
         description: updateData.description,
+        balance: updateData.balance,
         updated_at: new Date().toISOString()
       })
       .eq('id', channelId)

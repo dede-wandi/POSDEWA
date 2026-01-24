@@ -18,6 +18,7 @@ export default function PaymentChannelsScreen({ navigation }) {
   const [description, setDescription] = useState('');
   const [type, setType] = useState('digital'); // 'cash' or 'digital'
   const [initialBalance, setInitialBalance] = useState('');
+  const [balance, setBalance] = useState('');
 
   const loadChannels = useCallback(async () => {
     setLoading(true);
@@ -45,6 +46,7 @@ export default function PaymentChannelsScreen({ navigation }) {
     setDescription('');
     setType('digital');
     setInitialBalance('');
+    setBalance('');
     setEditingChannel(null);
   };
 
@@ -58,7 +60,8 @@ export default function PaymentChannelsScreen({ navigation }) {
     setName(channel.name);
     setDescription(channel.description || '');
     setType(channel.type);
-    setInitialBalance(''); // Initial balance cannot be edited once created
+    setInitialBalance(''); 
+    setBalance(channel.balance ? channel.balance.toString() : '0');
     setModalVisible(true);
   };
 
@@ -74,7 +77,8 @@ export default function PaymentChannelsScreen({ navigation }) {
         const result = await updatePaymentChannel(editingChannel.id, {
           name,
           description,
-          type
+          type,
+          balance: parseFloat(balance) || 0
         });
         if (result.success) {
           Alert.alert('Sukses', 'Channel pembayaran berhasil diperbarui');
@@ -263,6 +267,22 @@ export default function PaymentChannelsScreen({ navigation }) {
                   placeholder="0"
                   keyboardType="numeric"
                 />
+              </View>
+            )}
+
+            {editingChannel && (
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Saldo Saat Ini (Rp)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={balance}
+                  onChangeText={setBalance}
+                  placeholder="0"
+                  keyboardType="numeric"
+                />
+                <Text style={styles.helperText}>
+                  Sesuaikan saldo jika ada penarikan atau pemasukan manual.
+                </Text>
               </View>
             )}
 
@@ -460,6 +480,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.text,
     backgroundColor: Colors.background,
+  },
+  helperText: {
+    fontSize: 12,
+    color: Colors.muted,
+    marginTop: 4,
   },
   textArea: {
     height: 80,
