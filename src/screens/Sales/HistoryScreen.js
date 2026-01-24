@@ -838,7 +838,7 @@ const styles = StyleSheet.create({
     borderTopColor: '#f1f3f5',
   },
   insightItemName: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     color: '#1a1a1a',
   },
@@ -852,7 +852,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     backgroundColor: '#f8f9fa',
     borderRadius: 8,
-    paddingHorizontal: 10,
+    paddingHorizontal: 14,
     paddingVertical: 6
   },
   insightMoreText: {
@@ -862,7 +862,7 @@ const styles = StyleSheet.create({
   },
   searchSection: {
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 12,
     backgroundColor: '#fff',
   },
   searchContainer: {
@@ -885,7 +885,7 @@ const styles = StyleSheet.create({
   },
   filterSection: {
     backgroundColor: '#fff',
-    paddingVertical: 12,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#e9ecef',
   },
@@ -896,9 +896,9 @@ const styles = StyleSheet.create({
   filterButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 10,
     backgroundColor: '#f8f9fa',
-    marginRight: 8,
+    marginRight: 10,
   },
   filterButtonActive: {
     backgroundColor: '#007AFF',
