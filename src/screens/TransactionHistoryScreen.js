@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { getFinanceTransactions, getPaymentChannels } from '../services/financeSupabase';
 import { formatCurrency, formatDate } from '../utils/helpers';
+import { useToast } from '../contexts/ToastContext';
 
 const TransactionHistoryScreen = ({ navigation }) => {
   const [transactions, setTransactions] = useState([]);
@@ -44,10 +45,10 @@ const TransactionHistoryScreen = ({ navigation }) => {
           setSelectedChannel(result.data[0]);
         }
       } else {
-        Alert.alert('Error', result.error);
+        showToast(result.error, 'error');
       }
     } catch (error) {
-      Alert.alert('Error', 'Gagal memuat channel pembayaran');
+      showToast('Gagal memuat channel pembayaran', 'error');
     }
   };
 
@@ -104,10 +105,10 @@ const TransactionHistoryScreen = ({ navigation }) => {
 
         setTransactions(filteredTransactions);
       } else {
-        Alert.alert('Error', result.error);
+        showToast(result.error, 'error');
       }
     } catch (error) {
-      Alert.alert('Error', 'Gagal memuat riwayat transaksi');
+      showToast('Gagal memuat riwayat transaksi', 'error');
     } finally {
       setLoading(false);
     }

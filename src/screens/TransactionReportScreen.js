@@ -19,6 +19,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as XLSX from 'xlsx';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { getTransactionReport } from '../services/financeSupabase';
 import { getSalesAnalytics } from '../services/salesSupabase';
 import { formatCurrency, formatDate } from '../utils/helpers';
@@ -27,6 +28,7 @@ const { width } = Dimensions.get('window');
 
 export default function TransactionReportScreen({ navigation }) {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [reportData, setReportData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -203,7 +205,7 @@ export default function TransactionReportScreen({ navigation }) {
       });
 
       if (!(await Sharing.isAvailableAsync())) {
-        alert('Fitur sharing tidak tersedia di perangkat ini');
+        showToast('Fitur sharing tidak tersedia di perangkat ini', 'error');
         return;
       }
 
@@ -215,7 +217,7 @@ export default function TransactionReportScreen({ navigation }) {
 
     } catch (error) {
       console.error('Export Error:', error);
-      alert('Gagal mengekspor data: ' + error.message);
+      showToast('Gagal mengekspor data: ' + error.message, 'error');
     } finally {
       setLoading(false);
     }

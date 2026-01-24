@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { getSalesAnalytics, getSalesPerformance } from '../services/salesSupabase';
 
 // Setup Indonesian Locale for Calendar
@@ -34,6 +35,7 @@ const { width } = Dimensions.get('window');
 
 export default function SalesAnalyticsScreen({ navigation, route }) {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const { type = 'sales', period: initialPeriod = 'today' } = route.params || {};
   
   const [selectedPeriod, setSelectedPeriod] = useState(initialPeriod);
@@ -82,12 +84,12 @@ export default function SalesAnalyticsScreen({ navigation, route }) {
         console.log('✅ SalesAnalyticsScreen: Analytics loaded:', result.data);
       } else {
         console.error('❌ SalesAnalyticsScreen: Error loading analytics:', result.error);
-        Alert.alert('Error', 'Gagal memuat data analytics: ' + result.error);
+        showToast('Gagal memuat data analytics: ' + result.error, 'error');
       }
 
     } catch (error) {
       console.error('❌ SalesAnalyticsScreen: Exception loading analytics:', error);
-      Alert.alert('Error', 'Terjadi kesalahan saat memuat data analytics');
+      showToast('Terjadi kesalahan saat memuat data analytics', 'error');
     } finally {
       setLoading(false);
     }
@@ -310,7 +312,7 @@ export default function SalesAnalyticsScreen({ navigation, route }) {
         }
         setShowDatePicker(false);
     } else {
-        Alert.alert('Pilih Tanggal', 'Silakan pilih tanggal mulai dan selesai.');
+        showToast('Silakan pilih tanggal mulai dan selesai.', 'error');
     }
   };
 

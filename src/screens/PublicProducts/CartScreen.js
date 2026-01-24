@@ -13,13 +13,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../theme';
 import { useCart } from '../../contexts/CartContext';
+import { useToast } from '../../contexts/ToastContext';
 
 export default function CartScreen({ navigation }) {
   const { items, removeFromCart, updateQuantity, cartTotal, clearCart } = useCart();
+  const { showToast } = useToast();
 
   const handleCheckout = () => {
     if (items.length === 0) {
-      Alert.alert('Keranjang Kosong', 'Silakan tambahkan produk terlebih dahulu.');
+      showToast('Keranjang kosong', 'error');
       return;
     }
 
@@ -39,7 +41,7 @@ export default function CartScreen({ navigation }) {
 
     Linking.openURL(url).catch((err) => {
       console.log('Error opening whatsapp:', err);
-      Alert.alert('Gagal Membuka WhatsApp', 'Pastikan aplikasi WhatsApp terinstal di perangkat Anda.');
+      showToast('Gagal Membuka WhatsApp: Pastikan aplikasi WhatsApp terinstal.', 'error');
     });
   };
 

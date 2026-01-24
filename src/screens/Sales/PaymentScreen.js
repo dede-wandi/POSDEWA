@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { formatIDR } from '../../utils/currency';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import { adjustStockOnSale } from '../../services/productsSupabase';
 import { createSale } from '../../services/sales';
 import { getPaymentChannels, processPayment } from '../../services/financeSupabase';
@@ -12,6 +13,7 @@ import { Colors } from '../../theme';
 
 export default function PaymentScreen({ navigation, route }) {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const { cart = [], total = 0, profit = 0 } = route.params || {};
   
   // Payment states
@@ -80,19 +82,19 @@ export default function PaymentScreen({ navigation, route }) {
 
   const validatePayment = () => {
     if (!selectedChannel) {
-      Alert.alert('Error', 'Pilih channel pembayaran terlebih dahulu');
+      showToast('Pilih channel pembayaran terlebih dahulu', 'error');
       return false;
     }
 
     if (selectedPaymentMethod === 'cash') {
       if (cashValue < total) {
-        Alert.alert('Pembayaran Kurang', `Jumlah uang tidak mencukupi. Kurang: ${formatIDR(total - cashValue)}`);
+        showToast(`Jumlah uang tidak mencukupi. Kurang: ${formatIDR(total - cashValue)}`, 'error');
         return false;
       }
     } else {
       // For non-cash payments, check channel balance
       if (selectedChannel.balance < total) {
-        Alert.alert('Saldo Tidak Cukup', `Saldo channel ${selectedChannel.name} tidak mencukupi. Saldo: ${formatIDR(selectedChannel.balance)}`);
+        showToast(`Saldo channel ${selectedChannel.name} tidak mencukupi. Saldo: ${formatIDR(selectedChannel.balance)}`, 'error');
         return false;
       }
     }
@@ -154,11 +156,7 @@ export default function PaymentScreen({ navigation, route }) {
         if (!paymentResult.success) {
           console.log('⚠️ PaymentScreen: Payment processing failed:', paymentResult.error);
           // Don't fail the transaction, just warn
-          Alert.alert(
-            'Peringatan', 
-            'Transaksi berhasil, tetapi ada masalah dengan pencatatan keuangan. Silakan periksa saldo channel.',
-            [{ text: 'OK' }]
-          );
+          showToast('Transaksi berhasil, tetapi ada masalah dengan pencatatan keuangan', 'warning');
         } else {
           console.log('✅ PaymentScreen: Payment processed successfully');
         }
@@ -175,11 +173,7 @@ export default function PaymentScreen({ navigation, route }) {
       if (!stockResult.success) {
         console.log('⚠️ PaymentScreen: Stock adjustment failed:', stockResult.error);
         // Don't fail the transaction, just warn
-        Alert.alert(
-          'Peringatan', 
-          'Transaksi berhasil, tetapi ada masalah dengan pengurangan stok. Silakan periksa stok produk.',
-          [{ text: 'OK' }]
-        );
+        showToast('Transaksi berhasil, tetapi ada masalah dengan pengurangan stok', 'warning');
       } else {
         console.log('✅ PaymentScreen: Stock adjusted successfully');
       }
@@ -204,7 +198,7 @@ export default function PaymentScreen({ navigation, route }) {
 
     } catch (error) {
       console.error('❌ PaymentScreen: Payment processing error:', error);
-      Alert.alert('Error', error.message || 'Gagal memproses pembayaran');
+      showToast(error.message || 'Gagal memproses pembayaran', 'error');
     } finally {
       setIsProcessing(false);
     }

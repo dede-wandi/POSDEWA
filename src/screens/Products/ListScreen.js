@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, Alert, StyleSheet, Dimensions, RefreshControl, Image } from 'react-native';
 import { getProducts, deleteProduct, findProducts } from '../../services/products';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import { formatIDR } from '../../utils/currency';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../theme';
@@ -13,6 +14,7 @@ import * as FileSystem from 'expo-file-system';
 
 export default function ListScreen({ navigation, route }) {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [products, setProducts] = useState([]);
   const [query, setQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -105,10 +107,10 @@ export default function ListScreen({ navigation, route }) {
           onPress: async () => { 
             try {
               await deleteProduct(user?.id, id); 
-              Alert.alert('✅ Berhasil', `Produk "${productName}" telah dihapus`);
+              showToast(`Produk "${productName}" telah dihapus`, 'success');
               load(); 
             } catch (error) {
-              Alert.alert('❌ Error', 'Gagal menghapus produk. Silakan coba lagi.');
+              showToast('Gagal menghapus produk. Silakan coba lagi.', 'error');
             }
           } 
         }
@@ -171,7 +173,7 @@ export default function ListScreen({ navigation, route }) {
             onPress={async () => {
               try {
                 if (!products || products.length === 0) {
-                  Alert.alert('Export Produk', 'Tidak ada data produk untuk diexport');
+                  showToast('Tidak ada data produk untuk diexport', 'error');
                   return;
                 }
 
@@ -200,11 +202,11 @@ export default function ListScreen({ navigation, route }) {
                     dialogTitle: 'Export Produk ke CSV',
                   });
                 } else {
-                  Alert.alert('Export Produk', `File disimpan di cache:\n${fileUri}`);
+                  showToast(`File disimpan di cache:\n${fileUri}`, 'success');
                 }
               } catch (error) {
                 console.error('❌ Export produk error:', error);
-                Alert.alert('Export Produk', 'Terjadi kesalahan saat export data');
+                showToast('Terjadi kesalahan saat export data', 'error');
               }
             }}
           >

@@ -17,8 +17,10 @@ import {
   listPublicProductsAdmin,
   deletePublicProduct,
 } from '../../services/publicProductsSupabase';
+import { useToast } from '../../contexts/ToastContext';
 
 export default function AdminListScreen({ navigation }) {
+  const { showToast } = useToast();
   const [products, setProducts] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +52,7 @@ export default function AdminListScreen({ navigation }) {
       setBrandOptions(Array.from(brandMap, ([id, name]) => ({ id, name })));
       setCategoryOptions(Array.from(categoryMap, ([id, name]) => ({ id, name })));
     } else {
-      Alert.alert('Error', result.error || 'Gagal memuat produk publik');
+      showToast(result.error || 'Gagal memuat produk publik', 'error');
       setProducts([]);
       setAllProducts([]);
     }
@@ -104,9 +106,10 @@ export default function AdminListScreen({ navigation }) {
           onPress: async () => {
             const result = await deletePublicProduct(id);
             if (!result.success) {
-              Alert.alert('Error', result.error || 'Gagal menghapus produk');
+              showToast(result.error || 'Gagal menghapus produk', 'error');
               return;
             }
+            showToast('Produk berhasil dihapus', 'success');
             await load();
           },
         },

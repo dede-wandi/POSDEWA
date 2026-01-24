@@ -5,7 +5,6 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Alert,
   RefreshControl,
   ActivityIndicator,
   Modal,
@@ -16,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { getStockHistory } from '../services/stockSupabase';
 import { getProductById } from '../services/products';
 import { formatCurrency } from '../utils/currency';
@@ -25,6 +25,7 @@ const { width } = Dimensions.get('window');
 
 export default function ProductReportScreen({ navigation, route }) {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const { productId, productName } = route.params || {};
   const [product, setProduct] = useState(null);
   const [stockHistory, setStockHistory] = useState([]);
@@ -74,7 +75,7 @@ export default function ProductReportScreen({ navigation, route }) {
         applyDateFilter(history, selectedPeriod);
       } else {
         console.log('❌ ProductReportScreen: Error loading history:', historyResult.error);
-        Alert.alert('Error', 'Gagal memuat riwayat stock: ' + historyResult.error);
+        showToast('Gagal memuat riwayat stock: ' + historyResult.error, 'error');
       }
 
       if (productResult?.barcode) {
@@ -88,7 +89,7 @@ export default function ProductReportScreen({ navigation, route }) {
       }
     } catch (error) {
       console.log('❌ ProductReportScreen: Exception loading data:', error);
-      Alert.alert('Error', 'Terjadi kesalahan saat memuat data');
+      showToast('Terjadi kesalahan saat memuat data', 'error');
     } finally {
       setLoading(false);
     }

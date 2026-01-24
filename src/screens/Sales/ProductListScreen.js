@@ -48,7 +48,7 @@ export default function ProductListScreen({ navigation, route }) {
 
   const addToCart = (product) => {
     if (product.stock <= 0) {
-      Alert.alert('Stok Habis', 'Produk ini tidak memiliki stok');
+      showToast('Stok Habis', 'error');
       return;
     }
 
@@ -57,7 +57,7 @@ export default function ProductListScreen({ navigation, route }) {
     
     // Validasi: tidak boleh melebihi stock yang tersedia
     if (currentQtyInCart >= product.stock) {
-      Alert.alert('Stok Tidak Cukup', `Stok tersedia: ${product.stock}, sudah ada ${currentQtyInCart} di keranjang`);
+      showToast(`Stok tidak cukup. Sisa: ${product.stock}`, 'error');
       return;
     }
 
@@ -85,7 +85,7 @@ export default function ProductListScreen({ navigation, route }) {
     setLocalCart(newCart);
     
     console.log('✅ Product added to cart:', product.name, 'New cart size:', newCart.length);
-    Alert.alert('Berhasil', `${product.name} ditambahkan ke keranjang`);
+    showToast(`${product.name} masuk keranjang`, 'success');
   };
 
   // Hitung total quantity di cart

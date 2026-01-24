@@ -6,7 +6,6 @@ import {
   ScrollView,
   RefreshControl,
   TouchableOpacity,
-  Alert,
   Modal,
   TextInput,
   FlatList,
@@ -16,12 +15,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { listProducts } from '../services/productsSupabase';
 import { addStock, getStockHistory, adjustStock } from '../services/stockSupabase';
 import { formatDate } from '../utils/helpers';
 
 export default function StockManagementScreen({ navigation }) {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [products, setProducts] = useState([]);
   const [stockHistory, setStockHistory] = useState([]);
   const [filteredStockHistory, setFilteredStockHistory] = useState([]);
@@ -135,7 +136,7 @@ export default function StockManagementScreen({ navigation }) {
       setProducts(sortedProducts);
     } catch (error) {
       console.log('❌ StockManagementScreen: Exception loading products:', error);
-      Alert.alert('Error', 'Terjadi kesalahan saat memuat produk');
+      showToast('Terjadi kesalahan saat memuat produk', 'error');
     }
   };
 
@@ -149,11 +150,11 @@ export default function StockManagementScreen({ navigation }) {
         setFilteredStockHistory(filtered);
       } else {
         console.log('❌ StockManagementScreen: Error loading stock history:', result.error);
-        Alert.alert('Error', 'Gagal memuat riwayat stock: ' + result.error);
+        showToast('Gagal memuat riwayat stock: ' + result.error, 'error');
       }
     } catch (error) {
       console.log('❌ StockManagementScreen: Exception loading stock history:', error);
-      Alert.alert('Error', 'Terjadi kesalahan saat memuat riwayat stock');
+      showToast('Terjadi kesalahan saat memuat riwayat stock', 'error');
     }
   };
 
@@ -183,7 +184,7 @@ export default function StockManagementScreen({ navigation }) {
 
   const handleAddStock = async () => {
     if (!selectedProduct || !stockQuantity || isNaN(stockQuantity) || parseInt(stockQuantity) <= 0) {
-      Alert.alert('Error', 'Masukkan jumlah stock yang valid');
+      showToast('Masukkan jumlah stock yang valid', 'error');
       return;
     }
 
@@ -197,7 +198,7 @@ export default function StockManagementScreen({ navigation }) {
       );
 
       if (result.success) {
-        Alert.alert('Berhasil', 'Stock berhasil ditambahkan');
+        showToast('Stock berhasil ditambahkan', 'success');
         setShowAddStockModal(false);
         setSelectedProduct(null);
         setStockQuantity('');
@@ -205,11 +206,11 @@ export default function StockManagementScreen({ navigation }) {
         setStockNotes('');
         loadData(); // Refresh data
       } else {
-        Alert.alert('Error', 'Gagal menambah stock: ' + result.error);
+        showToast('Gagal menambah stock: ' + result.error, 'error');
       }
     } catch (error) {
       console.log('❌ StockManagementScreen: Exception adding stock:', error);
-      Alert.alert('Error', 'Terjadi kesalahan saat menambah stock');
+      showToast('Terjadi kesalahan saat menambah stock', 'error');
     } finally {
       setAddingStock(false);
     }
@@ -226,18 +227,18 @@ export default function StockManagementScreen({ navigation }) {
 
   const submitStockAdjustment = async () => {
     if (!selectedProduct || !newStockValue.trim()) {
-      Alert.alert('Error', 'Mohon isi nilai stock yang baru');
+      showToast('Mohon isi nilai stock yang baru', 'error');
       return;
     }
 
     if (!reason.trim()) {
-      Alert.alert('Error', 'Mohon isi alasan penyesuaian stock');
+      showToast('Mohon isi alasan penyesuaian stock', 'error');
       return;
     }
 
     const inputValue = parseInt(newStockValue);
     if (isNaN(inputValue) || inputValue < 0) {
-      Alert.alert('Error', 'Nilai stock harus berupa angka positif');
+      showToast('Nilai stock harus berupa angka positif', 'error');
       return;
     }
 
@@ -265,19 +266,19 @@ export default function StockManagementScreen({ navigation }) {
       );
 
       if (result.success) {
-        Alert.alert('Berhasil', 'Stock berhasil disesuaikan');
+        showToast('Stock berhasil disesuaikan', 'success');
         setShowAdjustStockModal(false);
         resetAdjustmentForm();
         loadProducts();
         if (activeTab === 'history') {
-          loadHistory();
+          loadStockHistory();
         }
       } else {
-        Alert.alert('Error', result.error || 'Gagal menyesuaikan stock');
+        showToast(result.error || 'Gagal menyesuaikan stock', 'error');
       }
     } catch (error) {
       console.error('Error adjusting stock:', error);
-      Alert.alert('Error', 'Terjadi kesalahan saat menyesuaikan stock');
+      showToast('Terjadi kesalahan saat menyesuaikan stock', 'error');
     }
   };
 
@@ -291,18 +292,18 @@ export default function StockManagementScreen({ navigation }) {
 
   const submitAddStock = async () => {
     if (!selectedProduct || !stockQuantity.trim()) {
-      Alert.alert('Error', 'Mohon isi jumlah stock yang akan ditambahkan');
+      showToast('Mohon isi jumlah stock yang akan ditambahkan', 'error');
       return;
     }
 
     if (!reason.trim()) {
-      Alert.alert('Error', 'Mohon isi alasan penambahan stock');
+      showToast('Mohon isi alasan penambahan stock', 'error');
       return;
     }
 
     const quantity = parseInt(stockQuantity);
     if (isNaN(quantity) || quantity <= 0) {
-      Alert.alert('Error', 'Jumlah stock harus berupa angka positif');
+      showToast('Jumlah stock harus berupa angka positif', 'error');
       return;
     }
 
@@ -316,7 +317,7 @@ export default function StockManagementScreen({ navigation }) {
       );
 
       if (result.success) {
-        Alert.alert('Berhasil', 'Stock berhasil ditambahkan');
+        showToast('Stock berhasil ditambahkan', 'success');
         setShowAddStockModal(false);
         resetAddStockForm();
         loadProducts();
@@ -324,11 +325,11 @@ export default function StockManagementScreen({ navigation }) {
           loadHistory();
         }
       } else {
-        Alert.alert('Error', result.error || 'Gagal menambahkan stock');
+        showToast(result.error || 'Gagal menambahkan stock', 'error');
       }
     } catch (error) {
       console.error('Error adding stock:', error);
-      Alert.alert('Error', 'Terjadi kesalahan saat menambahkan stock');
+      showToast('Terjadi kesalahan saat menambahkan stock', 'error');
     } finally {
       setAddingStock(false);
     }

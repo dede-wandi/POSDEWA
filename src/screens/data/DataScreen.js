@@ -3,6 +3,7 @@ import { View, Text, TextInput, Pressable, ActivityIndicator, Alert, FlatList, M
 import { Colors } from '../../theme/colors';
 import { useNavigation } from '@react-navigation/native';
 import { getPrefixProducts } from '../../api/prefix';
+import { useToast } from '../../contexts/ToastContext';
 
 const formatIDR = (value) => {
   const n = Number(value || 0);
@@ -95,7 +96,7 @@ export default function DataScreen() {
     const id = item?.id || item?.product_id;
     const onSelect = () => {
       if (!id) {
-        Alert.alert('Produk tidak valid', 'ID produk tidak tersedia.');
+        showToast('Produk tidak valid: ID produk tidak tersedia.', 'error');
         return;
       }
       navigation.navigate('PaymentSaldoMitra', {

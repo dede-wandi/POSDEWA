@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { 
   getPaymentChannels, 
   createPaymentChannel, 
@@ -154,7 +155,7 @@ export default function FinanceScreen({ navigation }) {
 
   const submitChannel = async () => {
     if (!channelName.trim()) {
-      Alert.alert('Error', 'Nama channel harus diisi');
+      showToast('Nama channel harus diisi', 'error');
       return;
     }
 
@@ -181,16 +182,16 @@ export default function FinanceScreen({ navigation }) {
       }
 
       if (result.success) {
-        Alert.alert('Berhasil', editingChannel ? 'Channel berhasil diperbarui' : 'Channel berhasil dibuat');
+        showToast(editingChannel ? 'Channel berhasil diperbarui' : 'Channel berhasil dibuat', 'success');
         setShowChannelModal(false);
         resetChannelForm();
         loadChannels();
       } else {
-        Alert.alert('Error', result.error || 'Gagal menyimpan channel');
+        showToast(result.error || 'Gagal menyimpan channel', 'error');
       }
     } catch (error) {
       console.error('Error saving channel:', error);
-      Alert.alert('Error', 'Terjadi kesalahan saat menyimpan channel');
+      showToast('Terjadi kesalahan saat menyimpan channel', 'error');
     } finally {
       setSaving(false);
     }
@@ -200,26 +201,26 @@ export default function FinanceScreen({ navigation }) {
     try {
       const result = await deletePaymentChannel(channelId);
       if (result.success) {
-        Alert.alert('Berhasil', 'Channel berhasil dihapus');
+        showToast('Channel berhasil dihapus', 'success');
         loadChannels();
       } else {
-        Alert.alert('Error', result.error || 'Gagal menghapus channel');
+        showToast(result.error || 'Gagal menghapus channel', 'error');
       }
     } catch (error) {
       console.error('Error deleting channel:', error);
-      Alert.alert('Error', 'Terjadi kesalahan saat menghapus channel');
+      showToast('Terjadi kesalahan saat menghapus channel', 'error');
     }
   };
 
   const submitBalanceAdjustment = async () => {
     if (!newBalance.trim() || !adjustmentReason.trim()) {
-      Alert.alert('Error', 'Saldo baru dan alasan harus diisi');
+      showToast('Saldo baru dan alasan harus diisi', 'error');
       return;
     }
 
     const balance = parseFloat(newBalance);
     if (isNaN(balance) || balance < 0) {
-      Alert.alert('Error', 'Saldo harus berupa angka positif');
+      showToast('Saldo harus berupa angka positif', 'error');
       return;
     }
 
@@ -227,18 +228,18 @@ export default function FinanceScreen({ navigation }) {
     try {
       const result = await adjustChannelBalance(selectedChannel.id, balance, adjustmentReason);
       if (result.success) {
-        Alert.alert('Berhasil', 'Saldo berhasil disesuaikan');
+        showToast('Saldo berhasil disesuaikan', 'success');
         setShowAdjustBalanceModal(false);
         loadChannels();
         if (selectedChannel) {
           loadTransactions(selectedChannel.id);
         }
       } else {
-        Alert.alert('Error', result.error || 'Gagal menyesuaikan saldo');
+        showToast(result.error || 'Gagal menyesuaikan saldo', 'error');
       }
     } catch (error) {
       console.error('Error adjusting balance:', error);
-      Alert.alert('Error', 'Terjadi kesalahan saat menyesuaikan saldo');
+      showToast('Terjadi kesalahan saat menyesuaikan saldo', 'error');
     } finally {
       setSaving(false);
     }

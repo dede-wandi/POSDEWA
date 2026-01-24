@@ -1,22 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
-  ScrollView, 
-  Alert,
-  KeyboardAvoidingView,
-  Platform
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { getSupabaseClient } from '../../services/supabase';
+import { useToast } from '../../contexts/ToastContext';
 
 export default function ProfileEditScreen({ navigation }) {
   const { user, updateUser } = useAuth();
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState({
     full_name: '',
@@ -64,7 +56,7 @@ export default function ProfileEditScreen({ navigation }) {
 
   const saveProfile = async () => {
     if (!profile.full_name.trim()) {
-      Alert.alert('Error', 'Nama lengkap harus diisi');
+      showToast('Nama lengkap harus diisi', 'error');
       return;
     }
 
@@ -72,7 +64,7 @@ export default function ProfileEditScreen({ navigation }) {
     try {
       const supabase = getSupabaseClient();
       if (!supabase) {
-        Alert.alert('Error', 'Supabase client tidak tersedia');
+        showToast('Supabase client tidak tersedia', 'error');
         return;
       }
 
@@ -90,18 +82,15 @@ export default function ProfileEditScreen({ navigation }) {
 
       if (error) {
         console.error('Error saving profile:', error);
-        Alert.alert('Error', 'Gagal menyimpan profil: ' + error.message);
+        showToast('Gagal menyimpan profil: ' + error.message, 'error');
         return;
       }
 
-      Alert.alert(
-        'Berhasil', 
-        'Profil berhasil diperbarui',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+      showToast('Profil berhasil diperbarui', 'success');
+      navigation.goBack();
     } catch (error) {
       console.error('Exception saving profile:', error);
-      Alert.alert('Error', 'Terjadi kesalahan saat menyimpan profil');
+      showToast('Terjadi kesalahan saat menyimpan profil', 'error');
     } finally {
       setLoading(false);
     }

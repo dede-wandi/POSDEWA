@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../theme';
+import { useToast } from '../../contexts/ToastContext';
 import {
   listPublicBrands,
   listPublicCategories,
@@ -26,6 +27,7 @@ import {
 
 export default function AdminFormScreen({ navigation, route }) {
   const id = route.params?.id || null;
+  const { showToast } = useToast();
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('');
@@ -41,8 +43,6 @@ export default function AdminFormScreen({ navigation, route }) {
   const [newBrandName, setNewBrandName] = useState('');
   const [addingCategory, setAddingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
-  const [toastVisible, setToastVisible] = useState(false);
-  const [toastText, setToastText] = useState('');
 
   const loadMasterData = async () => {
     const brandResult = await listPublicBrands();
@@ -60,7 +60,7 @@ export default function AdminFormScreen({ navigation, route }) {
     setLoading(true);
     const result = await getPublicProductById(id);
     if (!result.success) {
-      Alert.alert('Error', result.error || 'Gagal memuat produk');
+      showToast(result.error || 'Gagal memuat produk', 'error');
       setLoading(false);
       return;
     }
@@ -92,17 +92,17 @@ export default function AdminFormScreen({ navigation, route }) {
 
   const handleSave = async () => {
     if (!title.trim()) {
-      Alert.alert('Validasi', 'Judul wajib diisi');
+      showToast('Judul wajib diisi', 'error');
       return;
     }
     const numericPrice = Number(price || 0);
     if (Number.isNaN(numericPrice) || numericPrice < 0) {
-      Alert.alert('Validasi', 'Harga tidak valid');
+      showToast('Harga tidak valid', 'error');
       return;
     }
     const numericStock = Number(stock || 0);
     if (Number.isNaN(numericStock) || numericStock < 0) {
-      Alert.alert('Validasi', 'Stok tidak valid');
+      showToast('Stok tidak valid', 'error');
       return;
     }
     const urls = imageUrls
@@ -130,18 +130,16 @@ export default function AdminFormScreen({ navigation, route }) {
         result = await createPublicProduct(payload);
       }
       if (!result.success) {
-        Alert.alert('Error', result.error || 'Gagal menyimpan produk');
+        showToast(result.error || 'Gagal menyimpan produk', 'error');
         setLoading(false);
         return;
       }
-      setToastText('Produk publik berhasil disimpan');
-      setToastVisible(true);
+      showToast('Produk publik berhasil disimpan', 'success');
       setTimeout(() => {
-        setToastVisible(false);
         navigation.goBack();
       }, 1200);
     } catch (e) {
-      Alert.alert('Error', e?.message || 'Gagal menyimpan produk');
+      showToast(e?.message || 'Gagal menyimpan produk', 'error');
     } finally {
       setLoading(false);
     }
@@ -150,7 +148,7 @@ export default function AdminFormScreen({ navigation, route }) {
   const handleAddBrand = async () => {
     const name = String(newBrandName || '').trim();
     if (!name) {
-      Alert.alert('Validasi', 'Nama brand wajib diisi');
+      showToast('Nama brand wajib diisi', 'error');
       return;
     }
     const result = await createPublicBrand(name);
@@ -159,18 +157,16 @@ export default function AdminFormScreen({ navigation, route }) {
       setBrandId(result.data.id);
       setNewBrandName('');
       setAddingBrand(false);
-      setToastText('Brand berhasil dibuat');
-      setToastVisible(true);
-      setTimeout(() => setToastVisible(false), 1200);
+      showToast('Brand berhasil dibuat', 'success');
     } else {
-      Alert.alert('Error', result.error || 'Gagal membuat brand');
+      showToast(result.error || 'Gagal membuat brand', 'error');
     }
   };
 
   const handleAddCategory = async () => {
     const name = String(newCategoryName || '').trim();
     if (!name) {
-      Alert.alert('Validasi', 'Nama kategori wajib diisi');
+      showToast('Nama kategori wajib diisi', 'error');
       return;
     }
     const result = await createPublicCategory(name);
@@ -179,11 +175,9 @@ export default function AdminFormScreen({ navigation, route }) {
       setCategoryId(result.data.id);
       setNewCategoryName('');
       setAddingCategory(false);
-      setToastText('Kategori berhasil dibuat');
-      setToastVisible(true);
-      setTimeout(() => setToastVisible(false), 1200);
+      showToast('Kategori berhasil dibuat', 'success');
     } else {
-      Alert.alert('Error', result.error || 'Gagal membuat kategori');
+      showToast(result.error || 'Gagal membuat kategori', 'error');
     }
   };
 
@@ -594,28 +588,5 @@ const styles = StyleSheet.create({
     marginTop: 10,
     color: Colors.text,
     fontWeight: '600',
-  },
-  toastContainer: {
-    position: 'absolute',
-    top: 12,
-    left: 16,
-    right: 16,
-    backgroundColor: '#2e7d32',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  toastText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 13,
   },
 });

@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import { getInvoiceSettings, updateInvoiceSettings, resetInvoiceSettings } from '../../services/invoiceSettingsSupabase';
 import { detectPairedPrinters, connectBluetoothPrinter, checkPrinterConnection, testBluetoothPrint, testWebPrint } from '../../utils/invoicePrint';
 import * as Print from 'expo-print';
@@ -21,6 +22,7 @@ import { getItemAsync, setItemAsync, deleteItemAsync } from '../../utils/storage
 
 export default function InvoiceSettingsScreen({ navigation }) {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState({
@@ -75,12 +77,12 @@ export default function InvoiceSettingsScreen({ navigation }) {
           });
         } else {
           console.error('Failed to load invoice settings:', result.error);
-          Alert.alert('Error', result.error || 'Gagal memuat pengaturan invoice');
+          showToast(result.error || 'Gagal memuat pengaturan invoice', 'error');
         }
       }
     } catch (error) {
       console.error('Error loading invoice settings:', error);
-      Alert.alert('Error', 'Gagal memuat pengaturan invoice');
+      showToast('Gagal memuat pengaturan invoice', 'error');
     } finally {
       setLoading(false);
     }
@@ -106,15 +108,15 @@ export default function InvoiceSettingsScreen({ navigation }) {
         
         const result = await updateInvoiceSettings(user.id, dbSettings);
         if (result.success) {
-          Alert.alert('Berhasil', 'Pengaturan invoice berhasil disimpan');
+          showToast('Pengaturan invoice berhasil disimpan', 'success');
         } else {
           console.error('Failed to save invoice settings:', result.error);
-          Alert.alert('Error', result.error || 'Gagal menyimpan pengaturan invoice');
+          showToast(result.error || 'Gagal menyimpan pengaturan invoice', 'error');
         }
       }
     } catch (error) {
       console.error('Error saving invoice settings:', error);
-      Alert.alert('Error', 'Gagal menyimpan pengaturan invoice');
+      showToast('Gagal menyimpan pengaturan invoice', 'error');
     } finally {
       setSaving(false);
     }
@@ -135,11 +137,11 @@ export default function InvoiceSettingsScreen({ navigation }) {
               if (user?.id) {
                 const defaultSettings = await resetInvoiceSettings(user.id);
                 setSettings(defaultSettings);
-                Alert.alert('Berhasil', 'Pengaturan berhasil direset');
+                showToast('Pengaturan berhasil direset', 'success');
               }
             } catch (error) {
               console.error('Error resetting invoice settings:', error);
-              Alert.alert('Error', 'Gagal mereset pengaturan');
+              showToast('Gagal mereset pengaturan', 'error');
             } finally {
               setSaving(false);
             }
@@ -158,7 +160,7 @@ export default function InvoiceSettingsScreen({ navigation }) {
   
   const selectPrinter = async () => {
     if (isWeb) {
-      Alert.alert('Info', 'Di Web, pemilihan printer dilakukan melalui dialog print browser saat Anda mencetak invoice.');
+      showToast('Di Web, pemilihan printer dilakukan melalui dialog print browser saat Anda mencetak invoice.', 'info');
       return;
     }
     setScanning(true);
@@ -174,7 +176,7 @@ export default function InvoiceSettingsScreen({ navigation }) {
           await Linking.openURL('app-settings:');
         } catch {}
       }
-      Alert.alert('Info', 'Buka pengaturan Bluetooth dan sambungkan printer dulu.');
+      showToast('Buka pengaturan Bluetooth dan sambungkan printer dulu.', 'info');
     } else {
       setSelectPrompt('Silakan pilih perangkat dari daftar di bawah untuk digunakan mencetak.');
     }
@@ -184,14 +186,14 @@ export default function InvoiceSettingsScreen({ navigation }) {
     await deleteItemAsync('printer.name');
     await deleteItemAsync('printer.url');
     setSelectedPrinter({ name: '', url: '' });
-    Alert.alert('Selesai', 'Pilihan printer dihapus');
+    showToast('Pilihan printer dihapus', 'success');
   };
   
   const detectPrinters = async () => {
     if (isWeb) {
       setPairedPrinters([]);
       setScanning(false);
-      Alert.alert('Info', 'Deteksi Bluetooth tidak tersedia di mode Web. Gunakan dialog print browser saat mencetak.');
+      showToast('Deteksi Bluetooth tidak tersedia di mode Web. Gunakan dialog print browser saat mencetak.', 'info');
       return;
     }
     setScanning(true);
@@ -199,7 +201,7 @@ export default function InvoiceSettingsScreen({ navigation }) {
     setPairedPrinters(list);
     setScanning(false);
     if (list.length === 0) {
-      Alert.alert('Info', 'Tidak ada printer bluetooth yang terdeteksi');
+      showToast('Tidak ada printer bluetooth yang terdeteksi', 'info');
     }
   };
   
@@ -217,9 +219,9 @@ export default function InvoiceSettingsScreen({ navigation }) {
       await setItemAsync('printer.address', device.address);
       setSelectedPrinter({ name: device.name || device.device || '', url: '' });
       setIsConnected(true);
-      Alert.alert('Berhasil', `Terhubung ke ${device.name || device.device}`);
+      showToast(`Terhubung ke ${device.name || device.device}`, 'success');
     } else {
-      Alert.alert('Error', result.error || 'Gagal menghubungkan printer');
+      showToast(result.error || 'Gagal menghubungkan printer', 'error');
     }
   };
 
@@ -395,9 +397,9 @@ export default function InvoiceSettingsScreen({ navigation }) {
                   <TouchableOpacity style={[styles.saveButton, { marginTop: 8 }]} onPress={async () => {
                     const res = await testBluetoothPrint('58mm');
                     if (res.success) {
-                      Alert.alert('Berhasil', 'Uji cetak 58mm berhasil dikirim ke printer');
+                      showToast('Uji cetak 58mm berhasil dikirim ke printer', 'success');
                     } else {
-                      Alert.alert('Error', res.error || 'Gagal uji cetak. Pastikan printer terhubung.');
+                      showToast(res.error || 'Gagal uji cetak. Pastikan printer terhubung.', 'error');
                     }
                   }}>
                     <Text style={styles.saveButtonText}>Uji Cetak 58mm</Text>
@@ -421,9 +423,9 @@ export default function InvoiceSettingsScreen({ navigation }) {
                 <TouchableOpacity style={styles.saveButton} onPress={async () => {
                   const res = await testWebPrint('58mm');
                   if (res.success) {
-                    Alert.alert('Berhasil', 'Dialog print browser dibuka untuk uji cetak 58mm');
+                    showToast('Dialog print browser dibuka untuk uji cetak 58mm', 'success');
                   } else {
-                    Alert.alert('Error', res.error || 'Gagal membuka dialog print di browser');
+                    showToast(res.error || 'Gagal membuka dialog print di browser', 'error');
                   }
                 }}>
                   <Text style={styles.saveButtonText}>Uji Cetak via Browser (58mm)</Text>

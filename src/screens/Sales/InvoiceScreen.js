@@ -129,11 +129,7 @@ ${divider}
     console.log(content);
     console.log('=== END PRINT ===');
     
-    Alert.alert(
-      '✅ Print Berhasil',
-      'Invoice telah dikirim ke printer (simulasi).\n\nPada implementasi nyata, ini akan mengirim data ke printer thermal atau printer lainnya.',
-      [{ text: 'OK' }]
-    );
+    showToast('Invoice dikirim ke printer (simulasi)', 'success');
   };
 
   const handleNewSale = () => {

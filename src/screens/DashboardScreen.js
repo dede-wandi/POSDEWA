@@ -7,12 +7,14 @@ import {
   RefreshControl,
   TouchableOpacity,
   Alert,
-  Dimensions
+  Dimensions,
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { getDashboardStats, getRecentSales } from '../services/dashboardSupabase';
 import { Colors, Spacing, Radii, Shadows } from '../theme';
 
@@ -20,6 +22,7 @@ const { width } = Dimensions.get('window');
 
 export default function DashboardScreen({ navigation }) {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [stats, setStats] = useState(null);
   const [recentSales, setRecentSales] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,7 +38,7 @@ export default function DashboardScreen({ navigation }) {
         setStats(statsResult.data);
       } else {
         console.log('❌ DashboardScreen: Error loading stats:', statsResult.error);
-        Alert.alert('Error', 'Gagal memuat statistik: ' + statsResult.error);
+        showToast('Gagal memuat statistik: ' + statsResult.error, 'error');
       }
 
       // Load recent sales
@@ -48,7 +51,7 @@ export default function DashboardScreen({ navigation }) {
 
     } catch (error) {
       console.log('❌ DashboardScreen: Exception loading dashboard data:', error);
-      Alert.alert('Error', 'Terjadi kesalahan saat memuat data');
+      showToast('Terjadi kesalahan saat memuat data', 'error');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -175,7 +178,7 @@ export default function DashboardScreen({ navigation }) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Memuat dashboard...</Text>
+          <ActivityIndicator size="large" color={Colors.primary} />
         </View>
       </SafeAreaView>
     );

@@ -3,11 +3,13 @@ import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, Dimensions,
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Radii, Typography, Shadows } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 
 const { width } = Dimensions.get('window');
 
 export default function AuthScreen() {
   const { signIn, signOut } = useAuth();
+  const { showToast } = useToast();
   const [mode, setMode] = useState('login'); // 'login' | 'register'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -38,7 +40,7 @@ export default function AuthScreen() {
     
     if (!email.trim() || !password.trim()) {
       console.log('❌ AuthScreen: Empty fields');
-      Alert.alert('Error', 'Email dan password harus diisi');
+      showToast('Email dan password harus diisi', 'error');
       return;
     }
     
@@ -52,7 +54,7 @@ export default function AuthScreen() {
         
         if (error) {
           console.log('❌ AuthScreen: Login error', error);
-          Alert.alert('Error', error.message || 'Login gagal');
+          showToast(error.message || 'Login gagal', 'error');
           setBusy(false);
         } else {
           console.log('✅ AuthScreen: Login success', data.user?.email);
@@ -61,12 +63,12 @@ export default function AuthScreen() {
         }
       } else {
         // For now, just show register is not implemented
-        Alert.alert('Info', 'Registrasi belum diimplementasikan. Gunakan akun admin@gmail.com dengan password admin123');
+        showToast('Registrasi belum diimplementasikan. Gunakan akun admin@gmail.com dengan password admin123', 'info');
         setBusy(false);
       }
     } catch (e) {
       console.log('❌ AuthScreen: Error occurred', e);
-      Alert.alert('Error', e?.message || String(e));
+      showToast(e?.message || String(e), 'error');
       setBusy(false); // Ensure busy is set to false on error
     }
   };
@@ -76,6 +78,17 @@ export default function AuthScreen() {
       <Animated.View style={[styles.card, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
         {/* Header */}
         <View style={styles.header}>
+          <View style={{ 
+            width: 80, 
+            height: 80, 
+            borderRadius: 20, 
+            backgroundColor: Colors.primary + '15', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            marginBottom: 16
+          }}>
+            <Ionicons name="receipt" size={48} color={Colors.primary} />
+          </View>
           <Text style={styles.title}>POSDEWA</Text>
           <Text style={styles.subtitle}>
             {mode === 'login' ? 'Masuk ke Akun Anda' : 'Buat Akun Baru'}
@@ -168,6 +181,20 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     marginBottom: Spacing.xxl,
+  },
+  logoContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
   },
   title: {
     ...Typography.heading,

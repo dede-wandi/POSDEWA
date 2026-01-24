@@ -37,6 +37,7 @@ import FinanceScreen from './src/screens/FinanceScreen';
 import TransactionHistoryScreen from './src/screens/TransactionHistoryScreen';
 import TransactionReportScreen from './src/screens/TransactionReportScreen';
 import SalesReportScreen from './src/screens/SalesReportScreen';
+import SplashScreen from './src/screens/SplashScreen';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { CartProvider } from './src/contexts/CartContext';
 import { ToastProvider } from './src/contexts/ToastContext';
@@ -299,17 +300,23 @@ function MainStack() {
 }
 
 function AppNavigator() {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const [splashLoading, setSplashLoading] = React.useState(true);
 
-  console.log('🏠 App: Navigation state', { hasUser: !!user, userEmail: user?.email, loading });
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setSplashLoading(false);
+    }, 3500); // 3.5 seconds minimum splash
+    return () => clearTimeout(timer);
+  }, []);
 
-  if (loading) {
+  const isLoading = authLoading || splashLoading;
+
+  console.log('🏠 App: Navigation state', { hasUser: !!user, userEmail: user?.email, authLoading, splashLoading });
+
+  if (isLoading) {
     console.log('⏳ App: Showing loading screen');
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
+    return <SplashScreen />;
   }
 
   console.log('🧭 App: Rendering navigation', user ? 'Main Stack' : 'Auth Screen');

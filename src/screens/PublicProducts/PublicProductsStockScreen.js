@@ -7,10 +7,10 @@ import {
   TextInput,
   ActivityIndicator,
   RefreshControl,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../theme';
+import { useToast } from '../../contexts/ToastContext';
 import { listPublicProductsAdmin, updatePublicProduct } from '../../services/publicProductsSupabase';
 
 const sortRowsByStock = (items, direction = 'asc') => {
@@ -77,7 +77,7 @@ export default function PublicProductsStockScreen() {
     const value = String(row.stockInput || '').trim();
     const next = value === '' ? 0 : Number(value);
     if (Number.isNaN(next) || next < 0) {
-      Alert.alert('Validasi', 'Stok harus berupa angka dan tidak boleh negatif.');
+      showToast('Stok harus angka dan tidak negatif', 'error');
       setRows((prev) =>
         prev.map((r) =>
           r.id === row.id
@@ -97,7 +97,7 @@ export default function PublicProductsStockScreen() {
     const result = await updatePublicProduct(row.id, { stock: next });
     setSavingId(null);
     if (!result.success) {
-      Alert.alert('Error', result.error || 'Gagal menyimpan stok');
+      showToast(result.error || 'Gagal menyimpan stok', 'error');
       setRows((prev) =>
         prev.map((r) =>
           r.id === row.id

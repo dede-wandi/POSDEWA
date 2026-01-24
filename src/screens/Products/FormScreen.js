@@ -4,10 +4,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../theme';
 import { createProduct, getProductById, updateProduct } from '../../services/products';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 
 export default function FormScreen({ navigation, route }) {
   const { id } = route.params || {};
   const { user } = useAuth();
+  const { showToast } = useToast();
 
   const [name, setName] = useState('');
   const [barcode, setBarcode] = useState('');
@@ -58,7 +60,7 @@ export default function FormScreen({ navigation, route }) {
     };
 
     if (!payload.name) {
-      Alert.alert('Validasi', 'Nama produk wajib diisi');
+      showToast('Nama produk wajib diisi', 'error');
       return;
     }
 
@@ -72,15 +74,15 @@ export default function FormScreen({ navigation, route }) {
       
       // Handle new response format
       if (result && result.success === false) {
-        Alert.alert('Error', result.error || 'Gagal menyimpan produk');
+        showToast(result.error || 'Gagal menyimpan produk', 'error');
         return;
       }
       
-      Alert.alert('Sukses', 'Produk tersimpan');
+      showToast('Produk tersimpan', 'success');
       navigation.goBack();
     } catch (e) {
       console.log('❌ FormScreen: Save error:', e);
-      Alert.alert('Error', e.message || 'Gagal menyimpan produk');
+      showToast(e.message || 'Gagal menyimpan produk', 'error');
     }
   };
 

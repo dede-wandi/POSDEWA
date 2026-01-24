@@ -14,14 +14,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '../../theme';
 import { Calendar } from 'react-native-calendars';
 import { formatIDR } from '../../utils/currency';
 import { useAuth } from '../../context/AuthContext';
-import { getSalesHistory, getSaleById } from '../../services/salesSupabase';
+import { useToast } from '../../contexts/ToastContext';
+import { getSalesHistory, getSaleById, deleteSale } from '../../services/salesSupabase';
 import { printInvoiceToPDF, shareInvoicePDF, printToSelectedPrinter, printToBluetoothPrinter } from '../../utils/invoicePrint';
 
 export default function HistoryScreen({ navigation }) {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [sales, setSales] = useState([]);
   const [filteredSales, setFilteredSales] = useState([]);
   const [topItems, setTopItems] = useState([]);
@@ -62,7 +65,7 @@ export default function HistoryScreen({ navigation }) {
       setSales(result || []);
     } catch (error) {
       console.error('❌ HistoryScreen: Error loading sales history:', error);
-      Alert.alert('Error', 'Gagal memuat riwayat penjualan');
+      showToast('Gagal memuat riwayat penjualan', 'error');
     } finally {
       setLoading(false);
     }
@@ -184,11 +187,11 @@ export default function HistoryScreen({ navigation }) {
         setSelectedSale(saleDetail);
         setShowDetailModal(true);
       } else {
-        Alert.alert('Error', 'Detail penjualan tidak ditemukan');
+        showToast('Detail penjualan tidak ditemukan', 'error');
       }
     } catch (error) {
       console.error('❌ HistoryScreen: Error loading sale detail:', error);
-      Alert.alert('Error', 'Gagal memuat detail penjualan');
+      showToast('Gagal memuat detail penjualan', 'error');
     }
   };
 
@@ -219,7 +222,7 @@ export default function HistoryScreen({ navigation }) {
       );
     } catch (error) {
       console.error('❌ HistoryScreen: Error in printInvoice:', error);
-      Alert.alert('Error', 'Terjadi kesalahan saat mencetak invoice');
+      showToast('Terjadi kesalahan saat mencetak invoice', 'error');
     }
   };
 
@@ -238,9 +241,9 @@ export default function HistoryScreen({ navigation }) {
           onPress: async () => {
             const result = await printInvoiceToPDF(sale, user?.id, receiptSize);
             if (result.success) {
-              Alert.alert('Berhasil', `Invoice ${receiptSize} berhasil disimpan sebagai PDF`);
+              showToast(`Invoice ${receiptSize} berhasil disimpan sebagai PDF`, 'success');
             } else {
-              Alert.alert('Error', result.error || 'Gagal menyimpan PDF');
+              showToast(result.error || 'Gagal menyimpan PDF', 'error');
             }
           }
         },
@@ -249,9 +252,9 @@ export default function HistoryScreen({ navigation }) {
           onPress: async () => {
             const result = await printToSelectedPrinter(sale, user?.id, receiptSize);
             if (!result.success) {
-              Alert.alert('Error', result.error || 'Gagal mencetak. Pilih printer di Pengaturan Invoice.');
+              showToast(result.error || 'Gagal mencetak. Pilih printer di Pengaturan Invoice.', 'error');
             } else {
-              Alert.alert('Berhasil', 'Invoice dikirim ke printer');
+              showToast('Invoice dikirim ke printer', 'success');
             }
           }
         },
@@ -260,7 +263,7 @@ export default function HistoryScreen({ navigation }) {
           onPress: async () => {
             const result = await shareInvoicePDF(sale, user?.id, receiptSize);
             if (!result.success) {
-              Alert.alert('Error', result.error || 'Gagal share PDF');
+              showToast(result.error || 'Gagal share PDF', 'error');
             }
           }
         }
@@ -356,7 +359,7 @@ export default function HistoryScreen({ navigation }) {
       setShowDatePicker(false);
       setFilterPeriod('custom');
     } else {
-      Alert.alert('Pilih Tanggal', 'Silakan pilih tanggal mulai dan selesai.');
+      showToast('Silakan pilih tanggal mulai dan selesai', 'error');
     }
   };
 
@@ -683,7 +686,7 @@ export default function HistoryScreen({ navigation }) {
                     if (Platform.OS === 'web') {
                       const result = await printToSelectedPrinter(selectedSale, user?.id, '58mm');
                       if (!result.success) {
-                        Alert.alert('Error', result.error || 'Gagal membuka dialog print di browser');
+                        showToast(result.error || 'Gagal membuka dialog print di browser', 'error');
                       }
                       return;
                     }
@@ -691,17 +694,17 @@ export default function HistoryScreen({ navigation }) {
                     if (!resultBt.success) {
                       const result = await printToSelectedPrinter(selectedSale, user?.id, '58mm');
                       if (!result.success) {
-                        Alert.alert('Error', result.error || 'Gagal mencetak invoice');
+                        showToast(result.error || 'Gagal mencetak invoice', 'error');
                       } else {
-                        Alert.alert('Berhasil', 'Invoice dikirim ke printer');
+                        showToast('Invoice dikirim ke printer', 'success');
                       }
                     } else {
-                      Alert.alert('Berhasil', 'Invoice dicetak ke printer bluetooth');
+                      showToast('Invoice dicetak ke printer bluetooth', 'success');
                     }
                   } catch (e) {
                     const result = await printToSelectedPrinter(selectedSale, user?.id, '58mm');
                     if (!result.success) {
-                      Alert.alert('Error', result.error || 'Gagal mencetak invoice');
+                      showToast(result.error || 'Gagal mencetak invoice', 'error');
                     }
                   }
                 }}
@@ -868,16 +871,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa',
     borderRadius: 12,
     paddingHorizontal: 12,
-    height: 44,
+    height: 40,
   },
   searchIcon: {
-    fontSize: 16,
+    fontSize: 14,
     marginRight: 8,
     color: '#666',
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 14,
     color: '#333',
   },
   filterSection: {
@@ -932,7 +935,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   invoiceNumber: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#1a1a1a',
     marginBottom: 4,
@@ -945,7 +948,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   saleTotal: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#007AFF',
   },

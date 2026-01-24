@@ -260,7 +260,7 @@ export default function SalesReportScreen({ navigation }) {
 
   const exportToExcel = async () => {
     if (flattenedItems.length === 0) {
-      Alert.alert('Data Kosong', 'Tidak ada data untuk diekspor');
+      showToast('Tidak ada data untuk diekspor', 'info');
       return;
     }
 
@@ -310,7 +310,7 @@ export default function SalesReportScreen({ navigation }) {
 
       // Check if sharing is available
       if (!(await Sharing.isAvailableAsync())) {
-        Alert.alert('Info', 'Fitur sharing tidak tersedia di perangkat ini');
+        showToast('Fitur sharing tidak tersedia di perangkat ini', 'info');
         return;
       }
 
@@ -322,7 +322,7 @@ export default function SalesReportScreen({ navigation }) {
 
     } catch (error) {
       console.error('Export Error:', error);
-      Alert.alert('Error', 'Gagal mengekspor data: ' + error.message);
+      showToast('Gagal mengekspor data: ' + error.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -332,7 +332,7 @@ export default function SalesReportScreen({ navigation }) {
     console.log('🗑️ Request to delete item:', item.id, item.product_name);
     
     if (!item.id) {
-      Alert.alert('Error', 'ID item tidak valid');
+      showToast('ID item tidak valid', 'error');
       return;
     }
 
@@ -380,10 +380,10 @@ export default function SalesReportScreen({ navigation }) {
                                 await loadData();
                               }, 500);
                             } else {
-                              Alert.alert('Gagal', 'Gagal menghapus transaksi: ' + saleResult.error);
+                              showToast('Gagal menghapus transaksi: ' + saleResult.error, 'error');
                             }
                           } catch (err) {
-                            Alert.alert('Error', err.message);
+                            showToast(err.message, 'error');
                           } finally {
                             setLoading(false);
                           }
@@ -392,12 +392,12 @@ export default function SalesReportScreen({ navigation }) {
                     ]
                   );
                 } else {
-                  Alert.alert('Gagal', 'Gagal menghapus item: ' + (result.error || 'Unknown error'));
+                  showToast('Gagal menghapus item: ' + (result.error || 'Unknown error'), 'error');
                 }
               }
             } catch (error) {
               console.error('❌ Error in handleDeleteItem:', error);
-              Alert.alert('Error', 'Terjadi kesalahan saat menghapus: ' + error.message);
+              showToast('Terjadi kesalahan saat menghapus: ' + error.message, 'error');
             } finally {
               setLoading(false);
             }

@@ -3,10 +3,12 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, A
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../theme';
+import { useToast } from '../../contexts/ToastContext';
 import { getPaymentChannels, createPaymentChannel, updatePaymentChannel, deletePaymentChannel } from '../../services/financeSupabase';
 import { formatIDR } from '../../utils/currency';
 
 export default function PaymentChannelsScreen({ navigation }) {
+  const { showToast } = useToast();
   const [channels, setChannels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -27,11 +29,11 @@ export default function PaymentChannelsScreen({ navigation }) {
       if (result.success) {
         setChannels(result.data);
       } else {
-        Alert.alert('Error', result.error);
+        showToast(result.error || 'Gagal memuat data', 'error');
       }
     } catch (error) {
       console.error(error);
-      Alert.alert('Error', 'Gagal memuat data channel pembayaran');
+      showToast('Gagal memuat data channel pembayaran', 'error');
     } finally {
       setLoading(false);
     }
@@ -67,7 +69,7 @@ export default function PaymentChannelsScreen({ navigation }) {
 
   const handleSubmit = async () => {
     if (!name.trim()) {
-      Alert.alert('Validasi', 'Nama channel harus diisi');
+      showToast('Nama channel harus diisi', 'error');
       return;
     }
 
@@ -81,11 +83,11 @@ export default function PaymentChannelsScreen({ navigation }) {
           balance: parseFloat(balance) || 0
         });
         if (result.success) {
-          Alert.alert('Sukses', 'Channel pembayaran berhasil diperbarui');
+          showToast('Channel pembayaran berhasil diperbarui', 'success');
           setModalVisible(false);
           loadChannels();
         } else {
-          Alert.alert('Error', result.error);
+          showToast(result.error || 'Gagal memperbarui channel', 'error');
         }
       } else {
         const result = await createPaymentChannel({
@@ -95,16 +97,16 @@ export default function PaymentChannelsScreen({ navigation }) {
           initialBalance: parseFloat(initialBalance) || 0
         });
         if (result.success) {
-          Alert.alert('Sukses', 'Channel pembayaran berhasil ditambahkan');
+          showToast('Channel pembayaran berhasil ditambahkan', 'success');
           setModalVisible(false);
           loadChannels();
         } else {
-          Alert.alert('Error', result.error);
+          showToast(result.error || 'Gagal menambahkan channel', 'error');
         }
       }
     } catch (error) {
       console.error(error);
-      Alert.alert('Error', 'Terjadi kesalahan saat menyimpan data');
+      showToast('Terjadi kesalahan saat menyimpan data', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -123,14 +125,14 @@ export default function PaymentChannelsScreen({ navigation }) {
             try {
               const result = await deletePaymentChannel(channel.id);
               if (result.success) {
-                Alert.alert('Sukses', 'Channel pembayaran berhasil dihapus');
+                showToast('Channel pembayaran berhasil dihapus', 'success');
                 loadChannels();
               } else {
-                Alert.alert('Gagal', result.error);
+                showToast(result.error || 'Gagal menghapus channel', 'error');
               }
             } catch (error) {
               console.error(error);
-              Alert.alert('Error', 'Terjadi kesalahan saat menghapus data');
+              showToast('Terjadi kesalahan saat menghapus data', 'error');
             }
           }
         }

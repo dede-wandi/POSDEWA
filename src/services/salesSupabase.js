@@ -172,8 +172,18 @@ export const deleteSale = async (saleId) => {
   try {
     const supabase = getSupabaseClient();
     
-    // Attempt to delete the sale record directly
-    // This relies on CASCADE delete for items, or user ownership of the sale record
+    // Step 1: Delete all related sale_items first (Manual Cascade)
+    const { error: itemsError } = await supabase
+      .from('sale_items')
+      .delete()
+      .eq('sale_id', saleId);
+
+    if (itemsError) {
+      console.warn('⚠️ salesSupabase: Failed to delete items first (might be empty or RLS restricted):', itemsError);
+      // Continue anyway to try deleting the parent
+    }
+
+    // Step 2: Delete the sale record
     const { error } = await supabase
       .from('sales')
       .delete()
