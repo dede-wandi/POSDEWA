@@ -83,6 +83,13 @@ export default function MoreMenuScreen({ navigation }) {
       bgColor: '#F5F5F5',
       onPress: () => navigation.navigate('Scan'),
     },
+    {
+      label: 'Top Penjualan',
+      icon: 'trending-up',
+      iconColor: '#FFC107',
+      bgColor: '#FFF8E1',
+      onPress: () => navigation.navigate('TopSales'),
+    },
   ];
 
   return (

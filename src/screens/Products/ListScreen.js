@@ -158,16 +158,10 @@ export default function ListScreen({ navigation, route }) {
               <Ionicons name="scan" size={18} color="#fff" />
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.viewToggleButton, !isGrid && styles.viewToggleButtonActive]}
-              onPress={() => setIsGrid(false)}
+              style={[styles.viewToggleButton, styles.viewToggleButtonActive]}
+              onPress={() => setIsGrid(!isGrid)}
             >
-              <Ionicons name="list" size={16} color={!isGrid ? '#fff' : Colors.primary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.viewToggleButton, isGrid && styles.viewToggleButtonActive]}
-              onPress={() => setIsGrid(true)}
-            >
-              <Ionicons name="grid" size={16} color={isGrid ? '#fff' : Colors.primary} />
+              <Ionicons name={isGrid ? 'grid' : 'list'} size={16} color="#fff" />
             </TouchableOpacity>
           </View>
         </View>
@@ -557,10 +551,9 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
   },
   productCardGrid: {
-    flex: 1,
     backgroundColor: Colors.card,
-    borderRadius: 16,
-    padding: 12,
+    borderRadius: 12,
+    padding: 8,
     marginBottom: 12,
     marginHorizontal: 4,
     shadowColor: '#000',
@@ -569,25 +562,26 @@ const styles = StyleSheet.create({
       height: 2,
     },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowRadius: 4,
     elevation: 3,
     width: (width - 16 * 2 - 8) / 2,
   },
   productImageGrid: {
     width: '100%',
-    height: 100,
-    borderRadius: 10,
+    height: 140,
+    borderRadius: 8,
     marginBottom: 8,
     backgroundColor: '#f5f5f5',
   },
   productInfoGrid: {
-    flex: 1,
+    paddingHorizontal: 4,
   },
   productNameGrid: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     color: Colors.text,
     marginBottom: 4,
+    height: 40, // Fixed height for 2 lines
   },
   productPriceGrid: {
     fontSize: 14,

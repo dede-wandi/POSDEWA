@@ -584,7 +584,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   summaryValue: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
     color: '#000000',
     marginTop: 8,

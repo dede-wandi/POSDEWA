@@ -266,11 +266,11 @@ export default function DashboardScreen({ navigation }) {
               <Text style={styles.menuLabel}>Riwayat</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('TransactionReport')}>
-              <View style={[styles.menuIcon, { backgroundColor: '#F3E5F5' }]}>
-                <Ionicons name="bar-chart" size={24} color="#9C27B0" />
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Scan')}>
+              <View style={[styles.menuIcon, { backgroundColor: '#F5F5F5' }]}>
+                <Ionicons name="scan" size={24} color={Colors.text} />
               </View>
-              <Text style={styles.menuLabel}>Laporan</Text>
+              <Text style={styles.menuLabel}>Barcode</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('StockManagement')}>

@@ -652,12 +652,10 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 8,
   },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#212529',
-    flex: 1,
-    textAlign: 'center',
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#000000',
   },
   refreshButton: {
     padding: 8,
@@ -680,8 +678,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#212529',
+    color: '#000000',
     marginBottom: 12,
+    marginLeft: 4,
   },
   productInfo: {
     backgroundColor: '#ffffff',
@@ -717,7 +716,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   detailValue: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#212529',
     fontWeight: '600',
   },

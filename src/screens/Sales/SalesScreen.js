@@ -292,16 +292,14 @@ export default function SalesScreen({ navigation, route }) {
           </View>
           <View style={styles.toggleGroup}>
             <TouchableOpacity
-              style={[styles.toggleButton, productLayout === 'list' && styles.toggleButtonActive]}
-              onPress={() => setProductLayout('list')}
+              style={[styles.toggleButton, styles.toggleButtonActive]}
+              onPress={() => setProductLayout(prev => prev === 'grid' ? 'list' : 'grid')}
             >
-              <Ionicons name="list" size={16} color={productLayout === 'list' ? '#fff' : Colors.primary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.toggleButton, productLayout === 'grid' && styles.toggleButtonActive]}
-              onPress={() => setProductLayout('grid')}
-            >
-              <Ionicons name="grid" size={16} color={productLayout === 'grid' ? '#fff' : Colors.primary} />
+              <Ionicons 
+                name={productLayout === 'grid' ? 'grid' : 'list'} 
+                size={16} 
+                color="#fff" 
+              />
             </TouchableOpacity>
           </View>
         </View>
