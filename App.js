@@ -50,7 +50,7 @@ function ProductsStack() {
   return (
     <Stack.Navigator>
       <Stack.Screen name="DaftarProduk" component={ListScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="FormProduk" component={FormScreen} options={{ title: 'Form Produk' }} />
+      <Stack.Screen name="FormProduk" component={FormScreen} options={{ title: 'From Produk' }} />
       <Stack.Screen name="ProductReport" component={ProductReportScreen} options={{ title: 'Report Produk' }} />
       <Stack.Screen 
         name="PublicProductsAdmin" 
@@ -263,6 +263,14 @@ function MainStack() {
       <Stack.Screen 
         name="InvoiceSettings" 
         component={InvoiceSettingsScreen}
+        options={{
+          presentation: 'modal',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen 
+        name="PaymentChannels" 
+        component={PaymentChannelsScreen}
         options={{
           presentation: 'modal',
           headerShown: false,

@@ -86,15 +86,6 @@ export default function FormScreen({ navigation, route }) {
 
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>
-          {id ? 'Edit Produk' : 'Tambah Produk'}
-        </Text>
-        <Text style={styles.subtitle}>
-          {id ? 'Perbarui informasi produk' : 'Masukkan detail produk baru'}
-        </Text>
-      </View>
-
       {!user && (
         <View style={styles.warningContainer}>
           <Text style={styles.warningText}>

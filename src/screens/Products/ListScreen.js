@@ -215,7 +215,7 @@ export default function ListScreen({ navigation, route }) {
             }}
           >
             <Ionicons name="download-outline" size={18} color="#ffffff" style={styles.buttonIcon} />
-            <Text style={styles.exportButtonText}>Export Excel</Text>
+            <Text style={styles.exportButtonText}>Export</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={styles.addButton} 
@@ -315,7 +315,7 @@ export default function ListScreen({ navigation, route }) {
                       </View>
                     ) : null}
                     
-                    <Text style={[styles.infoText, { color: Colors.success, fontWeight: '600', marginRight: 10 }]}>
+                    <Text style={[styles.infoText, { color: Colors.success, fontWeight: '900', marginRight: 10 }]}>
                       {formatIDR(item.price)}
                     </Text>
                     
@@ -324,7 +324,7 @@ export default function ListScreen({ navigation, route }) {
                     </Text>
 
                     <Text style={[styles.infoText, { color: Colors.success, marginRight: 10 }]}>
-                      Laba: {formatIDR(margin)} ({marginPercentage}%)
+                      L: {formatIDR(margin)} ({marginPercentage}%)
                     </Text>
                     
                     <Text style={[styles.infoText, { color: Colors.primary }]}>
@@ -411,11 +411,12 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: Colors.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 12,
-    justifyContent: 'center',
   },
   actionRight: {
     flexDirection: 'row',

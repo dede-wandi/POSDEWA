@@ -63,6 +63,13 @@ export default function MoreMenuScreen({ navigation }) {
       onPress: () => navigation.navigate('InvoiceSettings'),
     },
     {
+      label: 'Channel Pembayaran',
+      icon: 'wallet',
+      iconColor: '#3F51B5',
+      bgColor: '#E8EAF6',
+      onPress: () => navigation.navigate('PaymentChannels'),
+    },
+    {
       label: 'Profil Akun',
       icon: 'person-circle',
       iconColor: Colors.primary,
