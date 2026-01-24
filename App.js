@@ -27,6 +27,7 @@ import AuthScreen from './src/screens/Auth/AuthScreen';
 import AccountScreen from './src/screens/Auth/AccountScreen';
 import ProfileEditScreen from './src/screens/Auth/ProfileEditScreen';
 import InvoiceSettingsScreen from './src/screens/Settings/InvoiceSettingsScreen';
+import PaymentChannelsScreen from './src/screens/Settings/PaymentChannelsScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import MoreMenuScreen from './src/screens/MoreMenuScreen';
 import StockManagementScreen from './src/screens/StockManagementScreen';
