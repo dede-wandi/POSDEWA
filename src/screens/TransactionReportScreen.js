@@ -160,7 +160,7 @@ export default function TransactionReportScreen({ navigation }) {
 
   const exportToExcel = async () => {
     if (reportData.length === 0) {
-      alert('Tidak ada data untuk diekspor');
+      showToast('Tidak ada data untuk diekspor', 'info');
       return;
     }
 
