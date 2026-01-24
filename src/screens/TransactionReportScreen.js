@@ -343,17 +343,17 @@ export default function TransactionReportScreen({ navigation }) {
       {/* Summary Cards */}
       <View style={styles.summaryContainer}>
         <View style={styles.summaryCard}>
-          <Ionicons name="cash-outline" size={24} color="#34C759" />
+          <Ionicons name="cash-outline" size={16} color="#34C759" />
           <Text style={styles.summaryValue}>{formatCurrency(salesTotal)}</Text>
           <Text style={styles.summaryLabel}>Total Penjualan</Text>
         </View>
         <View style={styles.summaryCard}>
-          <Ionicons name="trending-up-outline" size={24} color="#FF9500" />
+          <Ionicons name="trending-up-outline" size={16} color="#FF9500" />
           <Text style={styles.summaryValue}>{formatCurrency(salesProfit)}</Text>
           <Text style={styles.summaryLabel}>Total Profit</Text>
         </View>
         <View style={styles.summaryCard}>
-          <Ionicons name="receipt-outline" size={24} color="#007AFF" />
+          <Ionicons name="receipt-outline" size={16} color="#007AFF" />
           <Text style={styles.summaryValue}>{salesTransactions}</Text>
           <Text style={styles.summaryLabel}>Jumlah Transaksi</Text>
         </View>
@@ -548,7 +548,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#000000',
   },

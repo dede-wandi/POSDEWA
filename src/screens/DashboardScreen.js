@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '800',
     color: Colors.text,
     marginBottom: Spacing.md,
   },
@@ -586,7 +586,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   statCardValue: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: 'bold',
     color: Colors.text,
     marginBottom: Spacing.xs,
