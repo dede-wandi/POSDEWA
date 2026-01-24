@@ -322,6 +322,10 @@ export default function ListScreen({ navigation, route }) {
                     <Text style={[styles.infoText, { color: Colors.danger, marginRight: 10 }]}>
                       M: {formatIDR(item.costPrice ?? item.cost_price ?? 0)}
                     </Text>
+
+                    <Text style={[styles.infoText, { color: Colors.success, marginRight: 10 }]}>
+                      Laba: {formatIDR(margin)} ({marginPercentage}%)
+                    </Text>
                     
                     <Text style={[styles.infoText, { color: Colors.primary }]}>
                       Stok: {item.stock}
@@ -424,18 +428,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.info,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 12,
   },
   exportButtonText: {
     color: '#ffffff',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
   },
   addButtonText: {
     color: '#ffffff',
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '600',
   },
   warningContainer: {

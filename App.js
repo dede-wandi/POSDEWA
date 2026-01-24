@@ -49,7 +49,7 @@ const Stack = createNativeStackNavigator();
 function ProductsStack() {
   return (
     <Stack.Navigator>
-      <Stack.Screen name="DaftarProduk" component={ListScreen} options={{ title: 'Produk' }} />
+      <Stack.Screen name="DaftarProduk" component={ListScreen} options={{ headerShown: false }} />
       <Stack.Screen name="FormProduk" component={FormScreen} options={{ title: 'Form Produk' }} />
       <Stack.Screen name="ProductReport" component={ProductReportScreen} options={{ title: 'Report Produk' }} />
       <Stack.Screen 
@@ -131,7 +131,11 @@ function MainTabs() {
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '600',
-          marginBottom: 4,
+          marginBottom: 6,
+          display: 'flex', // Ensure label is displayed
+        },
+        tabBarIconStyle: {
+          marginTop: 4,
         },
         tabBarIcon: ({ focused, color }) => {
           let iconName = 'ellipse';
@@ -143,36 +147,36 @@ function MainTabs() {
               iconName = focused ? 'cube' : 'cube-outline';
               break;
             case 'Penjualan':
-              iconName = focused ? 'cash' : 'cash-outline';
-              break;
-            case 'StockManagement':
-              iconName = focused ? 'clipboard' : 'clipboard-outline';
-              break;
-            case 'Finance':
-              iconName = focused ? 'card' : 'card-outline';
+              iconName = focused ? 'cart' : 'cart-outline'; // Changed to cart for sales
               break;
             case 'Akun':
-              iconName = focused ? 'person-circle' : 'person-circle-outline';
+              iconName = focused ? 'person' : 'person-outline'; // Changed to simpler person icon
               break;
           }
-          return <Ionicons name={iconName} size={20} color={color} />;
+          return <Ionicons name={iconName} size={22} color={color} />;
         },
         tabBarStyle: {
           backgroundColor: '#ffffff',
           borderTopWidth: 1,
           borderTopColor: '#e9ecef',
           // Responsif terhadap safe area di perangkat dengan notch / gesture navigation
-          height: 60,
-          paddingBottom: Math.max(8, insets.bottom),
+          height: 65, // Increased height slightly to accommodate labels
+          paddingBottom: Math.max(12, insets.bottom),
           paddingTop: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.05,
+          shadowRadius: 4,
+          elevation: 5,
         },
         tabBarHideOnKeyboard: true,
+        tabBarShowLabel: true, // Explicitly enable labels
       })}
     >
-      <Tab.Screen name="Home" component={DashboardScreen} options={{ title: 'Home' }} />
-      <Tab.Screen name="Produk" component={ProductsStack} options={{ title: 'Produk' }} />
-      <Tab.Screen name="Penjualan" component={SalesStack} options={{ title: 'Penjualan' }} />
-      <Tab.Screen name="Akun" component={AccountScreen} options={{ title: 'Akun' }} />
+      <Tab.Screen name="Home" component={DashboardScreen} options={{ tabBarLabel: 'Home' }} />
+      <Tab.Screen name="Produk" component={ProductsStack} options={{ tabBarLabel: 'Produk' }} />
+      <Tab.Screen name="Penjualan" component={SalesStack} options={{ tabBarLabel: 'Penjualan' }} />
+      <Tab.Screen name="Akun" component={AccountScreen} options={{ tabBarLabel: 'Akun' }} />
     </Tab.Navigator>
   );
 }
