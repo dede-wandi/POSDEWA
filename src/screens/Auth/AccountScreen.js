@@ -87,8 +87,8 @@ export default function AccountScreen({ navigation }) {
               </Text>
               <Text style={styles.profileEmail}>{user.email}</Text>
               {userProfile?.user_metadata?.business_name && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                  <Ionicons name="storefront-outline" size={16} color={Colors.primary} style={{ marginRight: 6 }} />
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                  <Ionicons name="storefront-outline" size={14} color={Colors.primary} style={{ marginRight: 4 }} />
                   <Text style={styles.businessName}>
                     {userProfile.user_metadata.business_name}
                   </Text>
@@ -99,7 +99,7 @@ export default function AccountScreen({ navigation }) {
 
           {/* Account Details */}
           <View style={styles.detailsSection}>
-            <Text style={styles.sectionTitle}>Detail Akun</Text>
+            <Text style={styles.sectionTitle}>DETAIL AKUN</Text>
             
             <View style={styles.detailCard}>
               <View style={styles.detailRow}>
@@ -130,17 +130,17 @@ export default function AccountScreen({ navigation }) {
 
           {/* Actions Section */}
           <View style={styles.actionsSection}>
-            <Text style={styles.sectionTitle}>Pengaturan</Text>
+            <Text style={styles.sectionTitle}>PENGATURAN</Text>
             
             <TouchableOpacity 
               style={styles.actionButton} 
               onPress={() => navigation.navigate('ProfileEdit')}
             >
               <View style={styles.actionContent}>
-                <Ionicons name="create-outline" size={20} color={Colors.text} style={{ marginRight: 16 }} />
+                <Ionicons name="create-outline" size={18} color={Colors.text} style={{ marginRight: 12 }} />
                 <Text style={styles.actionTextNormal}>Edit Profil</Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={Colors.muted} />
+              <Ionicons name="chevron-forward" size={16} color={Colors.muted} />
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -148,18 +148,18 @@ export default function AccountScreen({ navigation }) {
               onPress={() => navigation.navigate('InvoiceSettings')}
             >
               <View style={styles.actionContent}>
-                <Ionicons name="document-text-outline" size={20} color={Colors.text} style={{ marginRight: 16 }} />
+                <Ionicons name="document-text-outline" size={18} color={Colors.text} style={{ marginRight: 12 }} />
                 <Text style={styles.actionTextNormal}>Pengaturan Invoice</Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={Colors.muted} />
+              <Ionicons name="chevron-forward" size={16} color={Colors.muted} />
             </TouchableOpacity>
             
             <TouchableOpacity style={styles.actionButton} onPress={handleSignOut}>
               <View style={styles.actionContent}>
-                <Ionicons name="log-out-outline" size={20} color={Colors.danger} style={{ marginRight: 16 }} />
+                <Ionicons name="log-out-outline" size={18} color={Colors.danger} style={{ marginRight: 12 }} />
                 <Text style={styles.actionText}>Keluar dari Akun</Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={Colors.muted} />
+              <Ionicons name="chevron-forward" size={16} color={Colors.muted} />
             </TouchableOpacity>
           </View>
 
@@ -215,75 +215,77 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.card,
-    borderRadius: 20,
-    padding: 24,
+    borderRadius: 12,
+    padding: 16,
     marginBottom: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
     borderWidth: 1,
     borderColor: Colors.border,
   },
   avatarContainer: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 20,
+    marginRight: 16,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   avatarText: {
-    fontSize: 28,
-    fontWeight: '800',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#ffffff',
   },
   profileInfo: {
     flex: 1,
   },
   profileName: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '700',
     color: Colors.text,
-    marginBottom: 4,
+    marginBottom: 2,
     textTransform: 'capitalize',
   },
   profileEmail: {
-    fontSize: 16,
+    fontSize: 13,
     color: Colors.muted,
   },
   businessName: {
-    fontSize: 14,
+    fontSize: 12,
     color: Colors.primary,
-    marginTop: 4,
+    marginTop: 2,
     fontWeight: '500',
   },
   detailsSection: {
     marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: Colors.text,
-    marginBottom: 16,
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.muted,
+    marginBottom: 8,
     marginLeft: 4,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   detailCard: {
     backgroundColor: Colors.card,
-    borderRadius: 20,
-    padding: 24,
+    borderRadius: 12,
+    padding: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
     borderWidth: 1,
     borderColor: Colors.border,
   },
@@ -291,16 +293,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 10,
   },
   detailLabel: {
-    fontSize: 16,
+    fontSize: 13,
     color: Colors.muted,
     flex: 1,
     fontWeight: '500',
   },
   detailValue: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '600',
     color: Colors.text,
     flex: 2,
@@ -309,18 +311,18 @@ const styles = StyleSheet.create({
   separator: {
     height: 1,
     backgroundColor: Colors.border,
-    marginVertical: 4,
+    marginVertical: 2,
   },
   statusBadge: {
     backgroundColor: '#e8f5e8',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#c3e6c3',
   },
   statusText: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '700',
     color: Colors.success,
   },
@@ -332,14 +334,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: Colors.card,
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 12,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
     borderWidth: 1,
     borderColor: Colors.border,
   },
@@ -349,12 +351,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   actionText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: Colors.danger,
   },
   actionTextNormal: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: Colors.text,
   },
@@ -363,18 +365,18 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
   },
   appInfoTitle: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: '800',
     color: Colors.primary,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   appInfoSubtitle: {
-    fontSize: 14,
+    fontSize: 12,
     color: Colors.muted,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   appInfoVersion: {
-    fontSize: 12,
+    fontSize: 11,
     color: Colors.muted,
   },
   notLoggedIn: {

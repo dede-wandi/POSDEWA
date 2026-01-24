@@ -282,68 +282,50 @@ export default function ListScreen({ navigation, route }) {
               onPress={() => navigation.navigate('FormProduk', { id: item.id })} 
               style={styles.productCard}
             >
-              <View style={styles.productHeader}>
-        {item.image_urls && item.image_urls.length > 0 && item.image_urls[0] ? (
-          <Image source={{ uri: item.image_urls[0] }} style={styles.productImage} resizeMode="contain" />
-        ) : null}
-                <View style={styles.productInfo}>
-                  <Text style={styles.productName}>{item.name}</Text>
-                  <Text style={styles.productBarcode}>
-                    {item.barcode ? '' : ''}
-                    <Ionicons name="barcode" size={14} color={Colors.muted} style={styles.inlineIcon} />
-                    {` ${item.barcode || 'Tanpa barcode'}`}
-                  </Text>
-                </View>
-                <View style={styles.stockBadge}>
-                  <Text style={styles.stockText}>{item.stock}</Text>
-                </View>
-              </View>
-
-              <View style={styles.priceSection}>
-                <View style={styles.priceRow}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Ionicons name="pricetag" size={14} color={Colors.muted} style={styles.inlineIcon} />
-                    <Text style={styles.priceLabel}>Harga Jual</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                {item.image_urls && item.image_urls.length > 0 && item.image_urls[0] ? (
+                  <Image source={{ uri: item.image_urls[0] }} style={styles.productImage} resizeMode="cover" />
+                ) : (
+                  <View style={[styles.productImage, { backgroundColor: '#f5f5f5', alignItems: 'center', justifyContent: 'center' }]}>
+                    <Ionicons name="image-outline" size={20} color="#ccc" />
                   </View>
-                  <Text style={styles.priceValue}>{formatIDR(item.price)}</Text>
-                </View>
-                <View style={styles.priceRow}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Ionicons name="wallet" size={14} color={Colors.muted} style={styles.inlineIcon} />
-                    <Text style={styles.priceLabel}>Harga Modal</Text>
+                )}
+                
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Text style={styles.productName} numberOfLines={1}>{item.name}</Text>
+                    
+                    {/* Mini Actions */}
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                        <TouchableOpacity onPress={() => navigation.navigate('ProductReport', { productId: item.id, productName: item.name })}>
+                           <Ionicons name="analytics-outline" size={16} color={Colors.info} />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => confirmDelete(item.id)}>
+                           <Ionicons name="trash-outline" size={16} color={Colors.danger} />
+                        </TouchableOpacity>
+                    </View>
                   </View>
-                  <Text style={styles.costValue}>{formatIDR(item.costPrice ?? item.cost_price ?? 0)}</Text>
-                </View>
-                <View style={styles.marginRow}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Ionicons name="trending-up" size={14} color={Colors.info} style={styles.inlineIcon} />
-                    <Text style={styles.marginLabel}>Margin</Text>
-                    <Text style={styles.marginValue}>
-                      {`  ${formatIDR(margin)} (${marginPercentage}%)`}
+                  
+                  {/* Single Line Info */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', marginTop: 4 }}>
+                    {item.barcode ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 10 }}>
+                        <Ionicons name="barcode-outline" size={12} color={Colors.muted} style={{ marginRight: 2 }} />
+                        <Text style={styles.infoText}>{item.barcode}</Text>
+                      </View>
+                    ) : null}
+                    
+                    <Text style={[styles.infoText, { color: Colors.success, fontWeight: '600', marginRight: 10 }]}>
+                      {formatIDR(item.price)}
                     </Text>
-                  </View>
-                  <View style={styles.actionButtons}>
-                    <TouchableOpacity 
-                      style={styles.reportButton}
-                      onPress={() => navigation.navigate('ProductReport', { 
-                        productId: item.id, 
-                        productName: item.name 
-                      })}
-                    >
-                      <Ionicons name="analytics" size={18} color="#ffffff" />
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={styles.editButton}
-                      onPress={() => navigation.navigate('FormProduk', { id: item.id })}
-                    >
-                      <Ionicons name="create" size={18} color="#ffffff" />
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={styles.deleteButton}
-                      onPress={() => confirmDelete(item.id)}
-                    >
-                      <Ionicons name="trash" size={18} color="#ffffff" />
-                    </TouchableOpacity>
+                    
+                    <Text style={[styles.infoText, { color: Colors.danger, marginRight: 10 }]}>
+                      M: {formatIDR(item.costPrice ?? item.cost_price ?? 0)}
+                    </Text>
+                    
+                    <Text style={[styles.infoText, { color: Colors.primary }]}>
+                      Stok: {item.stock}
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -482,165 +464,32 @@ const styles = StyleSheet.create({
   },
   productCard: {
     backgroundColor: Colors.card,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 8,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  productHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
+    shadowRadius: 4,
+    elevation: 2,
   },
   productImage: {
-          width: 80,
-          height: 80,
-          borderRadius: 10,
-          marginRight: 12,
-          backgroundColor: '#f5f5f5',
-        },
-  productInfo: {
-    flex: 1,
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    marginRight: 10,
+    backgroundColor: '#f5f5f5',
   },
   productName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.text,
-    marginBottom: 4,
-  },
-  productBarcode: {
-    fontSize: 14,
-    color: Colors.muted,
-  },
-  stockBadge: {
-    backgroundColor: '#e3f2fd',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginLeft: 12,
-  },
-  stockText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.primary,
-  },
-  priceSection: {
-    marginBottom: 16,
-  },
-  priceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  priceLabel: {
-    fontSize: 14,
-    color: Colors.muted,
-  },
-  priceValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.success,
-  },
-  costValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.danger,
-  },
-  marginRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: Colors.background,
-    padding: 8,
-    borderRadius: 8,
-    marginTop: 4,
-  },
-  marginLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.text,
-  },
-  marginValue: {
     fontSize: 14,
     fontWeight: '700',
-    color: Colors.info,
+    color: Colors.text,
+    flex: 1,
+    marginRight: 8,
   },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'flex-end',
-  },
-  reportButton: {
-    backgroundColor: Colors.info,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  reportButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  editButton: {
-    backgroundColor: Colors.primary,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  editButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  deleteButton: {
-    backgroundColor: Colors.danger,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  deleteButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
+  infoText: {
+    fontSize: 11,
+    color: Colors.muted,
   },
   emptyContainer: {
     alignItems: 'center',

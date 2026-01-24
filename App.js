@@ -129,8 +129,9 @@ function MainTabs() {
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.muted,
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: '600',
+          marginBottom: 4,
         },
         tabBarIcon: ({ focused, color }) => {
           let iconName = 'ellipse';
@@ -154,16 +155,16 @@ function MainTabs() {
               iconName = focused ? 'person-circle' : 'person-circle-outline';
               break;
           }
-          return <Ionicons name={iconName} size={24} color={color} />;
+          return <Ionicons name={iconName} size={20} color={color} />;
         },
         tabBarStyle: {
           backgroundColor: '#ffffff',
           borderTopWidth: 1,
           borderTopColor: '#e9ecef',
           // Responsif terhadap safe area di perangkat dengan notch / gesture navigation
+          height: 60,
           paddingBottom: Math.max(8, insets.bottom),
-          paddingTop: 6,
-          minHeight: 56,
+          paddingTop: 8,
         },
         tabBarHideOnKeyboard: true,
       })}

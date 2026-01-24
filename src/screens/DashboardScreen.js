@@ -196,9 +196,9 @@ export default function DashboardScreen({ navigation }) {
               <Ionicons name="bag-handle" size={18} color="#fff" />
             </View>
             <View style={styles.shopInfo}>
-              <Text style={styles.shopName}>POS Dewa Store</Text>
+              <Text style={styles.shopName}>DEWA STORE</Text>
               <Text style={styles.shopSubtitle}>
-                {user?.email?.split('@')[0] || 'Admin'} • Dashboard Toko
+                Dashboard Toko
               </Text>
             </View>
           </View>

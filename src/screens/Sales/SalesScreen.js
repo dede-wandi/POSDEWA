@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, Alert, StyleSheet, Dimensions, RefreshControl, Modal, Image } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../theme';
 import { findByBarcodeOrName, findByBarcodeExact, getProducts } from '../../services/products';
@@ -51,11 +52,13 @@ export default function SalesScreen({ navigation, route }) {
     }
   };
 
-  useEffect(() => {
-    if (user?.id) {
-      loadInitialProducts();
-    }
-  }, [user?.id]);
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id) {
+        loadInitialProducts();
+      }
+    }, [user?.id])
+  );
 
   const handleSearch = async () => {
     if (!query.trim()) {
@@ -306,7 +309,6 @@ export default function SalesScreen({ navigation, route }) {
 
       {/* Product List */}
       <View style={styles.resultsSection}>
-          <Text style={styles.sectionTitle}>{query.trim() ? 'Hasil Pencarian' : 'Daftar Produk'}</Text>
           <FlatList
             data={results}
             key={productLayout} // Force re-render when layout changes
