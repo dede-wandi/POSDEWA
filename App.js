@@ -28,6 +28,7 @@ import AccountScreen from './src/screens/Auth/AccountScreen';
 import ProfileEditScreen from './src/screens/Auth/ProfileEditScreen';
 import InvoiceSettingsScreen from './src/screens/Settings/InvoiceSettingsScreen';
 import PaymentChannelsScreen from './src/screens/Settings/PaymentChannelsScreen';
+import TopSalesScreen from './src/screens/TopSalesScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import MoreMenuScreen from './src/screens/MoreMenuScreen';
 import StockManagementScreen from './src/screens/StockManagementScreen';
@@ -110,7 +111,7 @@ function ProductsStack() {
 function SalesStack() {
   return (
     <Stack.Navigator>
-      <Stack.Screen name="Penjualan" component={SalesScreen} options={{ title: 'Penjualan' }} />
+      <Stack.Screen name="Penjualan" component={SalesScreen} options={{ headerShown: false }} />
       <Stack.Screen name="ProductList" component={ProductListScreen} options={{ title: 'Pilih Produk' }} />
       <Stack.Screen name="Payment" component={PaymentScreen} options={{ title: 'Pembayaran' }} />
       <Stack.Screen name="Invoice" component={InvoiceScreen} options={{ title: 'Invoice' }} />
@@ -272,6 +273,14 @@ function MainStack() {
       <Stack.Screen 
         name="PaymentChannels" 
         component={PaymentChannelsScreen}
+        options={{
+          presentation: 'modal',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen 
+        name="TopSales" 
+        component={TopSalesScreen}
         options={{
           presentation: 'modal',
           headerShown: false,
