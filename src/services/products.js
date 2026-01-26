@@ -169,8 +169,12 @@ export async function updateProduct(userId, id, payload) {
 export async function deleteProduct(userId, id) {
   const supabase = getSupabaseClient();
   if (supabase && userId) {
-    const { data } = await cloud.deleteProduct(userId, id);
-    return data || null;
+    const { error } = await cloud.deleteProduct(userId, id);
+    if (error) {
+      console.error('❌ products: deleteProduct error:', error);
+      throw new Error(typeof error === 'string' ? error : error.message || 'Gagal menghapus produk');
+    }
+    return true;
   }
   return await local.deleteProduct(id);
 }

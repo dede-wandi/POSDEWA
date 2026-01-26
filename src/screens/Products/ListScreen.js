@@ -135,7 +135,8 @@ export default function ListScreen({ navigation, route }) {
               showToast(`Produk "${productName}" telah dihapus`, 'success');
               load(); 
             } catch (error) {
-              showToast('Gagal menghapus produk. Silakan coba lagi.', 'error');
+              console.error('Delete error:', error);
+              Alert.alert('Gagal', `Gagal menghapus produk: ${error.message}`);
             }
           } 
         }

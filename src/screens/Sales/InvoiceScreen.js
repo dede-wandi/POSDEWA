@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'rea
 import { formatIDR } from '../../utils/currency';
 import { AuthContext } from '../../context/AuthContext';
 import { getInvoiceSettings } from '../../services/invoiceSettingsSupabase';
+import { useToast } from '../../contexts/ToastContext';
 
 export default function InvoiceScreen({ navigation, route }) {
   const { user } = useContext(AuthContext);
@@ -129,7 +130,11 @@ ${divider}
     console.log(content);
     console.log('=== END PRINT ===');
     
-    showToast('Invoice dikirim ke printer (simulasi)', 'success');
+    Alert.alert(
+      '✅ Print Berhasil',
+      'Invoice telah dikirim ke printer (simulasi).\n\nPada implementasi nyata, ini akan mengirim data ke printer thermal atau printer lainnya.',
+      [{ text: 'OK' }]
+    );
   };
 
   const handleNewSale = () => {

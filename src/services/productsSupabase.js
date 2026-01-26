@@ -411,8 +411,51 @@ export async function updateProduct(userId, id, payload) {
 export async function deleteProduct(userId, id) {
   const supabase = getSupabaseClient();
   if (!supabase || !userId) return { error: 'Supabase tidak tersedia atau user tidak login' };
-  const { error } = await supabase.from('products').delete().eq('owner_id', userId).eq('id', id);
-  return { error };
+  
+  // Cek dulu apakah produk ada dan milik user
+  const { data: existing, error: checkError } = await supabase
+    .from('products')
+    .select('id, owner_id')
+    .eq('id', id)
+    .single();
+
+  if (checkError) {
+    return { error: `Gagal mengecek produk: ${checkError.message}` };
+  }
+
+  if (!existing) {
+    return { error: 'Produk tidak ditemukan' };
+  }
+
+  if (existing.owner_id !== userId) {
+    return { error: 'Anda tidak memiliki izin menghapus produk ini' };
+  }
+
+  const { error, data } = await supabase
+    .from('products')
+    .delete()
+    .eq('owner_id', userId)
+    .eq('id', id)
+    .select();
+
+  if (error) {
+    // Jika error foreign key violation (23503), berarti database menahan penghapusan
+    // karena setting ON DELETE masih RESTRICT atau CASCADE (tapi user mau history disimpan)
+    if (error.code === '23503') {
+      console.log('⚠️ Delete failed due to FK constraint. User needs to update DB schema.');
+      return { 
+        error: 'Gagal hapus: Data terkunci oleh riwayat stok. Harap jalankan script "fix_product_delete.sql" di Supabase agar produk bisa dihapus tanpa menghilangkan history.' 
+      };
+    }
+    
+    return { error: error.message };
+  }
+
+  if (!data || data.length === 0) {
+    return { error: 'Gagal menghapus produk (tidak ada data terhapus). Mungkin terkait RLS atau Foreign Key.' };
+  }
+
+  return { error: null };
 }
 
 export async function adjustStockOnSale(userId, cartItems) {

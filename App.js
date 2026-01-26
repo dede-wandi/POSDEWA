@@ -28,7 +28,9 @@ import AccountScreen from './src/screens/Auth/AccountScreen';
 import ProfileEditScreen from './src/screens/Auth/ProfileEditScreen';
 import InvoiceSettingsScreen from './src/screens/Settings/InvoiceSettingsScreen';
 import PaymentChannelsScreen from './src/screens/Settings/PaymentChannelsScreen';
-import TopSalesScreen from './src/screens/TopSalesScreen';
+import TopSalesMenuScreen from './src/screens/TopSales/TopSalesMenuScreen';
+import TopListScreen from './src/screens/TopSales/TopListScreen';
+import ProfitAnalysisScreen from './src/screens/TopSales/ProfitAnalysisScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import MoreMenuScreen from './src/screens/MoreMenuScreen';
 import StockManagementScreen from './src/screens/StockManagementScreen';
@@ -281,9 +283,25 @@ function MainStack() {
       />
       <Stack.Screen 
         name="TopSales" 
-        component={TopSalesScreen}
+        component={TopSalesMenuScreen}
         options={{
           presentation: 'modal',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen 
+        name="TopList" 
+        component={TopListScreen}
+        options={{
+          presentation: 'card',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen 
+        name="ProfitAnalysis" 
+        component={ProfitAnalysisScreen}
+        options={{
+          presentation: 'card',
           headerShown: false,
         }}
       />
