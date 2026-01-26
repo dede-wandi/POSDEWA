@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, Alert, StyleSheet, Dimensions, RefreshControl, Image } from 'react-native';
-import { getProducts, deleteProduct, findProducts } from '../../services/products';
+import React, { useEffect, useState, useMemo } from 'react';
+import { View, Text, TextInput, FlatList, TouchableOpacity, Alert, StyleSheet, Dimensions, RefreshControl, Image, ScrollView } from 'react-native';
+import { getProducts, deleteProduct, findProducts, getCategories, getBrands } from '../../services/products';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { formatIDR } from '../../utils/currency';
@@ -8,9 +8,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../theme';
 
 const { width } = Dimensions.get('window');
-
-import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
 
 export default function ListScreen({ navigation, route }) {
   const { user } = useAuth();
@@ -20,14 +17,31 @@ export default function ListScreen({ navigation, route }) {
   const [refreshing, setRefreshing] = useState(false);
   const [isGrid, setIsGrid] = useState(false);
 
+  // Filter State
+  const [categories, setCategories] = useState([]);
+  const [brands, setBrands] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedBrand, setSelectedBrand] = useState(null);
+
+  const loadMasterData = async () => {
+    if (user?.id) {
+      try {
+        const cats = await getCategories(user.id);
+        setCategories(cats || []);
+        const brs = await getBrands(user.id);
+        setBrands(brs || []);
+      } catch (e) {
+        console.error('Error loading master data:', e);
+      }
+    }
+  };
+
   const load = async () => {
     console.log('🔄 ListScreen: Loading products for user:', user?.id);
-    console.log('🔄 ListScreen: User object:', user);
     try {
       const all = await getProducts(user?.id);
-      console.log('✅ ListScreen: Products loaded:', all?.length || 0, 'items');
-      console.log('📦 ListScreen: Products data:', all);
       setProducts(all || []);
+      await loadMasterData();
     } catch (error) {
       console.error('❌ ListScreen: Error loading products:', error);
       setProducts([]);
@@ -88,6 +102,17 @@ export default function ListScreen({ navigation, route }) {
 
     return () => { active = false; };
   }, [route?.params?.pickedBarcode]);
+
+  const filteredProducts = useMemo(() => {
+    let result = products;
+    if (selectedCategory) {
+      result = result.filter(p => p.category_id === selectedCategory);
+    }
+    if (selectedBrand) {
+      result = result.filter(p => p.brand_id === selectedBrand);
+    }
+    return result;
+  }, [products, selectedCategory, selectedBrand]);
 
   const confirmDelete = (id) => {
     const product = products.find(p => p.id === id);
@@ -159,6 +184,23 @@ export default function ListScreen({ navigation, route }) {
             >
               <Ionicons name="scan" size={18} color="#fff" />
             </TouchableOpacity>
+            
+            <TouchableOpacity
+              onPress={() => navigation.navigate('FormProduk')}
+              style={{ 
+                marginRight: 8, 
+                backgroundColor: Colors.primary, 
+                padding: 10, 
+                borderRadius: 8,
+                width: 38,
+                height: 38,
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <Ionicons name="add" size={18} color="#fff" />
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={[styles.viewToggleButton, styles.viewToggleButtonActive]}
               onPress={() => setIsGrid(!isGrid)}
@@ -167,61 +209,43 @@ export default function ListScreen({ navigation, route }) {
             </TouchableOpacity>
           </View>
         </View>
-        <View style={styles.actionRight}>
-          <TouchableOpacity 
-            style={styles.exportButton} 
-            onPress={async () => {
-              try {
-                if (!products || products.length === 0) {
-                  showToast('Tidak ada data produk untuk diexport', 'error');
-                  return;
-                }
-
-                const header = ['Nama', 'Barcode', 'Harga Jual', 'Harga Modal', 'Stok', 'Margin'];
-                const rows = products.map(p => {
-                  const price = Number(p.price || 0);
-                  const cost = Number(p.costPrice ?? p.cost_price ?? 0);
-                  const margin = price - cost;
-                  return [
-                    `"${(p.name || '').replace(/"/g, '""')}"`,
-                    `"${(p.barcode || '').replace(/"/g, '""')}"`,
-                    price,
-                    cost,
-                    p.stock ?? 0,
-                    margin
-                  ].join(',');
-                });
-
-                const csv = [header.join(','), ...rows].join('\n');
-                const fileUri = `${FileSystem.cacheDirectory}produk.csv`;
-                await FileSystem.writeAsStringAsync(fileUri, csv, { encoding: FileSystem.EncodingType.UTF8 });
-                const canShare = await Sharing.isAvailableAsync();
-                if (canShare) {
-                  await Sharing.shareAsync(fileUri, {
-                    mimeType: 'text/csv',
-                    dialogTitle: 'Export Produk ke CSV',
-                  });
-                } else {
-                  showToast(`File disimpan di cache:\n${fileUri}`, 'success');
-                }
-              } catch (error) {
-                console.error('❌ Export produk error:', error);
-                showToast('Terjadi kesalahan saat export data', 'error');
-              }
-            }}
-          >
-            <Ionicons name="download-outline" size={18} color="#ffffff" style={styles.buttonIcon} />
-            <Text style={styles.exportButtonText}>Export</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.addButton} 
-            onPress={() => navigation.navigate('FormProduk')}
-          >
-            <View style={styles.buttonContent}>
-              <Ionicons name="add-circle" size={18} color="#ffffff" style={styles.buttonIcon} />
-              <Text style={styles.addButtonText}>Tambah</Text>
-            </View>
-          </TouchableOpacity>
+        
+        {/* Filters */}
+        <View style={{ marginTop: 12 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }} contentContainerStyle={{ gap: 8 }}>
+            <TouchableOpacity
+              style={[styles.filterChip, !selectedCategory && styles.filterChipActive]}
+              onPress={() => setSelectedCategory(null)}
+            >
+              <Text style={[styles.filterChipText, !selectedCategory && styles.filterChipTextActive]}>Semua Kategori</Text>
+            </TouchableOpacity>
+            {categories.map(c => (
+              <TouchableOpacity
+                key={c.id}
+                style={[styles.filterChip, selectedCategory === c.id && styles.filterChipActive]}
+                onPress={() => setSelectedCategory(selectedCategory === c.id ? null : c.id)}
+              >
+                <Text style={[styles.filterChipText, selectedCategory === c.id && styles.filterChipTextActive]}>{c.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            <TouchableOpacity
+              style={[styles.filterChip, !selectedBrand && styles.filterChipActive]}
+              onPress={() => setSelectedBrand(null)}
+            >
+              <Text style={[styles.filterChipText, !selectedBrand && styles.filterChipTextActive]}>Semua Brand</Text>
+            </TouchableOpacity>
+            {brands.map(b => (
+              <TouchableOpacity
+                key={b.id}
+                style={[styles.filterChip, selectedBrand === b.id && styles.filterChipActive]}
+                onPress={() => setSelectedBrand(selectedBrand === b.id ? null : b.id)}
+              >
+                <Text style={[styles.filterChipText, selectedBrand === b.id && styles.filterChipTextActive]}>{b.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
       </View>
 
@@ -237,7 +261,7 @@ export default function ListScreen({ navigation, route }) {
 
       {/* Products List */}
       <FlatList
-        data={products}
+        data={filteredProducts}
         key={isGrid ? 'GRID' : 'LIST'}
         numColumns={isGrid ? 2 : 1}
         keyExtractor={(item) => item.id}
@@ -254,6 +278,8 @@ export default function ListScreen({ navigation, route }) {
         renderItem={({ item }) => {
           const margin = Number(item.price || 0) - Number(item.costPrice || item.cost_price || 0);
           const marginPercentage = item.price ? ((margin / item.price) * 100).toFixed(1) : 0;
+          const categoryName = categories.find(c => c.id === item.category_id)?.name;
+          const brandName = brands.find(b => b.id === item.brand_id)?.name;
           
           if (isGrid) {
             return (
@@ -267,6 +293,11 @@ export default function ListScreen({ navigation, route }) {
                 <View style={styles.productInfoGrid}>
                   <Text style={styles.productNameGrid} numberOfLines={2}>{item.name}</Text>
                   <Text style={styles.productPriceGrid}>{formatIDR(item.price)}</Text>
+                  {(categoryName || brandName) && (
+                    <Text style={styles.productCategoryGrid} numberOfLines={1}>
+                       {[categoryName, brandName].filter(Boolean).join(' • ')}
+                    </Text>
+                  )}
                   <Text style={styles.productStockGrid}>Stok: {item.stock}</Text>
                 </View>
               </TouchableOpacity>
@@ -301,6 +332,12 @@ export default function ListScreen({ navigation, route }) {
                         </TouchableOpacity>
                     </View>
                   </View>
+
+                  {(categoryName || brandName) && (
+                    <Text style={styles.productCategoryText} numberOfLines={1}>
+                       {[categoryName, brandName].filter(Boolean).join(' • ')}
+                    </Text>
+                  )}
                   
                   {/* Single Line Info */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', marginTop: 4 }}>
@@ -406,39 +443,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.text,
   },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  actionRight: {
-    flexDirection: 'row',
-    marginTop: 12,
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    gap: 8,
-  },
-  exportButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.info,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  exportButtonText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  addButtonText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
   warningContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -498,14 +502,6 @@ const styles = StyleSheet.create({
   },
   emptyIcon: {
     marginBottom: 16,
-  },
-  buttonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonIcon: {
-    marginRight: 6,
   },
   inlineIcon: {
     marginRight: 6,
@@ -594,5 +590,35 @@ const styles = StyleSheet.create({
   productStockGrid: {
     fontSize: 12,
     color: Colors.muted,
+  },
+  productCategoryGrid: {
+    fontSize: 11,
+    color: Colors.muted,
+    marginBottom: 2,
+  },
+  productCategoryText: {
+    fontSize: 12,
+    color: Colors.muted,
+    marginBottom: 4,
+  },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: '#fff',
+  },
+  filterChipActive: {
+    borderColor: Colors.primary,
+    backgroundColor: '#ffe5ef',
+  },
+  filterChipText: {
+    fontSize: 12,
+    color: Colors.text,
+  },
+  filterChipTextActive: {
+    color: Colors.primary,
+    fontWeight: '600',
   },
 });

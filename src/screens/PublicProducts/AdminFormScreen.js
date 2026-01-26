@@ -373,12 +373,6 @@ export default function AdminFormScreen({ navigation, route }) {
           <Switch value={isActive} onValueChange={setIsActive} />
         </View>
       </ScrollView>
-      {toastVisible && (
-        <View style={styles.toastContainer}>
-          <Ionicons name="checkmark-circle" size={18} color="#fff" style={{ marginRight: 6 }} />
-          <Text style={styles.toastText}>{toastText}</Text>
-        </View>
-      )}
       {loading && (
         <View style={styles.loadingOverlay}>
           <View style={styles.loadingBox}>

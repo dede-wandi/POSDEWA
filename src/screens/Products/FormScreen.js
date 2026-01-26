@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../theme';
-import { createProduct, getProductById, updateProduct } from '../../services/products';
+import { createProduct, getProductById, updateProduct, getCategories, getBrands, addCategory, addBrand } from '../../services/products';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 
@@ -18,6 +18,66 @@ export default function FormScreen({ navigation, route }) {
   const [stock, setStock] = useState('');
   const [imageUrls, setImageUrls] = useState(['', '', '', '', '']);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  
+  // Category & Brand State
+  const [categoryId, setCategoryId] = useState(null);
+  const [brandId, setBrandId] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [brands, setBrands] = useState([]);
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [addingBrand, setAddingBrand] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newBrandName, setNewBrandName] = useState('');
+
+  const loadMasterData = async () => {
+    if (!user?.id) return;
+    try {
+      const cats = await getCategories(user.id);
+      setCategories(cats || []);
+      const brs = await getBrands(user.id);
+      setBrands(brs || []);
+    } catch (e) {
+      console.log('Error loading master data', e);
+    }
+  };
+
+  useEffect(() => {
+    loadMasterData();
+  }, [user]);
+
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) {
+      showToast('Nama kategori wajib diisi', 'error');
+      return;
+    }
+    const result = await addCategory(user.id, newCategoryName);
+    if (result.success) {
+      await loadMasterData();
+      setCategoryId(result.data.id);
+      setNewCategoryName('');
+      setAddingCategory(false);
+      showToast('Kategori berhasil dibuat', 'success');
+    } else {
+      showToast(result.error || 'Gagal membuat kategori', 'error');
+    }
+  };
+
+  const handleAddBrand = async () => {
+    if (!newBrandName.trim()) {
+      showToast('Nama brand wajib diisi', 'error');
+      return;
+    }
+    const result = await addBrand(user.id, newBrandName);
+    if (result.success) {
+      await loadMasterData();
+      setBrandId(result.data.id);
+      setNewBrandName('');
+      setAddingBrand(false);
+      showToast('Brand berhasil dibuat', 'success');
+    } else {
+      showToast(result.error || 'Gagal membuat brand', 'error');
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -29,6 +89,8 @@ export default function FormScreen({ navigation, route }) {
           setPrice(String(prod.price || ''));
           setCostPrice(String(prod.costPrice ?? prod.cost_price ?? ''));
           setStock(String(prod.stock || ''));
+          setCategoryId(prod.category_id || null);
+          setBrandId(prod.brand_id || null);
           
           if (prod.image_urls && Array.isArray(prod.image_urls)) {
             const urls = [...prod.image_urls];
@@ -57,6 +119,8 @@ export default function FormScreen({ navigation, route }) {
       costPrice: Number(costPrice || 0),
       stock: Number(stock || 0),
       image_urls: imageUrls.filter(u => u.trim() !== ''),
+      category_id: categoryId,
+      brand_id: brandId,
     };
 
     if (!payload.name) {
@@ -85,6 +149,100 @@ export default function FormScreen({ navigation, route }) {
       showToast(e.message || 'Gagal menyimpan produk', 'error');
     }
   };
+
+  const renderBrandOptions = () => (
+    <View style={styles.chipsRow}>
+      {brands.map((b) => (
+        <TouchableOpacity
+          key={b.id}
+          style={[
+            styles.optionChip,
+            brandId === b.id && styles.optionChipActive,
+          ]}
+          onPress={() => setBrandId(b.id)}
+        >
+          <Text
+            style={[
+              styles.optionChipText,
+              brandId === b.id && styles.optionChipTextActive,
+            ]}
+          >
+            {b.name}
+          </Text>
+        </TouchableOpacity>
+      ))}
+      <TouchableOpacity style={styles.addChip} onPress={() => setAddingBrand(true)}>
+        <Ionicons name="add" size={14} color={Colors.primary} />
+        <Text style={styles.addChipText}>Brand</Text>
+      </TouchableOpacity>
+      {addingBrand && (
+        <View style={styles.inlineAddRow}>
+          <TextInput
+            style={[styles.input, styles.inlineInput]}
+            value={newBrandName}
+            onChangeText={setNewBrandName}
+            placeholder="Nama brand baru"
+            placeholderTextColor={Colors.muted}
+          />
+          <TouchableOpacity style={styles.smallButton} onPress={handleAddBrand}>
+            <Ionicons name="checkmark" size={16} color="#fff" />
+            <Text style={styles.smallButtonText}>Simpan</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.smallButton, { backgroundColor: Colors.border }]} onPress={() => { setAddingBrand(false); setNewBrandName(''); }}>
+            <Ionicons name="close" size={16} color={Colors.text} />
+            <Text style={[styles.smallButtonText, { color: Colors.text }]}>Batal</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+
+  const renderCategoryOptions = () => (
+    <View style={styles.chipsRow}>
+      {categories.map((c) => (
+        <TouchableOpacity
+          key={c.id}
+          style={[
+            styles.optionChip,
+            categoryId === c.id && styles.optionChipActive,
+          ]}
+          onPress={() => setCategoryId(c.id)}
+        >
+          <Text
+            style={[
+              styles.optionChipText,
+              categoryId === c.id && styles.optionChipTextActive,
+            ]}
+          >
+            {c.name}
+          </Text>
+        </TouchableOpacity>
+      ))}
+      <TouchableOpacity style={styles.addChip} onPress={() => setAddingCategory(true)}>
+        <Ionicons name="add" size={14} color={Colors.primary} />
+        <Text style={styles.addChipText}>Kategori</Text>
+      </TouchableOpacity>
+      {addingCategory && (
+        <View style={styles.inlineAddRow}>
+          <TextInput
+            style={[styles.input, styles.inlineInput]}
+            value={newCategoryName}
+            onChangeText={setNewCategoryName}
+            placeholder="Nama kategori baru"
+            placeholderTextColor={Colors.muted}
+          />
+          <TouchableOpacity style={styles.smallButton} onPress={handleAddCategory}>
+            <Ionicons name="checkmark" size={16} color="#fff" />
+            <Text style={styles.smallButtonText}>Simpan</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.smallButton, { backgroundColor: Colors.border }]} onPress={() => { setAddingCategory(false); setNewCategoryName(''); }}>
+            <Ionicons name="close" size={16} color={Colors.text} />
+            <Text style={[styles.smallButtonText, { color: Colors.text }]}>Batal</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
 
   return (
     <ScrollView style={styles.container}>
@@ -167,6 +325,20 @@ export default function FormScreen({ navigation, route }) {
             >
               <Ionicons name="scan" size={20} color="#fff" />
             </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Brand</Text>
+          <View style={styles.sectionSpacing}>
+            {renderBrandOptions()}
+          </View>
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Kategori</Text>
+          <View style={styles.sectionSpacing}>
+            {renderCategoryOptions()}
           </View>
         </View>
 
@@ -390,5 +562,73 @@ const styles = StyleSheet.create({
   },
   buttonIcon: {
     marginRight: 8,
+  },
+  chipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  optionChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: '#fff',
+  },
+  optionChipActive: {
+    borderColor: Colors.primary,
+    backgroundColor: '#ffe5ef',
+  },
+  optionChipText: {
+    fontSize: 12,
+    color: Colors.text,
+  },
+  optionChipTextActive: {
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  addChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    backgroundColor: '#fff',
+  },
+  addChipText: {
+    marginLeft: 4,
+    fontSize: 12,
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  inlineAddRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+    width: '100%',
+  },
+  inlineInput: {
+    flex: 1,
+  },
+  smallButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
+  },
+  smallButtonText: {
+    marginLeft: 6,
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  sectionSpacing: {
+    marginBottom: 0,
   },
 });

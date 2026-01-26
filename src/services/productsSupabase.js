@@ -222,6 +222,8 @@ export async function createProduct(payload) {
       cost_price: Number(payload.costPrice || 0), // Gunakan cost_price sesuai schema database
       stock: Number(payload.stock || 0),
       image_urls: Array.isArray(payload.image_urls) ? payload.image_urls : [],
+      category_id: payload.category_id || null,
+      brand_id: payload.brand_id || null,
       owner_id: session.user.id,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -253,6 +255,103 @@ export async function createProduct(payload) {
   }
 }
 
+export async function listCategories(userId) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: [], error: 'Supabase tidak tersedia' };
+
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData?.session;
+    
+    if (!session || !session.user) return { data: [], error: 'User tidak ter-autentikasi' };
+
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .eq('owner_id', session.user.id)
+      .order('name', { ascending: true });
+
+    return { data: data || [], error };
+  } catch (error) {
+    return { data: [], error: error.message };
+  }
+}
+
+export async function createCategory(userId, name) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { success: false, error: 'Supabase tidak tersedia' };
+
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData?.session;
+    
+    if (!session || !session.user) return { success: false, error: 'User tidak ter-autentikasi' };
+
+    const { data, error } = await supabase
+      .from('categories')
+      .insert({
+        owner_id: session.user.id,
+        name: String(name).trim(),
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function listBrands(userId) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: [], error: 'Supabase tidak tersedia' };
+
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData?.session;
+    
+    if (!session || !session.user) return { data: [], error: 'User tidak ter-autentikasi' };
+
+    const { data, error } = await supabase
+      .from('brands')
+      .select('*')
+      .eq('owner_id', session.user.id)
+      .order('name', { ascending: true });
+
+    return { data: data || [], error };
+  } catch (error) {
+    return { data: [], error: error.message };
+  }
+}
+
+export async function createBrand(userId, name) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { success: false, error: 'Supabase tidak tersedia' };
+
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData?.session;
+    
+    if (!session || !session.user) return { success: false, error: 'User tidak ter-autentikasi' };
+
+    const { data, error } = await supabase
+      .from('brands')
+      .insert({
+        owner_id: session.user.id,
+        name: String(name).trim(),
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
 export async function updateProduct(userId, id, payload) {
   console.log('🔄 productsSupabase: updateProduct called with userId:', userId, 'id:', id, 'payload:', payload);
   
@@ -288,6 +387,8 @@ export async function updateProduct(userId, id, payload) {
     if (payload.costPrice != null) patch.cost_price = Number(payload.costPrice);
     if (payload.stock != null) patch.stock = Number(payload.stock);
     if (payload.image_urls != null) patch.image_urls = payload.image_urls;
+    if (payload.category_id !== undefined) patch.category_id = payload.category_id;
+    if (payload.brand_id !== undefined) patch.brand_id = payload.brand_id;
 
     console.log('📤 productsSupabase: Updating product with patch:', patch);
 

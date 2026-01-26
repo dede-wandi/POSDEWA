@@ -1,7 +1,41 @@
 import { getSupabaseClient } from './supabase';
 import * as local from '../storage/products';
 import * as cloud from './productsSupabase';
-import { listProducts, searchProducts } from './productsSupabase';
+import { listProducts, searchProducts, listCategories, createCategory, listBrands, createBrand } from './productsSupabase';
+
+export async function getCategories(userId) {
+  const supabase = getSupabaseClient();
+  if (supabase && userId) {
+    const { data } = await listCategories(userId);
+    return data || [];
+  }
+  return [];
+}
+
+export async function addCategory(userId, name) {
+  const supabase = getSupabaseClient();
+  if (supabase && userId) {
+    return await createCategory(userId, name);
+  }
+  return { success: false, error: 'Supabase required' };
+}
+
+export async function getBrands(userId) {
+  const supabase = getSupabaseClient();
+  if (supabase && userId) {
+    const { data } = await listBrands(userId);
+    return data || [];
+  }
+  return [];
+}
+
+export async function addBrand(userId, name) {
+  const supabase = getSupabaseClient();
+  if (supabase && userId) {
+    return await createBrand(userId, name);
+  }
+  return { success: false, error: 'Supabase required' };
+}
 
 export async function getProducts(userId) {
   console.log('🔄 products: getProducts called with userId:', userId);
