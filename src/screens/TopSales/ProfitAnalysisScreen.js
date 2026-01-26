@@ -65,8 +65,13 @@ export default function ProfitAnalysisScreen({ navigation }) {
             // End date is end of current month
             const end = new Date(now.getFullYear(), now.getMonth() + 1, 0); 
             
-            // Format YYYY-MM-DD
-            const formatDate = (d) => d.toISOString().split('T')[0];
+            // Format YYYY-MM-DD (Local Time)
+            const formatDate = (date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
             startDate = formatDate(start);
             endDate = formatDate(end);
         }
@@ -237,8 +242,10 @@ export default function ProfitAnalysisScreen({ navigation }) {
                      <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
                         <LineChart
                             data={chartData}
-                            width={Math.max(screenWidth - 40, chartData.labels.length * 60)}
+                            width={Math.max(screenWidth - 32, chartData.labels.length * 60)} // Always allow scrolling if data is dense, but min screen width
                             height={250}
+                            verticalLabelRotation={viewMode === 'period' && chartData.labels.length > 6 ? 45 : 0}
+                            xLabelsOffset={viewMode === 'period' && chartData.labels.length > 6 ? -10 : 0}
                             chartConfig={chartConfig}
                             bezier
                             style={styles.chart}

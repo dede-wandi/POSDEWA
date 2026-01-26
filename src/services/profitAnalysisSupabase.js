@@ -106,8 +106,13 @@ export const getProfitAnalysisByRange = async (userId, startDate, endDate) => {
     const labels = [];
     const data = [];
     
-    const current = new Date(startDate);
-    const end = new Date(endDate);
+    // Parse dates as local time to avoid timezone shifts
+    const [sYear, sMonth, sDay] = startDate.split('-').map(Number);
+    const [eYear, eMonth, eDay] = endDate.split('-').map(Number);
+    
+    const current = new Date(sYear, sMonth - 1, sDay);
+    const end = new Date(eYear, eMonth - 1, eDay);
+    
     // Set to start of month to avoid skipping issues
     current.setDate(1); 
     

@@ -45,6 +45,14 @@ export default function TopSalesMenuScreen({ navigation }) {
       color: '#E91E63',
       route: 'ProfitAnalysis',
       params: {}
+    },
+    {
+      title: 'Analisis Transaksi',
+      subtitle: 'Grafik transaksi harian, bulanan & tahunan',
+      icon: 'bar-chart',
+      color: '#2196F3',
+      route: 'TransactionAnalysis',
+      params: {}
     }
   ];
 

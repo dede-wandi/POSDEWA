@@ -31,6 +31,7 @@ import PaymentChannelsScreen from './src/screens/Settings/PaymentChannelsScreen'
 import TopSalesMenuScreen from './src/screens/TopSales/TopSalesMenuScreen';
 import TopListScreen from './src/screens/TopSales/TopListScreen';
 import ProfitAnalysisScreen from './src/screens/TopSales/ProfitAnalysisScreen';
+import TransactionAnalysisScreen from './src/screens/TopSales/TransactionAnalysisScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import MoreMenuScreen from './src/screens/MoreMenuScreen';
 import StockManagementScreen from './src/screens/StockManagementScreen';
@@ -306,7 +307,15 @@ function MainStack() {
         }}
       />
       <Stack.Screen 
-        name="ProfileEdit" 
+        name="TransactionAnalysis" 
+        component={TransactionAnalysisScreen}
+        options={{
+          presentation: 'card',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen 
+        name="ProfileEdit"  
         component={ProfileEditScreen}
         options={{
           presentation: 'modal',
