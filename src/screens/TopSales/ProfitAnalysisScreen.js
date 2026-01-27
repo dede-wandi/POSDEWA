@@ -248,9 +248,11 @@ export default function ProfitAnalysisScreen({ navigation }) {
                             paddingBottom: viewMode === 'period' && chartData.labels.length > 6 ? 55 : 30,
                             width: 60, 
                             alignItems: 'flex-end',
-                            paddingRight: 0,
+                            paddingRight: 8,
+                            borderRightWidth: 1,
+                            borderRightColor: Colors.border,
                             backgroundColor: Colors.card,
-                            zIndex: 1
+                            zIndex: 10
                         }}>
                             {[4, 3, 2, 1, 0].map((i) => {
                                 const max = Math.max(...chartData.datasets[0].data);

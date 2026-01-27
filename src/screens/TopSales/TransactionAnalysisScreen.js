@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
+import { Text as SvgText } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart } from 'react-native-chart-kit';
@@ -208,7 +209,11 @@ export default function TransactionAnalysisScreen({ navigation }) {
                             })}
                         </View>
 
-                        <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
+                        <ScrollView 
+                            horizontal={true} 
+                            showsHorizontalScrollIndicator={false}
+                            style={{ marginLeft: -20 }}
+                        >
                             <LineChart
                                 data={chartData}
                                 width={Math.max(screenWidth - 70, chartData.labels.length * 80)}
