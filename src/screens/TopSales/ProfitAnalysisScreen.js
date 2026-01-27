@@ -263,7 +263,11 @@ export default function ProfitAnalysisScreen({ navigation }) {
                             })}
                         </View>
                         
-                        <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
+                        <ScrollView 
+                            horizontal={true} 
+                            showsHorizontalScrollIndicator={false}
+                            style={{ marginLeft: -20 }}
+                        >
                             <LineChart
                                 data={chartData}
                                 width={Math.max(screenWidth - 80, chartData.labels.length * 80)}
