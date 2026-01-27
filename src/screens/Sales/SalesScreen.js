@@ -109,6 +109,15 @@ export default function SalesScreen({ navigation, route }) {
     };
   }, [query]);
 
+  // Handle reset cart from PaymentScreen
+  useEffect(() => {
+    if (route.params?.resetCart) {
+      console.log('🛒 SalesScreen: Resetting cart requested from navigation');
+      setCart([]);
+      navigation.setParams({ resetCart: undefined });
+    }
+  }, [route.params?.resetCart]);
+
   // Handle updated cart from ProductListScreen
   useEffect(() => {
     if (route.params?.updatedCart) {
