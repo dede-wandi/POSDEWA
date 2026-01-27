@@ -191,7 +191,7 @@ export default function TransactionAnalysisScreen({ navigation }) {
                             paddingBottom: 30,
                             width: 50, 
                             alignItems: 'flex-end',
-                            paddingRight: 4,
+                            paddingRight: 0,
                             backgroundColor: Colors.card,
                             zIndex: 1
                         }}>

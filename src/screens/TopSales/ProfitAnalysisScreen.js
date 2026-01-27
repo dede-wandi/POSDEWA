@@ -248,7 +248,7 @@ export default function ProfitAnalysisScreen({ navigation }) {
                             paddingBottom: viewMode === 'period' && chartData.labels.length > 6 ? 55 : 30,
                             width: 60, 
                             alignItems: 'flex-end',
-                            paddingRight: 4,
+                            paddingRight: 0,
                             backgroundColor: Colors.card,
                             zIndex: 1
                         }}>
