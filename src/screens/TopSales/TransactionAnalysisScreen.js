@@ -218,20 +218,17 @@ export default function TransactionAnalysisScreen({ navigation }) {
                                 withVerticalLabels={true}
                                 withHorizontalLabels={false}
                                 renderDotContent={({ x, y, index, indexData }) => (
-                                    <View
+                                    <SvgText
                                         key={index}
-                                        style={{
-                                            position: 'absolute',
-                                            top: y - 24,
-                                            left: x - 20,
-                                            width: 40,
-                                            alignItems: 'center'
-                                        }}
+                                        x={x}
+                                        y={y - 10}
+                                        fill={Colors.text}
+                                        fontSize="10"
+                                        fontWeight="bold"
+                                        textAnchor="middle"
                                     >
-                                        <Text style={{ fontSize: 10, color: Colors.text }}>
-                                            {indexData.toFixed(0)}
-                                        </Text>
-                                    </View>
+                                        {indexData.toFixed(0)}
+                                    </SvgText>
                                 )}
                             />
                         </ScrollView>

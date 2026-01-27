@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
+import { Text as SvgText } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart } from 'react-native-chart-kit';
@@ -276,20 +277,17 @@ export default function ProfitAnalysisScreen({ navigation }) {
                                 withVerticalLabels={true}
                                 withHorizontalLabels={false}
                                 renderDotContent={({ x, y, index, indexData }) => (
-                                    <View
+                                    <SvgText
                                         key={index}
-                                        style={{
-                                            position: 'absolute',
-                                            top: y - 24,
-                                            left: x - 20,
-                                            width: 40,
-                                            alignItems: 'center'
-                                        }}
+                                        x={x}
+                                        y={y - 10}
+                                        fill={Colors.text}
+                                        fontSize="10"
+                                        fontWeight="bold"
+                                        textAnchor="middle"
                                     >
-                                        <Text style={{ fontSize: 10, color: Colors.text }}>
-                                            {(indexData / 1000).toFixed(0)}k
-                                        </Text>
-                                    </View>
+                                        {(indexData / 1000).toFixed(0)}k
+                                    </SvgText>
                                 )}
                             />
                         </ScrollView>
