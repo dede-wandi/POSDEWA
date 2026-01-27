@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { BarChart } from 'react-native-chart-kit';
+import { LineChart } from 'react-native-chart-kit';
 import { Colors } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
 import { 
@@ -76,10 +76,15 @@ export default function TransactionAnalysisScreen({ navigation }) {
     backgroundGradientTo: "#ffffff",
     color: (opacity = 1) => `rgba(33, 150, 243, ${opacity})`, // Blue for transactions
     strokeWidth: 2,
-    barPercentage: 0.7,
+    barPercentage: 0.5,
     useShadowColorFromDataset: false,
     decimalPlaces: 0,
     labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+    propsForDots: {
+        r: "4",
+        strokeWidth: "2",
+        stroke: "#2196F3"
+    }
   };
 
   const months = [
@@ -179,16 +184,17 @@ export default function TransactionAnalysisScreen({ navigation }) {
                 
                 {chartData.datasets[0].data.length > 0 && !chartData.datasets[0].data.every(v => v === 0) ? (
                      <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
-                        <BarChart
+                        <LineChart
                             data={chartData}
-                            width={Math.max(screenWidth - 32, chartData.labels.length * 60)}
+                            width={Math.max(screenWidth + 50, chartData.labels.length * 80)}
                             height={250}
                             chartConfig={chartConfig}
                             style={styles.chart}
                             fromZero
-                            showValuesOnTopOfBars
+                            bezier
                             yAxisLabel=""
                             yAxisSuffix=""
+                            formatYLabel={(y) => parseFloat(y).toFixed(0)}
                         />
                      </ScrollView>
                 ) : (
@@ -325,7 +331,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
-    alignItems: 'center',
   },
   chartTitle: {
     fontSize: 16,

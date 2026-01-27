@@ -1,17 +1,33 @@
 import { getSupabaseClient } from './supabase';
 
+// Helper to calculate profit from sale items to match SalesAnalytics
+const calculateSaleProfit = (sale) => {
+  if (sale.sale_items && sale.sale_items.length > 0) {
+    return sale.sale_items.reduce((sum, item) => {
+        let p = typeof item.line_profit === 'number'
+           ? item.line_profit
+           : ((Number(item.price) - Number(item.cost_price || 0)) * Number(item.qty || 0));
+        return sum + p;
+    }, 0);
+  }
+  return sale.profit || 0;
+};
+
 export const getProfitAnalysis = async (userId, year) => {
   try {
     const supabase = getSupabaseClient();
-    const startDate = `${year}-01-01`;
-    const endDate = `${year}-12-31`;
-
+    
+    // Use Date objects to handle timezone correctly (matching SalesAnalytics)
+    // Create dates in local time then convert to ISO for DB query
+    const startDateObj = new Date(year, 0, 1);
+    const endDateObj = new Date(year + 1, 0, 1);
+    
     const { data: sales, error } = await supabase
       .from('sales')
-      .select('created_at, profit')
+      .select('created_at, profit, sale_items(qty, price, cost_price, line_profit)')
       .eq('user_id', userId)
-      .gte('created_at', startDate)
-      .lte('created_at', endDate);
+      .gte('created_at', startDateObj.toISOString())
+      .lt('created_at', endDateObj.toISOString());
 
     if (error) throw error;
 
@@ -20,7 +36,7 @@ export const getProfitAnalysis = async (userId, year) => {
     sales.forEach(sale => {
       const date = new Date(sale.created_at);
       const month = date.getMonth(); // 0-11
-      monthlyData[month] += (sale.profit || 0);
+      monthlyData[month] += calculateSaleProfit(sale);
     });
 
     return monthlyData;
@@ -38,7 +54,7 @@ export const getYearlyProfitAnalysis = async (userId) => {
     // Get all sales
     const { data: sales, error } = await supabase
       .from('sales')
-      .select('created_at, profit')
+      .select('created_at, profit, sale_items(qty, price, cost_price, line_profit)')
       .eq('user_id', userId);
 
     if (error) throw error;
@@ -48,7 +64,7 @@ export const getYearlyProfitAnalysis = async (userId) => {
     sales.forEach(sale => {
       const year = new Date(sale.created_at).getFullYear();
       if (!yearlyData[year]) yearlyData[year] = 0;
-      yearlyData[year] += (sale.profit || 0);
+      yearlyData[year] += calculateSaleProfit(sale);
     });
 
     // Convert to sorted array
@@ -70,13 +86,29 @@ export const getProfitAnalysisByRange = async (userId, startDate, endDate) => {
   try {
     const supabase = getSupabaseClient();
     
+    let queryStartDate = startDate;
+    let queryEndDate = endDate;
+
+    // Parse YYYY-MM-DD strings as Local Time to match SalesAnalytics
+    if (/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+        const [y, m, d] = startDate.split('-').map(Number);
+        queryStartDate = new Date(y, m - 1, d).toISOString();
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+        const [y, m, d] = endDate.split('-').map(Number);
+        const nextDay = new Date(y, m - 1, d);
+        nextDay.setDate(nextDay.getDate() + 1);
+        queryEndDate = nextDay.toISOString();
+    }
+    
     // Get sales within range
     const { data: sales, error } = await supabase
       .from('sales')
-      .select('created_at, profit')
+      .select('created_at, profit, sale_items(qty, price, cost_price, line_profit)')
       .eq('user_id', userId)
-      .gte('created_at', startDate)
-      .lte('created_at', endDate)
+      .gte('created_at', queryStartDate)
+      .lt('created_at', queryEndDate)
       .order('created_at', { ascending: true });
 
     if (error) throw error;
@@ -99,7 +131,7 @@ export const getProfitAnalysisByRange = async (userId, startDate, endDate) => {
     sales.forEach(sale => {
       const key = getMonthKey(sale.created_at);
       if (!aggregatedData[key]) aggregatedData[key] = 0;
-      aggregatedData[key] += (sale.profit || 0);
+      aggregatedData[key] += calculateSaleProfit(sale);
     });
 
     // 2. Generate all months in range to ensure continuity

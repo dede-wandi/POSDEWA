@@ -4,29 +4,22 @@ export const getDailyTransactionAnalysis = async (userId, month, year) => {
   try {
     const supabase = getSupabaseClient();
     
-    // Construct date range for the month
-    // month is 0-indexed if coming from JS Date, or 1-indexed?
-    // Let's assume standard JS Month (0 = Jan, 11 = Dec) to be consistent or 1-12.
-    // Based on ProfitAnalysis usage, it seems we use constructed dates.
-    // Let's expect month as 1-12 for easier API usage, or 0-11. 
-    // Let's use 1-12 for the argument to be safe, or just JS Date objects.
-    // Let's stick to: year (2024), month (1-12).
-
-    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-    // Get last day of month
-    const lastDay = new Date(year, month, 0).getDate();
-    const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
+    // Construct date range using Date objects for correct Timezone handling
+    const startDateObj = new Date(year, month - 1, 1);
+    const endDateObj = new Date(year, month, 1); // Start of next month
 
     const { data: sales, error } = await supabase
       .from('sales')
       .select('created_at')
       .eq('user_id', userId)
-      .gte('created_at', startDate)
-      .lte('created_at', endDate);
+      .gte('created_at', startDateObj.toISOString())
+      .lt('created_at', endDateObj.toISOString());
 
     if (error) throw error;
 
     // Aggregate by day
+    // Get last day of the specific month
+    const lastDay = new Date(year, month, 0).getDate();
     const dailyData = new Array(lastDay).fill(0);
     
     sales.forEach(sale => {
@@ -50,15 +43,15 @@ export const getDailyTransactionAnalysis = async (userId, month, year) => {
 export const getMonthlyTransactionAnalysis = async (userId, year) => {
   try {
     const supabase = getSupabaseClient();
-    const startDate = `${year}-01-01`;
-    const endDate = `${year}-12-31`;
+    const startDateObj = new Date(year, 0, 1);
+    const endDateObj = new Date(year + 1, 0, 1);
 
     const { data: sales, error } = await supabase
       .from('sales')
       .select('created_at')
       .eq('user_id', userId)
-      .gte('created_at', startDate)
-      .lte('created_at', endDate);
+      .gte('created_at', startDateObj.toISOString())
+      .lt('created_at', endDateObj.toISOString());
 
     if (error) throw error;
 

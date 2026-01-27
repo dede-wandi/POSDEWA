@@ -27,8 +27,8 @@ export const getTopProducts = async (userId, limit = 20) => {
               total: 0
             };
           }
-          productStats[key].qty += (item.qty || 0);
-          productStats[key].total += (item.line_total || 0);
+          productStats[key].qty += Number(item.qty || 0);
+          productStats[key].total += Number(item.line_total || 0);
         });
       }
     });
@@ -65,8 +65,8 @@ export const getTopCategories = async (userId, limit = 20) => {
             if (!stats[catName]) {
               stats[catName] = { name: catName, qty: 0, total: 0 };
             }
-            stats[catName].qty += (item.qty || 0);
-            stats[catName].total += (item.line_total || 0);
+            stats[catName].qty += Number(item.qty || 0);
+            stats[catName].total += Number(item.line_total || 0);
           }
         });
       }
@@ -105,8 +105,8 @@ export const getTopBrands = async (userId, limit = 20) => {
             if (!stats[brandName]) {
               stats[brandName] = { name: brandName, qty: 0, total: 0 };
             }
-            stats[brandName].qty += (item.qty || 0);
-            stats[brandName].total += (item.line_total || 0);
+            stats[brandName].qty += Number(item.qty || 0);
+            stats[brandName].total += Number(item.line_total || 0);
           }
         });
       }

@@ -242,7 +242,7 @@ export default function ProfitAnalysisScreen({ navigation }) {
                      <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
                         <LineChart
                             data={chartData}
-                            width={Math.max(screenWidth - 32, chartData.labels.length * 60)} // Always allow scrolling if data is dense, but min screen width
+                            width={Math.max(screenWidth + 50, chartData.labels.length * 80)} // Always allow scrolling (min screenWidth + 50)
                             height={250}
                             verticalLabelRotation={viewMode === 'period' && chartData.labels.length > 6 ? 45 : 0}
                             xLabelsOffset={viewMode === 'period' && chartData.labels.length > 6 ? -10 : 0}
@@ -443,7 +443,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
-    alignItems: 'center',
   },
   chartTitle: {
     fontSize: 16,
