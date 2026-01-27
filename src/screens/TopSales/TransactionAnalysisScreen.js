@@ -215,7 +215,24 @@ export default function TransactionAnalysisScreen({ navigation }) {
                                 style={styles.chart}
                                 fromZero
                                 bezier
-                                withVerticalLabels={false}
+                                withVerticalLabels={true}
+                                withHorizontalLabels={false}
+                                renderDotContent={({ x, y, index, indexData }) => (
+                                    <View
+                                        key={index}
+                                        style={{
+                                            position: 'absolute',
+                                            top: y - 24,
+                                            left: x - 20,
+                                            width: 40,
+                                            alignItems: 'center'
+                                        }}
+                                    >
+                                        <Text style={{ fontSize: 10, color: Colors.text }}>
+                                            {indexData.toFixed(0)}
+                                        </Text>
+                                    </View>
+                                )}
                             />
                         </ScrollView>
                     </View>

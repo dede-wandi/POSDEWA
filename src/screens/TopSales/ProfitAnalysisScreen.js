@@ -273,7 +273,24 @@ export default function ProfitAnalysisScreen({ navigation }) {
                                 bezier
                                 style={styles.chart}
                                 fromZero
-                                withVerticalLabels={false}
+                                withVerticalLabels={true}
+                                withHorizontalLabels={false}
+                                renderDotContent={({ x, y, index, indexData }) => (
+                                    <View
+                                        key={index}
+                                        style={{
+                                            position: 'absolute',
+                                            top: y - 24,
+                                            left: x - 20,
+                                            width: 40,
+                                            alignItems: 'center'
+                                        }}
+                                    >
+                                        <Text style={{ fontSize: 10, color: Colors.text }}>
+                                            {(indexData / 1000).toFixed(0)}k
+                                        </Text>
+                                    </View>
+                                )}
                             />
                         </ScrollView>
                     </View>
