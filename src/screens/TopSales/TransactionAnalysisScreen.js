@@ -183,20 +183,42 @@ export default function TransactionAnalysisScreen({ navigation }) {
                 </Text>
                 
                 {chartData.datasets[0].data.length > 0 && !chartData.datasets[0].data.every(v => v === 0) ? (
-                     <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
-                        <LineChart
-                            data={chartData}
-                            width={Math.max(screenWidth + 50, chartData.labels.length * 80)}
-                            height={250}
-                            chartConfig={chartConfig}
-                            style={styles.chart}
-                            fromZero
-                            bezier
-                            yAxisLabel=""
-                            yAxisSuffix=""
-                            formatYLabel={(y) => parseFloat(y).toFixed(0)}
-                        />
-                     </ScrollView>
+                    <View style={{ flexDirection: 'row', height: 250 }}>
+                        {/* Fixed Y-Axis */}
+                        <View style={{ 
+                            justifyContent: 'space-between', 
+                            paddingTop: 10, 
+                            paddingBottom: 30,
+                            width: 50, 
+                            alignItems: 'flex-end',
+                            paddingRight: 4,
+                            backgroundColor: Colors.card,
+                            zIndex: 1
+                        }}>
+                            {[4, 3, 2, 1, 0].map((i) => {
+                                const max = Math.max(...chartData.datasets[0].data);
+                                const val = (max / 4) * i;
+                                return (
+                                    <Text key={i} style={{ fontSize: 10, color: Colors.text, textAlign: 'right' }}>
+                                        {val.toFixed(0)}
+                                    </Text>
+                                );
+                            })}
+                        </View>
+
+                        <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
+                            <LineChart
+                                data={chartData}
+                                width={Math.max(screenWidth - 70, chartData.labels.length * 80)}
+                                height={250}
+                                chartConfig={chartConfig}
+                                style={styles.chart}
+                                fromZero
+                                bezier
+                                withVerticalLabels={false}
+                            />
+                        </ScrollView>
+                    </View>
                 ) : (
                     <View style={styles.noDataContainer}>
                         <Text style={styles.noDataText}>Belum ada data transaksi</Text>

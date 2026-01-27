@@ -239,22 +239,44 @@ export default function ProfitAnalysisScreen({ navigation }) {
                 </Text>
                 
                 {chartData.datasets[0].data.length > 0 && !chartData.datasets[0].data.every(v => v === 0) ? (
-                     <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
-                        <LineChart
-                            data={chartData}
-                            width={Math.max(screenWidth + 50, chartData.labels.length * 80)} // Always allow scrolling (min screenWidth + 50)
-                            height={250}
-                            verticalLabelRotation={viewMode === 'period' && chartData.labels.length > 6 ? 45 : 0}
-                            xLabelsOffset={viewMode === 'period' && chartData.labels.length > 6 ? -10 : 0}
-                            chartConfig={chartConfig}
-                            bezier
-                            style={styles.chart}
-                            fromZero
-                            yAxisLabel="Rp"
-                            yAxisSuffix="k"
-                            formatYLabel={(y) => (y / 1000).toFixed(0)}
-                        />
-                     </ScrollView>
+                    <View style={{ flexDirection: 'row', height: 250 }}>
+                        {/* Fixed Y-Axis */}
+                        <View style={{ 
+                            justifyContent: 'space-between', 
+                            paddingTop: 10, 
+                            paddingBottom: viewMode === 'period' && chartData.labels.length > 6 ? 55 : 30,
+                            width: 60, 
+                            alignItems: 'flex-end',
+                            paddingRight: 4,
+                            backgroundColor: Colors.card,
+                            zIndex: 1
+                        }}>
+                            {[4, 3, 2, 1, 0].map((i) => {
+                                const max = Math.max(...chartData.datasets[0].data);
+                                const val = (max / 4) * i;
+                                return (
+                                    <Text key={i} style={{ fontSize: 10, color: Colors.text, textAlign: 'right' }}>
+                                        {`Rp ${(val / 1000).toFixed(0)}k`}
+                                    </Text>
+                                );
+                            })}
+                        </View>
+                        
+                        <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
+                            <LineChart
+                                data={chartData}
+                                width={Math.max(screenWidth - 80, chartData.labels.length * 80)}
+                                height={250}
+                                verticalLabelRotation={viewMode === 'period' && chartData.labels.length > 6 ? 45 : 0}
+                                xLabelsOffset={viewMode === 'period' && chartData.labels.length > 6 ? -10 : 0}
+                                chartConfig={chartConfig}
+                                bezier
+                                style={styles.chart}
+                                fromZero
+                                withVerticalLabels={false}
+                            />
+                        </ScrollView>
+                    </View>
                 ) : (
                     <View style={styles.noDataContainer}>
                         <Text style={styles.noDataText}>Belum ada data profit untuk periode ini</Text>
