@@ -6,6 +6,12 @@
   "build": {
     "preview": {
       "distribution": "internal",
+      "env": {
+        "EXPO_BUILD_NODE_VERSION": "18",
+        "EXPO_USE_COMMUNITY_AUTOLINKING": "1",
+        "EXPO_KOTLIN_VERSION": "2.0.21",
+        "EXPO_USE_KSP": "false"
+      },
       "android": {
         "buildType": "apk"
       },
