@@ -5,6 +5,7 @@ import { Colors } from '../../theme';
 import { listCustomInvoices, deleteCustomInvoice } from '../../services/customInvoiceSupabase';
 import { useToast } from '../../contexts/ToastContext';
 import { useFocusEffect } from '@react-navigation/native';
+import { formatIDR } from '../../utils/currency';
 
 export default function CustomInvoiceListScreen({ navigation }) {
   const [invoices, setInvoices] = useState([]);
@@ -32,8 +33,8 @@ export default function CustomInvoiceListScreen({ navigation }) {
 
   const handleDelete = (id) => {
     Alert.alert(
-      'Hapus Invoice',
-      'Apakah Anda yakin ingin menghapus template invoice ini?',
+      'Hapus Transaksi',
+      'Apakah Anda yakin ingin menghapus data transaksi ini?',
       [
         { text: 'Batal', style: 'cancel' },
         {
@@ -42,10 +43,10 @@ export default function CustomInvoiceListScreen({ navigation }) {
           onPress: async () => {
             const success = await deleteCustomInvoice(id);
             if (success) {
-              showToast('Invoice berhasil dihapus', 'success');
+              showToast('Transaksi berhasil dihapus', 'success');
               loadInvoices();
             } else {
-              showToast('Gagal menghapus invoice', 'error');
+              showToast('Gagal menghapus transaksi', 'error');
             }
           },
         },
@@ -61,7 +62,21 @@ export default function CustomInvoiceListScreen({ navigation }) {
       <View style={styles.cardContent}>
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>{item.title}</Text>
-          <Text style={styles.subtitle}>Ukuran Kertas: {item.paper_size}</Text>
+          <View style={styles.row}>
+            <Ionicons name="calendar-outline" size={14} color="#666" style={{ marginRight: 4 }} />
+            <Text style={styles.subtitle}>
+              {new Date(item.created_at).toLocaleDateString('id-ID', {
+                day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+              })}
+            </Text>
+          </View>
+          {item.customer_name ? (
+            <View style={styles.row}>
+              <Ionicons name="person-outline" size={14} color="#666" style={{ marginRight: 4 }} />
+              <Text style={styles.subtitle}>{item.customer_name}</Text>
+            </View>
+          ) : null}
+          <Text style={styles.price}>{formatIDR(item.total_amount || 0)}</Text>
         </View>
         <TouchableOpacity
           onPress={() => handleDelete(item.id)}
@@ -79,7 +94,7 @@ export default function CustomInvoiceListScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={Colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Custom Invoice</Text>
+        <Text style={styles.headerTitle}>Riwayat Transaksi Custom</Text>
       </View>
 
       <FlatList
@@ -93,7 +108,8 @@ export default function CustomInvoiceListScreen({ navigation }) {
         ListEmptyComponent={
           !loading && (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>Belum ada template invoice</Text>
+              <Text style={styles.emptyText}>Belum ada transaksi custom</Text>
+              <Text style={styles.emptySubText}>Tekan tombol + untuk membuat baru</Text>
             </View>
           )
         }
@@ -150,11 +166,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: Colors.text,
-    marginBottom: 4,
+    marginBottom: 6,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
+  },
+  price: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.primary,
+    marginTop: 6,
   },
   deleteButton: {
     padding: 8,
@@ -175,9 +202,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 32,
+    marginTop: 60,
   },
   emptyText: {
+    color: '#666',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  emptySubText: {
     color: '#999',
-    fontSize: 16,
+    fontSize: 14,
   },
 });
