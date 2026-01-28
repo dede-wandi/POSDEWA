@@ -778,7 +778,7 @@ export const printCustomInvoice = async (invoice, userId) => {
       const btResult = await printCustomInvoiceToBluetooth(invoice, userId);
       if (btResult.success) {
         console.log('Bluetooth print success');
-        return { success: true };
+        return { success: true, method: 'bluetooth' };
       }
       
       console.log('Bluetooth print failed, falling back to system print:', btResult.error);
@@ -804,7 +804,7 @@ export const printCustomInvoice = async (invoice, userId) => {
       await Print.printAsync({ html: htmlContent });
     }
     
-    return { success: true };
+    return { success: true, method: 'system', error: isWeb ? null : 'Bluetooth tidak terhubung, beralih ke sistem print.' };
   } catch (error) {
     console.error('Error printing custom invoice:', error);
     return { success: false, error: error.message };

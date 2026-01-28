@@ -211,7 +211,11 @@ export default function CustomInvoiceFormScreen({ navigation, route }) {
       const result = await printCustomInvoice(invoiceData, user?.id);
       
       if (result.success) {
-        showToast('Perintah cetak dikirim', 'success');
+        if (result.method === 'system' && result.error) {
+          showToast('Menggunakan System Print (Bluetooth gagal/tidak terhubung)', 'info');
+        } else {
+          showToast('Perintah cetak dikirim', 'success');
+        }
       } else {
         Alert.alert('Gagal Mencetak', result.error || 'Terjadi kesalahan saat mencetak');
       }
