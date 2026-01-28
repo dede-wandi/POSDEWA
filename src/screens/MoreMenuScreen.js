@@ -63,6 +63,13 @@ export default function MoreMenuScreen({ navigation }) {
       onPress: () => navigation.navigate('InvoiceSettings'),
     },
     {
+      label: 'Custom Invoice',
+      icon: 'receipt',
+      iconColor: '#00BCD4',
+      bgColor: '#E0F7FA',
+      onPress: () => navigation.navigate('CustomInvoiceList'),
+    },
+    {
       label: 'Channel Pembayaran',
       icon: 'wallet',
       iconColor: '#3F51B5',
@@ -74,7 +81,7 @@ export default function MoreMenuScreen({ navigation }) {
       icon: 'person-circle',
       iconColor: Colors.primary,
       bgColor: '#E3F2FD',
-      onPress: () => navigation.navigate('Akun'),
+      onPress: () => navigation.navigate('ProfileEdit'),
     },
     {
       label: 'Scan Barcode',

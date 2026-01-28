@@ -275,6 +275,22 @@ function MainStack() {
         }}
       />
       <Stack.Screen 
+        name="CustomInvoiceList" 
+        component={CustomInvoiceListScreen}
+        options={{
+          presentation: 'modal',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen 
+        name="CustomInvoiceForm" 
+        component={CustomInvoiceFormScreen}
+        options={{
+          presentation: 'modal',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen 
         name="PaymentChannels" 
         component={PaymentChannelsScreen}
         options={{
