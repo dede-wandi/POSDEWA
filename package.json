@@ -7,7 +7,8 @@
     "build:web": "expo export --platform web",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -19,7 +20,6 @@
     "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3",
     "expo": "~54.0.32",
-    "expo-barcode-scanner": "^13.0.1",
     "expo-build-properties": "^0.6.0",
     "expo-camera": "~17.0.10",
     "expo-constants": "~18.0.13",
@@ -51,6 +51,8 @@
   "packageManager": "npm@10.5.0",
   "devDependencies": {
     "@react-native-community/cli": "^20.1.0",
-    "@react-native-community/cli-platform-android": "^20.1.0"
+    "@react-native-community/cli-platform-android": "^20.1.0",
+    "patch-package": "^8.0.1",
+    "postinstall-postinstall": "^2.1.0"
   }
 }
