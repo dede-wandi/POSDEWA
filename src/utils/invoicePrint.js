@@ -1,6 +1,7 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as Linking from 'expo-linking';
+import { Platform } from 'react-native';
 import { formatIDR } from './currency';
 import { getItemAsync, setItemAsync } from '../utils/storage';
 let BluetoothManager = null;
@@ -765,28 +766,38 @@ export const printCustomInvoiceToBluetooth = async (invoice, userId) => {
 
 export const printCustomInvoice = async (invoice, userId) => {
   try {
+    console.log('🖨️ printCustomInvoice called for user:', userId);
+    
     // 1. Try Bluetooth first if configured (and not Web)
     const printerAddress = await getItemAsync('printer.address');
     const isWeb = Platform.OS === 'web';
     
     if (printerAddress && !isWeb) {
+      console.log('Attempting Bluetooth print to:', printerAddress);
       // Check if actually connected or try to connect
       const btResult = await printCustomInvoiceToBluetooth(invoice, userId);
-      if (btResult.success) return { success: true };
-      // If failed, fall through to system print? Or return error?
-      // Usually users prefer fallback or at least error message.
-      // Let's fallback to system print with a warning/toast? 
-      // For now, let's just return the error if they explicitly set up a printer.
-      // But maybe they want to print to PDF if BT fails.
+      if (btResult.success) {
+        console.log('Bluetooth print success');
+        return { success: true };
+      }
+      
       console.log('Bluetooth print failed, falling back to system print:', btResult.error);
     }
 
     // 2. System Print (Web or Native Share/Print)
+    console.log('Generating HTML for system print...');
     const htmlContent = await generateCustomInvoiceHTML(invoice, userId);
+    console.log('HTML generated, length:', htmlContent?.length);
     
+    if (!htmlContent) {
+      throw new Error('Gagal membuat format struk (HTML kosong)');
+    }
+
     // On Web, Print.printAsync works.
     // On Native, it opens system print dialog.
     const printerUrl = await getItemAsync('printer.url');
+    console.log('Calling Print.printAsync with HTML...');
+    
     if (printerUrl) {
       await Print.printAsync({ html: htmlContent, printerUrl });
     } else {
