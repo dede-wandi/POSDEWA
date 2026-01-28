@@ -249,7 +249,10 @@ export default function CustomInvoiceFormScreen({ navigation, route }) {
     if (result.success) {
       showToast('Printer terhubung!', 'success');
       setShowPrinterModal(false);
-      // Auto print after connect? Maybe just let user click print again to be safe
+      // Auto print setelah connect agar user tidak perlu klik print lagi
+      setTimeout(() => {
+        processPrint();
+      }, 500);
     } else {
       showToast(result.error || 'Gagal terhubung ke printer', 'error');
     }
