@@ -8,6 +8,7 @@
       "distribution": "internal",
       "env": {
         "EXPO_BUILD_NODE_VERSION": "18",
+        "EXPO_BUILD_JAVA_VERSION": "17",
         "EXPO_USE_COMMUNITY_AUTOLINKING": "1",
         "EXPO_KOTLIN_VERSION": "2.0.21",
         "EXPO_USE_KSP": "false"
@@ -21,6 +22,7 @@
       "autoIncrement": true,
 "env": {
         "EXPO_BUILD_NODE_VERSION": "18",
+        "EXPO_BUILD_JAVA_VERSION": "17",
         "EXPO_USE_COMMUNITY_AUTOLINKING": "1",
         "EXPO_KOTLIN_VERSION": "2.0.21",
         "EXPO_USE_KSP": "false",
