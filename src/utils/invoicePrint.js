@@ -804,9 +804,17 @@ export const printCustomInvoice = async (invoice, userId) => {
       await Print.printAsync({ html: htmlContent });
     }
     
-    return { success: true, method: 'system', error: isWeb ? null : 'Bluetooth tidak terhubung, beralih ke sistem print.' };
+    return { success: true, method: 'system', error: isWeb ? null : 'Bluetooth tidak terhubung, beralih ke sistem print (PDF).' };
   } catch (error) {
     console.error('Error printing custom invoice:', error);
+    // If we fail here, try to print just a simple text as a last resort
+    try {
+      if (Platform.OS !== 'web') {
+        const simpleHtml = `<html><body><h1>Error Printing</h1><p>${error.message}</p></body></html>`;
+        await Print.printAsync({ html: simpleHtml });
+      }
+    } catch (e) {}
+    
     return { success: false, error: error.message };
   }
 };
