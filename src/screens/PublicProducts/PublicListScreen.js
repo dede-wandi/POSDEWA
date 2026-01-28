@@ -71,6 +71,12 @@ export default function PublicListScreen({ navigation }) {
       headerRight: () => (
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity
+            onPress={() => navigation.navigate('Auth')}
+            style={{ paddingHorizontal: 8, marginRight: 4 }}
+          >
+            <Ionicons name="person-circle-outline" size={26} color={Colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
             onPress={() => navigation.navigate('Cart')}
             style={{ paddingHorizontal: 8, marginRight: 4 }}
           >

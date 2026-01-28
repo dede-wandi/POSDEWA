@@ -367,7 +367,7 @@ function AppNavigator() {
   console.log('🧭 App: Rendering navigation', user ? 'Main Stack' : 'Auth Screen');
 
   const linking = {
-    prefixes: [Linking.createURL('/')],
+    prefixes: [Linking.createURL('/'), 'posdewa://'],
     config: {
       screens: {
         // Not logged-in stack
