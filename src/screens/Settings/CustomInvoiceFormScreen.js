@@ -266,6 +266,9 @@ export default function CustomInvoiceFormScreen({ navigation, route }) {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{isEdit ? 'Edit Transaksi' : 'Transaksi Baru'}</Text>
         <View style={styles.headerActions}>
+          <TouchableOpacity onPress={openPrinterModal} style={[styles.actionButton, { marginRight: 8 }]}>
+            <Ionicons name="bluetooth" size={24} color={Colors.primary} />
+          </TouchableOpacity>
           <TouchableOpacity onPress={handlePrint} disabled={printing} style={styles.actionButton}>
             <Ionicons name="print" size={24} color={printing ? '#CCC' : Colors.primary} />
           </TouchableOpacity>
