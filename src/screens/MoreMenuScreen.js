@@ -35,6 +35,20 @@ export default function MoreMenuScreen({ navigation }) {
       onPress: () => navigation.navigate('History'),
     },
     {
+      label: 'Analisis Transaksi',
+      icon: 'bar-chart',
+      iconColor: '#2196F3',
+      bgColor: '#E3F2FD',
+      onPress: () => navigation.navigate('TransactionAnalysis'),
+    },
+    {
+      label: 'Insight Performa Produk',
+      icon: 'stats-chart',
+      iconColor: '#607D8B',
+      bgColor: '#ECEFF1',
+      onPress: () => navigation.navigate('TopList', { type: 'product', title: 'Insight Performa Produk', insightOnly: true }),
+    },
+    {
       label: 'Penjualan',
       icon: 'clipboard',
       iconColor: '#009688',
@@ -70,13 +84,6 @@ export default function MoreMenuScreen({ navigation }) {
       onPress: () => navigation.navigate('PaymentChannels'),
     },
     {
-      label: 'Profil Akun',
-      icon: 'person-circle',
-      iconColor: Colors.primary,
-      bgColor: '#E3F2FD',
-      onPress: () => navigation.navigate('ProfileEdit'),
-    },
-    {
       label: 'Scan Barcode',
       icon: 'scan',
       iconColor: Colors.text,
@@ -89,6 +96,13 @@ export default function MoreMenuScreen({ navigation }) {
       iconColor: '#FFC107',
       bgColor: '#FFF8E1',
       onPress: () => navigation.navigate('TopSales'),
+    },
+    {
+      label: 'Profil Akun',
+      icon: 'person-circle',
+      iconColor: Colors.primary,
+      bgColor: '#E3F2FD',
+      onPress: () => navigation.navigate('ProfileEdit'),
     },
   ];
 

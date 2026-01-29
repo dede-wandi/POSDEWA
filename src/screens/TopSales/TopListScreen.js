@@ -9,7 +9,7 @@ import { getSalesHistory } from '../../services/salesSupabase';
 import { formatIDR } from '../../utils/currency';
 
 export default function TopListScreen({ navigation, route }) {
-  const { type, title } = route.params;
+  const { type, title, insightOnly } = route.params;
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
@@ -129,6 +129,28 @@ export default function TopListScreen({ navigation, route }) {
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
+      ) : insightOnly ? (
+        <FlatList
+          data={topInsights}
+          keyExtractor={(item, index) => index.toString()}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => (
+            <View style={styles.insightItem}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.insightName}>{item.name}</Text>
+                <Text style={styles.insightMeta}>
+                  {item.purchaseCount}x dibeli • {item.qty} pcs • {formatIDR(item.amount)}
+                </Text>
+              </View>
+              <Ionicons name="stats-chart" size={18} color={Colors.muted} />
+            </View>
+          )}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>Belum ada data insight</Text>
+            </View>
+          }
+        />
       ) : (
         <FlatList
           data={data}
@@ -265,6 +287,27 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     color: Colors.muted,
+  },
+  insightItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.card,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  insightName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  insightMeta: {
+    fontSize: 12,
+    color: Colors.muted,
+    marginTop: 2,
   },
   insightsSection: {
     marginTop: 16,
