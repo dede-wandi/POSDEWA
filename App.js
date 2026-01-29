@@ -27,6 +27,7 @@ import AuthScreen from './src/screens/Auth/AuthScreen';
 import AccountScreen from './src/screens/Auth/AccountScreen';
 import ProfileEditScreen from './src/screens/Auth/ProfileEditScreen';
 import InvoiceSettingsScreen from './src/screens/Settings/InvoiceSettingsScreen';
+import WhatsAppSettingsScreen from './src/screens/Settings/WhatsAppSettingsScreen';
 import CustomInvoiceListScreen from './src/screens/Settings/CustomInvoiceListScreen';
 import CustomInvoiceFormScreen from './src/screens/Settings/CustomInvoiceFormScreen';
 import PaymentChannelsScreen from './src/screens/Settings/PaymentChannelsScreen';
@@ -40,7 +41,6 @@ import StockManagementScreen from './src/screens/StockManagementScreen';
 import SalesAnalyticsScreen from './src/screens/SalesAnalyticsScreen';
 import FinanceScreen from './src/screens/FinanceScreen';
 import TransactionHistoryScreen from './src/screens/TransactionHistoryScreen';
-import TransactionReportScreen from './src/screens/TransactionReportScreen';
 import SalesReportScreen from './src/screens/SalesReportScreen';
 import SplashScreen from './src/screens/SplashScreen';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -253,14 +253,6 @@ function MainStack() {
         }}
       />
       <Stack.Screen 
-        name="TransactionReport" 
-        component={TransactionReportScreen}
-        options={{
-          presentation: 'modal',
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen 
         name="SalesReport" 
         component={SalesReportScreen}
         options={{
@@ -271,6 +263,14 @@ function MainStack() {
       <Stack.Screen 
         name="InvoiceSettings" 
         component={InvoiceSettingsScreen}
+        options={{
+          presentation: 'modal',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen 
+        name="WhatsAppSettings" 
+        component={WhatsAppSettingsScreen}
         options={{
           presentation: 'modal',
           headerShown: false,
@@ -398,8 +398,8 @@ function AppNavigator() {
         SalesAnalytics: 'analitik',
         History: 'riwayat',
         TransactionHistory: 'riwayat-transaksi',
-        TransactionReport: 'laporan-transaksi',
         InvoiceSettings: 'pengaturan-invoice',
+        WhatsAppSettings: 'pengaturan-whatsapp',
         ProfileEdit: 'profil/edit',
       },
     },

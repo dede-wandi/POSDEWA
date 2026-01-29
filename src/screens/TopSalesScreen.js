@@ -19,6 +19,7 @@ export default function TopSalesScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [topProducts, setTopProducts] = useState([]);
+  const [topInsights, setTopInsights] = useState([]);
 
   const loadData = async () => {
     try {
@@ -28,6 +29,7 @@ export default function TopSalesScreen({ navigation }) {
       
       // Aggregate sales by product
       const productStats = {};
+      const insightStats = {};
       
       salesData.forEach(sale => {
         if (sale.items && Array.isArray(sale.items)) {
@@ -42,6 +44,18 @@ export default function TopSalesScreen({ navigation }) {
             }
             productStats[key].qty += (item.qty || 0);
             productStats[key].total += (item.line_total || 0);
+            
+            if (!insightStats[key]) {
+              insightStats[key] = {
+                name: item.product_name,
+                purchaseCount: 0,
+                qty: 0,
+                amount: 0,
+              };
+            }
+            insightStats[key].purchaseCount += 1;
+            insightStats[key].qty += (item.qty || 0);
+            insightStats[key].amount += (item.line_total || 0);
           });
         }
       });
@@ -55,6 +69,11 @@ export default function TopSalesScreen({ navigation }) {
         }));
 
       setTopProducts(sortedProducts);
+      
+      const sortedInsights = Object.values(insightStats)
+        .sort((a, b) => b.purchaseCount - a.purchaseCount)
+        .slice(0, 20);
+      setTopInsights(sortedInsights);
 
     } catch (error) {
       console.error('Error loading top sales:', error);
@@ -95,6 +114,18 @@ export default function TopSalesScreen({ navigation }) {
       </View>
     </View>
   );
+  
+  const renderInsightItem = ({ item }) => (
+    <View style={styles.insightItem}>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.insightName}>{item.name}</Text>
+        <Text style={styles.insightMeta}>
+          {item.purchaseCount}x dibeli • {item.qty} pcs • {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(item.amount)}
+        </Text>
+      </View>
+      <Ionicons name="stats-chart" size={18} color={Colors.muted} />
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -127,6 +158,19 @@ export default function TopSalesScreen({ navigation }) {
               <Ionicons name="stats-chart" size={64} color={Colors.muted} />
               <Text style={styles.emptyText}>Belum ada data penjualan</Text>
             </View>
+          }
+          ListFooterComponent={
+            topInsights.length > 0 ? (
+              <View style={styles.insightsSection}>
+                <Text style={styles.insightsTitle}>Top Insight Performa</Text>
+                <FlatList
+                  data={topInsights}
+                  renderItem={renderInsightItem}
+                  keyExtractor={(item) => item.name}
+                  scrollEnabled={false}
+                />
+              </View>
+            ) : null
           }
         />
       )}
@@ -228,5 +272,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.muted,
     textAlign: 'center',
+  },
+  insightsSection: {
+    marginTop: Spacing.lg,
+    backgroundColor: Colors.card,
+    borderRadius: 8,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  insightsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: Spacing.sm,
+  },
+  insightItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  insightName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  insightMeta: {
+    fontSize: 12,
+    color: Colors.muted,
+    marginTop: 2,
   },
 });

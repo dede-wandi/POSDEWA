@@ -580,13 +580,8 @@ export default function SalesReportScreen({ navigation }) {
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[styles.selectButton, isSelectMode && styles.selectButtonActive]} 
-            onPress={() => setIsSelectMode(!isSelectMode)}
-          >
-            <Text style={[styles.selectButtonText, isSelectMode && styles.selectButtonTextActive]}>
-              {isSelectMode ? 'Selesai' : 'Select'}
-            </Text>
-          </TouchableOpacity>
+            style={{ display: 'none' }}
+          />
         </View>
       </View>
 

@@ -9,6 +9,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { adjustStockOnSale } from '../../services/productsSupabase';
 import { createSale } from '../../services/sales';
 import { getPaymentChannels, processPayment } from '../../services/financeSupabase';
+import { sendWhatsAppNotification } from '../../services/whatsappService';
 import { Colors } from '../../theme';
 
 export default function PaymentScreen({ navigation, route }) {
@@ -178,7 +179,12 @@ export default function PaymentScreen({ navigation, route }) {
         console.log('✅ PaymentScreen: Stock adjusted successfully');
       }
 
-      // 4. Show success and navigate to invoice
+      // 4. Send WhatsApp Notification (Background process)
+      sendWhatsAppNotification(saleData, saleData.items).catch(err => {
+        console.error('⚠️ Failed to send WhatsApp notification:', err);
+      });
+
+      // 5. Show success and navigate to invoice
       console.log('🧾 PaymentScreen: Navigating to Invoice screen');
       
       // Ensure all navigation parameters are valid

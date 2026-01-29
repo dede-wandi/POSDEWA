@@ -153,6 +153,17 @@ export default function AccountScreen({ navigation }) {
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.muted} />
             </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.actionButton} 
+              onPress={() => navigation.navigate('WhatsAppSettings')}
+            >
+              <View style={styles.actionContent}>
+                <Ionicons name="logo-whatsapp" size={18} color={Colors.text} style={{ marginRight: 12 }} />
+                <Text style={styles.actionTextNormal}>Notifikasi WhatsApp</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={Colors.muted} />
+            </TouchableOpacity>
             
             <TouchableOpacity style={styles.actionButton} onPress={handleSignOut}>
               <View style={styles.actionContent}>
