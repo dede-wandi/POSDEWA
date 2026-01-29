@@ -3,7 +3,7 @@ import { View, Text, TextInput, FlatList, TouchableOpacity, Alert, StyleSheet, D
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../theme';
-import { findByBarcodeOrName, findByBarcodeExact, getProducts } from '../../services/products';
+import { findByBarcodeOrName, findByBarcodeExact, getProducts, getCategories, getBrands } from '../../services/products';
 import { formatIDR } from '../../utils/currency';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -19,6 +19,10 @@ export default function SalesScreen({ navigation, route }) {
   const [cart, setCart] = useState([]); // Each item: { id, name, price, costPrice, qty, lineTotal, tokenCode? }
   const [refreshing, setRefreshing] = useState(false);
   const [productLayout, setProductLayout] = useState('grid');
+  const [categories, setCategories] = useState([]);
+  const [brands, setBrands] = useState([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState(null);
+  const [selectedBrandId, setSelectedBrandId] = useState(null);
   
   // Token modal states
   const [showTokenModal, setShowTokenModal] = useState(false);
@@ -52,27 +56,50 @@ export default function SalesScreen({ navigation, route }) {
     }
   };
 
+  const loadFilters = async () => {
+    try {
+      if (!user?.id) return;
+      const [cats, brs] = await Promise.all([getCategories(user.id), getBrands(user.id)]);
+      setCategories(cats || []);
+      setBrands(brs || []);
+    } catch (e) {
+      console.error('Error loading filters:', e);
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       if (user?.id) {
         loadInitialProducts();
+        loadFilters();
       }
     }, [user?.id])
   );
 
+  const applyFilters = useCallback((list) => {
+    let filtered = list || [];
+    if (selectedCategoryId) {
+      filtered = filtered.filter(p => p.category_id === selectedCategoryId);
+    }
+    if (selectedBrandId) {
+      filtered = filtered.filter(p => p.brand_id === selectedBrandId);
+    }
+    return filtered;
+  }, [selectedCategoryId, selectedBrandId]);
+
   const handleSearch = async () => {
     if (!query.trim()) {
-      setResults(allProducts);
+      setResults(applyFilters(allProducts));
       return;
     }
 
     try {
       const searchResults = await findByBarcodeOrName(user?.id, query.trim());
-      setResults(searchResults || []);
+      setResults(applyFilters(searchResults || []));
     } catch (error) {
       console.error('Search error:', error);
       showToast('Gagal mencari produk', 'error');
-      setResults([]);
+      setResults(applyFilters([]));
     }
   };
 
@@ -82,7 +109,7 @@ export default function SalesScreen({ navigation, route }) {
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [query, allProducts]);
+  }, [query, allProducts, selectedCategoryId, selectedBrandId]);
 
   useEffect(() => {
     let active = true;
@@ -311,6 +338,52 @@ export default function SalesScreen({ navigation, route }) {
               />
             </TouchableOpacity>
           </View>
+        </View>
+        <View style={styles.filterSection}>
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            data={[{ id: null, name: 'Semua Kategori' }, ...categories]}
+            keyExtractor={(item) => String(item.id ?? 'all')}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.filterChip,
+                  (selectedCategoryId === item.id) && styles.filterChipActive
+                ]}
+                onPress={() => setSelectedCategoryId(item.id)}
+              >
+                <Text style={[
+                  styles.filterChipText,
+                  (selectedCategoryId === item.id) && styles.filterChipTextActive
+                ]}>
+                  {item.name}
+                </Text>
+              </TouchableOpacity>
+            )}
+          />
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            data={[{ id: null, name: 'Semua Brand' }, ...brands]}
+            keyExtractor={(item) => String(item.id ?? 'all')}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.filterChip,
+                  (selectedBrandId === item.id) && styles.filterChipActive
+                ]}
+                onPress={() => setSelectedBrandId(item.id)}
+              >
+                <Text style={[
+                  styles.filterChipText,
+                  (selectedBrandId === item.id) && styles.filterChipTextActive
+                ]}>
+                  {item.name}
+                </Text>
+              </TouchableOpacity>
+            )}
+          />
         </View>
       </View>
 
@@ -616,6 +689,31 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.card,
     paddingHorizontal: 20,
     paddingTop: 16,
+  },
+  filterSection: {
+    marginTop: 12,
+    gap: 8,
+  },
+  filterChip: {
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginRight: 8,
+  },
+  filterChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  filterChipText: {
+    fontSize: 12,
+    color: Colors.text,
+  },
+  filterChipTextActive: {
+    color: '#fff',
+    fontWeight: '600',
   },
   sectionTitle: {
     fontSize: 18,
