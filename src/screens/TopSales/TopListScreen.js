@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
 import { getTopProducts, getTopCategories, getTopBrands, getTopDates } from '../../services/topSalesSupabase';
+import { getSalesHistory } from '../../services/salesSupabase';
 import { formatIDR } from '../../utils/currency';
 
 export default function TopListScreen({ navigation, route }) {
@@ -13,6 +14,7 @@ export default function TopListScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [topInsights, setTopInsights] = useState([]);
 
   const loadData = async () => {
     if (!user?.id) return;
@@ -36,6 +38,35 @@ export default function TopListScreen({ navigation, route }) {
           result = [];
       }
       setData(result);
+      
+      if (type === 'product') {
+        const sales = await getSalesHistory(user.id);
+        const insightStats = {};
+        sales.forEach(sale => {
+          if (sale.items && Array.isArray(sale.items)) {
+            sale.items.forEach(item => {
+              const key = item.product_name;
+              if (!insightStats[key]) {
+                insightStats[key] = {
+                  name: item.product_name,
+                  purchaseCount: 0,
+                  qty: 0,
+                  amount: 0,
+                };
+              }
+              insightStats[key].purchaseCount += 1;
+              insightStats[key].qty += Number(item.qty || 0);
+              insightStats[key].amount += Number(item.line_total || 0);
+            });
+          }
+        });
+        const sortedInsights = Object.values(insightStats)
+          .sort((a, b) => b.purchaseCount - a.purchaseCount)
+          .slice(0, 20);
+        setTopInsights(sortedInsights);
+      } else {
+        setTopInsights([]);
+      }
     } catch (error) {
       console.error('Error loading top list:', error);
     } finally {
@@ -111,6 +142,24 @@ export default function TopListScreen({ navigation, route }) {
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>Belum ada data penjualan</Text>
             </View>
+          }
+          ListFooterComponent={
+            type === 'product' && topInsights.length > 0 ? (
+              <View style={styles.insightsSection}>
+                <Text style={styles.insightsTitle}>Top Insight Performa</Text>
+                {topInsights.map((item, idx) => (
+                  <View key={`${item.name}-${idx}`} style={styles.insightItem}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.insightName}>{item.name}</Text>
+                      <Text style={styles.insightMeta}>
+                        {item.purchaseCount}x dibeli • {item.qty} pcs • {formatIDR(item.amount)}
+                      </Text>
+                    </View>
+                    <Ionicons name="stats-chart" size={18} color={Colors.muted} />
+                  </View>
+                ))}
+              </View>
+            ) : null
           }
         />
       )}
@@ -216,5 +265,37 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     color: Colors.muted,
+  },
+  insightsSection: {
+    marginTop: 16,
+    backgroundColor: Colors.card,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  insightsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: 8,
+  },
+  insightItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  insightName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  insightMeta: {
+    fontSize: 12,
+    color: Colors.muted,
+    marginTop: 2,
   },
 });

@@ -35,13 +35,6 @@ export default function MoreMenuScreen({ navigation }) {
       onPress: () => navigation.navigate('History'),
     },
     {
-      label: 'Laporan',
-      icon: 'bar-chart',
-      iconColor: '#9C27B0',
-      bgColor: '#F3E5F5',
-      onPress: () => navigation.navigate('TransactionReport'),
-    },
-    {
       label: 'Penjualan',
       icon: 'clipboard',
       iconColor: '#009688',
@@ -184,4 +177,3 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
-
