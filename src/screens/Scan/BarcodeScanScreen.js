@@ -7,6 +7,7 @@ import { Colors } from '../../theme';
 export default function BarcodeScanScreen({ navigation, route }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
+  const [torch, setTorch] = useState(false);
   const mode = route?.params?.mode || 'sale';
   const returnTo = route?.params?.returnTo;
   const returnParams = route?.params?.returnParams || {};
@@ -26,7 +27,7 @@ export default function BarcodeScanScreen({ navigation, route }) {
       // Navigasi ke tab Penjualan dan teruskan param ke screen dalam SalesStack
       navigation.navigate('Penjualan', { screen: 'Penjualan', params: { scannedBarcode: barcode } });
     }
-    setTimeout(() => setScanned(false), 600);
+    setTimeout(() => setScanned(false), 500);
   };
 
   if (!permission) {
@@ -57,9 +58,8 @@ export default function BarcodeScanScreen({ navigation, route }) {
       <CameraView
         style={StyleSheet.absoluteFillObject}
         facing="back"
-        barcodeScannerSettings={{
-          barcodeTypes: ['qr', 'ean13', 'ean8', 'upc_a', 'upc_e', 'code128'],
-        }}
+        enableTorch={torch}
+        autofocus="on"
         onBarcodeScanned={onScanned}
       />
 
@@ -67,6 +67,16 @@ export default function BarcodeScanScreen({ navigation, route }) {
         <View style={styles.scanArea} />
         <Text style={styles.hint}>Arahkan barcode ke kotak</Text>
         <View style={styles.actions}>
+          <TouchableOpacity 
+            style={[styles.actionButton, { backgroundColor: torch ? '#FFD700' : Colors.primary }]} 
+            onPress={() => setTorch(!torch)}
+          >
+            <Ionicons name={torch ? "flash" : "flash-off"} size={20} color={torch ? "#000" : "#fff"} />
+            <Text style={[styles.actionText, { color: torch ? '#000' : '#fff' }]}>
+              {torch ? 'Flash On' : 'Flash Off'}
+            </Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.actionButton} onPress={() => navigation.goBack()}>
             <Ionicons name="chevron-back" size={20} color="#fff" />
             <Text style={styles.actionText}>Kembali</Text>
