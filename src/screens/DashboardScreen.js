@@ -21,12 +21,35 @@ import { Colors, Spacing, Radii, Shadows } from '../theme';
 const { width } = Dimensions.get('window');
 
 export default function DashboardScreen({ navigation }) {
-  const { user } = useAuth();
+  const { user, getBusinessName } = useAuth();
   const { showToast } = useToast();
   const [stats, setStats] = useState(null);
   const [recentSales, setRecentSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [currentDateTime, setCurrentDateTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentDateTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatDashboardDate = (date) => {
+    return date.toLocaleDateString('id-ID', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  };
+
+  const formatDashboardTime = (date) => {
+    return date.toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZoneName: 'short'
+    });
+  };
 
   const loadDashboardData = async () => {
     try {
@@ -77,7 +100,7 @@ export default function DashboardScreen({ navigation }) {
     }).format(amount || 0);
   };
 
-  const formatDate = (dateString) => {
+  const formatDateString = (dateString) => {
     return new Date(dateString).toLocaleDateString('id-ID', {
       day: '2-digit',
       month: 'short',
@@ -133,7 +156,7 @@ export default function DashboardScreen({ navigation }) {
         <Text style={styles.saleItemInvoice}>
           {sale.no_invoice || `#${sale.id.substring(0, 8)}`}
         </Text>
-        <Text style={styles.saleItemDate}>{formatDate(sale.created_at)}</Text>
+        <Text style={styles.saleItemDate}>{formatDateString(sale.created_at)}</Text>
       </View>
       <View style={styles.saleItemDetails}>
         <Text style={styles.saleItemTotal}>{formatCurrency(sale.total)}</Text>
@@ -196,12 +219,12 @@ export default function DashboardScreen({ navigation }) {
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={styles.shopBadge}>
-              <Ionicons name="bag-handle" size={18} color="#fff" />
+              <Ionicons name="storefront" size={18} color="#fff" />
             </View>
             <View style={styles.shopInfo}>
-              <Text style={styles.shopName}>DEWA STORE</Text>
+              <Text style={styles.shopName}>{getBusinessName()}</Text>
               <Text style={styles.shopSubtitle}>
-                Dashboard Toko
+                {formatDate(currentDateTime)} • {formatTime(currentDateTime)} WIB
               </Text>
             </View>
           </View>

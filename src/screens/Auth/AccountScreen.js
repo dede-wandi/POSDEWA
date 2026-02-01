@@ -9,7 +9,7 @@ import { getSupabaseClient } from '../../services/supabase';
 const { width } = Dimensions.get('window');
 
 export default function AccountScreen({ navigation }) {
-  const { user, signOut } = useAuth();
+  const { user, signOut, getBusinessName } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
 
@@ -176,7 +176,7 @@ export default function AccountScreen({ navigation }) {
 
           {/* App Info */}
           <View style={styles.appInfoSection}>
-            <Text style={styles.appInfoTitle}>POSDEWA</Text>
+            <Text style={styles.appInfoTitle}>{getBusinessName()}</Text>
             <Text style={styles.appInfoSubtitle}>Point of Sale System</Text>
             <Text style={styles.appInfoVersion}>Version 1.0.0</Text>
           </View>

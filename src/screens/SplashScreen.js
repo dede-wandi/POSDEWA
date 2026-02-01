@@ -2,30 +2,47 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Animated, Dimensions, Easing, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme';
+import { getSupabaseClient } from '../services/supabase';
 
 const { width, height } = Dimensions.get('window');
 
-export default function SplashScreen() {
+export default function SplashScreen({ onFinish }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const scanLineAnim = useRef(new Animated.Value(0)).current;
   const receiptAnim = useRef(new Animated.Value(0)).current;
   
-  const [loadingText, setLoadingText] = useState('INITIALIZING SYSTEM...');
+  const [loadingText, setLoadingText] = useState('Memulai sistem...');
+  const [appName, setAppName] = useState('POSDEWA');
 
   useEffect(() => {
-    // Cycling loading text
-    const texts = [
-      'LOADING PRODUCTS...', 
-      'SYNCING DATABASE...', 
-      'CHECKING STOCK...', 
-      'PREPARING DASHBOARD...'
-    ];
-    let textIdx = 0;
-    const textInterval = setInterval(() => {
-      setLoadingText(texts[textIdx % texts.length]);
-      textIdx++;
-    }, 800);
+    // Load User Name
+    const loadUserName = async () => {
+      try {
+        const supabase = getSupabaseClient();
+        if (supabase) {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            const user = session.user;
+            const businessName = user.user_metadata?.business_name;
+            if (businessName) {
+              setAppName(businessName);
+            } else {
+              const fullName = user.user_metadata?.full_name;
+              if (fullName) {
+                 setAppName(fullName);
+              } else if (user.email) {
+                 const emailName = user.email.split('@')[0];
+                 setAppName(emailName.charAt(0).toUpperCase() + emailName.slice(1));
+              }
+            }
+          }
+        }
+      } catch (e) {
+        // Fallback
+      }
+    };
+    loadUserName();
 
     // Entrance Animation
     Animated.parallel([
@@ -68,8 +85,6 @@ export default function SplashScreen() {
       easing: Easing.out(Easing.back(1.5)),
       useNativeDriver: true,
     }).start();
-
-    return () => clearInterval(textInterval);
   }, []);
 
   const scanLineTranslateY = scanLineAnim.interpolate({
@@ -126,7 +141,7 @@ export default function SplashScreen() {
         </Animated.View>
 
         <View style={styles.textContainer}>
-          <Text style={styles.title}>POS<Text style={styles.highlight}>DEWA</Text></Text>
+          <Text style={styles.title}>{appName}</Text>
           <Text style={styles.subtitle}>SMART POINT OF SALE</Text>
         </View>
 

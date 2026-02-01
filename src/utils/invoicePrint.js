@@ -504,7 +504,6 @@ export const testBluetoothPrint = async (receiptSize = '58mm') => {
       width: receiptSize === '80mm' ? 576 : 384
     });
     await BluetoothEscposPrinter.printText('Uji Cetak 58mm\n', {});
-    await BluetoothEscposPrinter.printText('POSDEWA\n', {});
     await BluetoothEscposPrinter.printText('------------------------------\n', {});
     await BluetoothEscposPrinter.printText('Berhasil mencetak uji coba.\n\n', {});
     return { success: true };

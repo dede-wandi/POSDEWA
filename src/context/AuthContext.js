@@ -123,12 +123,31 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const getBusinessName = () => {
+    if (!user) return 'POSDEWA';
+    // Prioritas: business_name > full_name > nama depan email > POSDEWA
+    const businessName = user.user_metadata?.business_name;
+    if (businessName) return businessName;
+
+    const fullName = user.user_metadata?.full_name;
+    if (fullName) return fullName;
+
+    if (user.email) {
+      const emailName = user.email.split('@')[0];
+      // Capitalize first letter
+      return emailName.charAt(0).toUpperCase() + emailName.slice(1);
+    }
+    
+    return 'POSDEWA';
+  };
+
   const value = {
     user,
     session,
     loading,
     signIn,
     signOut,
+    getBusinessName,
   };
 
   console.log('🔄 AuthContext: Rendering with state', { hasUser: !!user, userEmail: user?.email, loading });

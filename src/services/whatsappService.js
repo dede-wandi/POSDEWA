@@ -112,7 +112,17 @@ export const sendWhatsAppNotification = async (saleData, items) => {
     message += `🛒 Total Transaksi: ${dailyTrxCount} trx\n`;
     message += `💰 Total Profit: Rp ${dailyProfitTotal.toLocaleString('id-ID')}\n`;
     
-    message += `\n_Dikirim otomatis dari POSDEWA_`;
+    // Get sender name (business name or user name)
+    let senderName = 'POSDEWA';
+    if (user && user.user_metadata) {
+      const meta = user.user_metadata;
+      senderName = meta.business_name || meta.full_name || 'POSDEWA';
+    } else if (user && user.email) {
+       const emailName = user.email.split('@')[0];
+       senderName = emailName.charAt(0).toUpperCase() + emailName.slice(1);
+    }
+    
+    message += `\n_Dikirim otomatis dari ${senderName}_`;
 
     console.log('📤 Sending to Fonnte...', { target, messageLength: message.length });
     
