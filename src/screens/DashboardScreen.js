@@ -224,7 +224,7 @@ export default function DashboardScreen({ navigation }) {
             <View style={styles.shopInfo}>
               <Text style={styles.shopName}>{getBusinessName()}</Text>
               <Text style={styles.shopSubtitle}>
-                {formatDate(currentDateTime)} • {formatTime(currentDateTime)} WIB
+                {formatDashboardDate(currentDateTime)} • {formatDashboardTime(currentDateTime)}
               </Text>
             </View>
           </View>

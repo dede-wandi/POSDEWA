@@ -21,9 +21,11 @@ export default function SplashScreen({ onFinish }) {
       try {
         const supabase = getSupabaseClient();
         if (supabase) {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user) {
-            const user = session.user;
+          // Coba ambil user langsung
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          if (user) {
+            console.log('✅ SplashScreen: User found', user.email);
             const businessName = user.user_metadata?.business_name;
             if (businessName) {
               setAppName(businessName);
@@ -36,10 +38,29 @@ export default function SplashScreen({ onFinish }) {
                  setAppName(emailName.charAt(0).toUpperCase() + emailName.slice(1));
               }
             }
+          } else {
+            // Jika getUser gagal, coba getSession (terkadang session ada di storage tapi getUser perlu refresh)
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+               console.log('✅ SplashScreen: Session found', session.user.email);
+               const user = session.user;
+               const businessName = user.user_metadata?.business_name;
+               if (businessName) {
+                 setAppName(businessName);
+               } else {
+                 const fullName = user.user_metadata?.full_name;
+                 if (fullName) {
+                    setAppName(fullName);
+                 } else if (user.email) {
+                    const emailName = user.email.split('@')[0];
+                    setAppName(emailName.charAt(0).toUpperCase() + emailName.slice(1));
+                 }
+               }
+            }
           }
         }
       } catch (e) {
-        // Fallback
+        console.log('❌ SplashScreen: Error loading user', e);
       }
     };
     loadUserName();
