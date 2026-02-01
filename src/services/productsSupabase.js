@@ -166,14 +166,25 @@ export async function findByBarcodeExact(userId, barcode) {
   }
 
   const cleanBarcode = String(barcode || '').trim();
-  const { data, error } = await supabase
+  
+  // Use textSearch or ilike to find potential matches
+  // Because barcodes are stored as "A,B,C", we search for substring
+  const { data: potentialMatches, error } = await supabase
     .from('products')
     .select('*')
     .eq('owner_id', session.user.id)
-    .eq('barcode', cleanBarcode)
-    .maybeSingle();
+    .ilike('barcode', `%${cleanBarcode}%`);
 
-  return { data, error };
+  if (error) return { data: null, error };
+
+  // Filter in memory to find exact match in comma-separated list
+  const exactMatch = (potentialMatches || []).find(p => {
+    if (!p.barcode) return false;
+    const codes = p.barcode.split(',').map(b => b.trim());
+    return codes.includes(cleanBarcode);
+  });
+
+  return { data: exactMatch || null, error: null };
 }
 
 export async function createProduct(payload) {
