@@ -74,7 +74,8 @@ export const sendWhatsAppNotification = async (saleData, items) => {
     }
 
     // 3. Construct Message
-    let message = `*🔔 PENJUALAN BARU BERHASIL*\n\n`;
+    const businessName = user?.user_metadata?.business_name || user?.user_metadata?.full_name || 'POSDEWA';
+    let message = `*🔔 ${businessName.toUpperCase()} - PENJUALAN BARU*\n\n`;
     
     // Format date safely
     const dateStr = new Date().toLocaleString('id-ID', { 

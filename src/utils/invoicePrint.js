@@ -15,6 +15,7 @@ try {
   BluetoothEscposPrinter = null;
 }
 import { getInvoiceSettings } from '../services/invoiceSettingsSupabase';
+import { getSupabaseClient } from '../services/supabase';
 
 // Generate HTML template for invoice (Receipt format)
 export const generateInvoiceHTML = async (sale, userId, receiptSize = '58mm') => {
@@ -41,7 +42,23 @@ export const generateInvoiceHTML = async (sale, userId, receiptSize = '58mm') =>
   }
   
   // Use default values if no settings found
-  const businessName = invoiceSettings?.business_name || 'TOKO SAYA';
+  let businessName = invoiceSettings?.business_name;
+
+  // Fallback to user metadata if not set in invoice settings
+  if (!businessName) {
+    try {
+      const supabase = getSupabaseClient();
+      // Try to get current user data directly first as it's cached
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+         businessName = user.user_metadata?.business_name || user.user_metadata?.full_name;
+      }
+    } catch (e) {
+      console.log('Error fetching user metadata for invoice fallback', e);
+    }
+  }
+
+  businessName = businessName || 'POSDEWA';
   const businessAddress = invoiceSettings?.business_address || 'Jl. Alamat Toko No. 123, Kota';
   const businessPhone = invoiceSettings?.business_phone || '';
   const footerText = invoiceSettings?.footer_text || '*** THANK YOU ***';
