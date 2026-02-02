@@ -62,9 +62,20 @@ export default function AIAssistantScreen({ navigation }) {
   };
 
   const processQuery = async (query) => {
+    if (!user || !user.id) {
+      return { text: 'Anda belum login. Silakan login terlebih dahulu.' };
+    }
+
     const lowerQuery = query.toLowerCase();
     const supabase = getSupabaseClient();
     
+    // 0. Sapaan
+    if (lowerQuery === 'hi' || lowerQuery === 'halo' || lowerQuery === 'hello' || lowerQuery === 'selamat pagi' || lowerQuery === 'selamat siang' || lowerQuery === 'selamat malam') {
+      return {
+        text: 'Halo! Ada yang bisa saya bantu terkait toko Anda hari ini? Coba tanyakan "Omzet hari ini" atau "Stok barang".'
+      };
+    }
+
     // 1. Cek Omzet/Penjualan Hari Ini
     if (lowerQuery.includes('omzet') || (lowerQuery.includes('penjualan') && lowerQuery.includes('hari ini'))) {
       const todayStart = new Date();
@@ -79,7 +90,7 @@ export default function AIAssistantScreen({ navigation }) {
         .gte('created_at', todayStart.toISOString())
         .lt('created_at', todayEnd.toISOString());
 
-      if (error) throw error;
+      if (error) throw new Error(error.message);
 
       const totalOmzet = data.reduce((sum, item) => sum + (item.total || 0), 0);
       const totalProfit = data.reduce((sum, item) => sum + (item.profit || 0), 0);
@@ -98,7 +109,7 @@ export default function AIAssistantScreen({ navigation }) {
       let queryBuilder = supabase
         .from('products')
         .select('name, stock, price')
-        .eq('user_id', user.id)
+        .eq('owner_id', user.id) // Fix: use owner_id instead of user_id
         .order('stock', { ascending: true }) // Show low stock first by default
         .limit(10);
 
@@ -107,9 +118,9 @@ export default function AIAssistantScreen({ navigation }) {
       }
 
       const { data, error } = await queryBuilder;
-      if (error) throw error;
+      if (error) throw new Error(error.message);
 
-      if (data.length === 0) {
+      if (!data || data.length === 0) {
         return { text: `Tidak ditemukan produk dengan kata kunci "${keyword}".` };
       }
 
@@ -123,22 +134,24 @@ export default function AIAssistantScreen({ navigation }) {
 
     // 3. Produk Terlaris
     if (lowerQuery.includes('laris') || lowerQuery.includes('top')) {
-      // This is a bit heavier query, let's simplify by looking at sale_items aggregated
-      // For simplicity in this "local AI", we might just fetch recent sale items and aggregate in memory (limit to last 100 sales for perf)
-      
+      // Fix: Query sales and then flatten sale_items because sale_items table might not have user_id/owner_id
       const { data, error } = await supabase
-        .from('sale_items')
-        .select('product_name, qty')
+        .from('sales')
+        .select('sale_items(product_name, qty)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(200);
+        .limit(100); // Analyze last 100 sales
 
-      if (error) throw error;
+      if (error) throw new Error(error.message);
 
       const summary = {};
-      data.forEach(item => {
-        const name = item.product_name || 'Unknown';
-        summary[name] = (summary[name] || 0) + (Number(item.qty) || 0);
+      data.forEach(sale => {
+        if (sale.sale_items) {
+          sale.sale_items.forEach(item => {
+            const name = item.product_name || 'Unknown';
+            summary[name] = (summary[name] || 0) + (Number(item.qty) || 0);
+          });
+        }
       });
 
       const sorted = Object.entries(summary)
@@ -149,7 +162,7 @@ export default function AIAssistantScreen({ navigation }) {
 
       const list = sorted.map((item, idx) => `${idx + 1}. ${item[0]} (${item[1]} terjual)`).join('\n');
       return {
-        text: `🏆 5 Produk Terlaris (dari 200 item terakhir):\n\n${list}`
+        text: `🏆 5 Produk Terlaris (dari 100 transaksi terakhir):\n\n${list}`
       };
     }
 
