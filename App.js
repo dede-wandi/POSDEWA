@@ -334,6 +334,14 @@ function MainStack() {
         }}
       />
       <Stack.Screen 
+        name="AIAssistant" 
+        component={AIAssistantScreen}
+        options={{
+          presentation: 'card',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen 
         name="ProfileEdit"  
         component={ProfileEditScreen}
         options={{
