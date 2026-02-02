@@ -37,6 +37,7 @@ import ProfitAnalysisScreen from './src/screens/TopSales/ProfitAnalysisScreen';
 import TransactionAnalysisScreen from './src/screens/TopSales/TransactionAnalysisScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import MoreMenuScreen from './src/screens/MoreMenuScreen';
+import AIAssistantScreen from './src/screens/AIAssistantScreen';
 import StockManagementScreen from './src/screens/StockManagementScreen';
 import SalesAnalyticsScreen from './src/screens/SalesAnalyticsScreen';
 import FinanceScreen from './src/screens/FinanceScreen';

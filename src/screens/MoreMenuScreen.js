@@ -91,6 +91,13 @@ export default function MoreMenuScreen({ navigation }) {
       onPress: () => navigation.navigate('Scan'),
     },
     {
+      label: 'AI Assistant',
+      icon: 'sparkles',
+      iconColor: '#9C27B0',
+      bgColor: '#F3E5F5',
+      onPress: () => navigation.navigate('AIAssistant'),
+    },
+    {
       label: 'Top Penjualan',
       icon: 'trending-up',
       iconColor: '#FFC107',
