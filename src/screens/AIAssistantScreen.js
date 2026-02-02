@@ -72,12 +72,12 @@ export default function AIAssistantScreen({ navigation }) {
     // 0. Sapaan
     if (lowerQuery === 'hi' || lowerQuery === 'halo' || lowerQuery === 'hello' || lowerQuery === 'selamat pagi' || lowerQuery === 'selamat siang' || lowerQuery === 'selamat malam') {
       return {
-        text: 'Halo! Ada yang bisa saya bantu terkait toko Anda hari ini? Coba tanyakan "Omzet hari ini" atau "Stok barang".'
+        text: 'Halo! Ada yang bisa saya bantu terkait toko Anda hari ini? Coba tanyakan "Omset hari ini" atau "Stok barang".'
       };
     }
 
-    // 1. Cek Omzet/Penjualan Hari Ini
-    if (lowerQuery.includes('omzet') || (lowerQuery.includes('penjualan') && lowerQuery.includes('hari ini'))) {
+    // 1. Cek Omset/Penjualan Hari Ini
+    if (lowerQuery.includes('omset') || (lowerQuery.includes('penjualan') && lowerQuery.includes('hari ini'))) {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
       const todayEnd = new Date();
@@ -92,12 +92,12 @@ export default function AIAssistantScreen({ navigation }) {
 
       if (error) throw new Error(error.message);
 
-      const totalOmzet = data.reduce((sum, item) => sum + (item.total || 0), 0);
+      const totalOmset = data.reduce((sum, item) => sum + (item.total || 0), 0);
       const totalProfit = data.reduce((sum, item) => sum + (item.profit || 0), 0);
       const count = data.length;
 
       return {
-        text: `📊 Laporan Hari Ini:\n\nTotal Transaksi: ${count}\nOmzet: ${formatCurrency(totalOmzet)}\nProfit: ${formatCurrency(totalProfit)}`
+        text: `📊 Laporan Hari Ini:\n\nTotal Transaksi: ${count}\nOmset: ${formatCurrency(totalOmset)}\nProfit: ${formatCurrency(totalProfit)}`
       };
     }
 
@@ -168,7 +168,7 @@ export default function AIAssistantScreen({ navigation }) {
 
     // 4. Bantuan / Default
     return {
-      text: 'Maaf, saya belum mengerti. Coba tanyakan:\n- "Omzet hari ini"\n- "Stok [nama barang]"\n- "Produk terlaris"'
+      text: 'Maaf, saya belum mengerti. Coba tanyakan:\n- "Omset hari ini"\n- "Stok [nama barang]"\n- "Produk terlaris"'
     };
   };
 
