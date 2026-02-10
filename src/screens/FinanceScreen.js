@@ -353,31 +353,39 @@ export default function FinanceScreen({ navigation }) {
   // --- Renderers ---
 
   const renderTransactionItem = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.trxItem}
-      onPress={() => handleEditTransaction(item)}
-      onLongPress={() => handleDeleteTransaction(item)}
-    >
-      <View style={[styles.trxIcon, { backgroundColor: item.type === 'income' ? '#E8F5E9' : '#FFEBEE' }]}>
-        <Ionicons 
-          name={item.type === 'income' ? 'arrow-down' : 'arrow-up'} 
-          size={20} 
-          color={item.type === 'income' ? '#4CAF50' : '#F44336'} 
-        />
-      </View>
-      <View style={{ flex: 1, marginLeft: 12 }}>
-        <Text style={styles.trxCategory}>{item.category}</Text>
-        <Text style={styles.trxDesc} numberOfLines={1}>
-          {item.description || item.personal_accounts?.name || '-'}
+    <View style={styles.trxItemWrapper}>
+      <TouchableOpacity 
+        style={styles.trxContent}
+        onPress={() => handleEditTransaction(item)}
+      >
+        <View style={[styles.trxIcon, { backgroundColor: item.type === 'income' ? '#E8F5E9' : '#FFEBEE' }]}>
+          <Ionicons 
+            name={item.type === 'income' ? 'arrow-down' : 'arrow-up'} 
+            size={20} 
+            color={item.type === 'income' ? '#4CAF50' : '#F44336'} 
+          />
+        </View>
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={styles.trxCategory}>{item.category}</Text>
+          <Text style={styles.trxDesc} numberOfLines={1}>
+            {item.description || item.personal_accounts?.name || '-'}
+          </Text>
+          <Text style={styles.trxDate}>
+            {new Date(item.transaction_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+          </Text>
+        </View>
+        <Text style={[styles.trxAmount, { color: item.type === 'income' ? '#4CAF50' : '#F44336' }]}>
+          {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount)}
         </Text>
-        <Text style={styles.trxDate}>
-          {new Date(item.transaction_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-        </Text>
-      </View>
-      <Text style={[styles.trxAmount, { color: item.type === 'income' ? '#4CAF50' : '#F44336' }]}>
-        {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount)}
-      </Text>
-    </TouchableOpacity>
+      </TouchableOpacity>
+
+      <TouchableOpacity 
+        style={styles.deleteAction}
+        onPress={() => handleDeleteTransaction(item)}
+      >
+        <Ionicons name="trash-outline" size={20} color="#FF5252" />
+      </TouchableOpacity>
+    </View>
   );
 
   const renderChannelItem = ({ item }) => (
@@ -718,14 +726,29 @@ const styles = StyleSheet.create({
   },
   
   // Transaction Item
-  trxItem: {
+  trxItemWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    padding: 12,
     marginBottom: 10,
     borderRadius: 12,
     ...Shadows.sm,
+    overflow: 'hidden',
+  },
+  trxContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+  },
+  deleteAction: {
+    width: 50,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFEBEE',
+    borderLeftWidth: 1,
+    borderLeftColor: '#FFCDD2',
   },
   trxIcon: {
     width: 40,
