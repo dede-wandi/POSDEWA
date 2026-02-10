@@ -125,17 +125,12 @@ export default function FinanceScreen({ navigation }) {
         {activeTab === 'transactions' && (
           <View style={styles.summaryContainer}>
             <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Pemasukan</Text>
-              <Text style={[styles.summaryValue, { color: '#4CAF50' }]}>{formatCurrency(totalIncome)}</Text>
-            </View>
-            <View style={styles.summaryDivider} />
-            <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Pengeluaran</Text>
               <Text style={[styles.summaryValue, { color: '#F44336' }]}>{formatCurrency(totalExpense)}</Text>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Selisih</Text>
+              <Text style={styles.summaryLabel}>Saldo</Text>
               <Text style={[styles.summaryValue, { color: balance >= 0 ? '#4CAF50' : '#F44336' }]}>
                 {formatCurrency(balance)}
               </Text>
@@ -659,6 +654,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   summaryItem: {
+    flex: 1,
     alignItems: 'center',
   },
   summaryLabel: {
