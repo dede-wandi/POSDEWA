@@ -3,9 +3,15 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Radii, Shadows } from '../theme';
+import { useAuth } from '../context/AuthContext';
 
 export default function MoreMenuScreen({ navigation }) {
-  const items = [
+  const { user } = useAuth();
+  
+  // Check if user is superadmin
+  const isSuperAdmin = user?.id === '9286a3ed-d219-4dab-bfab-aa6e52434540' || user?.email === 'admin@gmail.com';
+
+  const mainItems = [
     {
       label: 'Kasir',
       icon: 'cart',
@@ -113,6 +119,30 @@ export default function MoreMenuScreen({ navigation }) {
     },
   ];
 
+  const managementItems = [
+    {
+      label: 'Keuangan',
+      icon: 'cash',
+      iconColor: '#4CAF50',
+      bgColor: '#E8F5E9',
+      onPress: () => navigation.navigate('Finance'),
+    }
+  ];
+
+  const renderMenuItem = (item, index) => (
+    <TouchableOpacity
+      key={index}
+      style={styles.menuItem}
+      onPress={item.onPress}
+      activeOpacity={0.85}
+    >
+      <View style={[styles.menuIcon, { backgroundColor: item.bgColor }]}>
+        <Ionicons name={item.icon} size={24} color={item.iconColor} />
+      </View>
+      <Text style={styles.menuLabel}>{item.label}</Text>
+    </TouchableOpacity>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -127,20 +157,17 @@ export default function MoreMenuScreen({ navigation }) {
       </View>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.grid}>
-          {items.map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.menuItem}
-              onPress={item.onPress}
-              activeOpacity={0.85}
-            >
-              <View style={[styles.menuIcon, { backgroundColor: item.bgColor }]}>
-                <Ionicons name={item.icon} size={24} color={item.iconColor} />
-              </View>
-              <Text style={styles.menuLabel}>{item.label}</Text>
-            </TouchableOpacity>
-          ))}
+          {mainItems.map(renderMenuItem)}
         </View>
+
+        {isSuperAdmin && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Management</Text>
+            <View style={styles.grid}>
+              {managementItems.map((item, index) => renderMenuItem(item, `mgmt-${index}`))}
+            </View>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -172,11 +199,25 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.lg,
+    paddingBottom: Spacing.xl,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'space-between', // Changed to flex-start for more predictable grid with few items
+  },
+  section: {
+    marginTop: Spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    paddingTop: Spacing.lg,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: Spacing.md,
+    marginLeft: 4,
   },
   menuItem: {
     width: '30%',

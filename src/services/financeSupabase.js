@@ -1,5 +1,216 @@
 import { getSupabaseClient } from './supabase';
 
+// --- PERSONAL FINANCE SERVICES (Separated from Store) ---
+
+// Get all personal accounts
+export async function getPersonalAccounts() {
+  console.log('💰 financeSupabase: getPersonalAccounts called');
+  
+  const supabase = getSupabaseClient();
+  if (!supabase) return { success: false, error: 'Supabase tidak tersedia' };
+
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData?.session;
+    if (!session?.user) return { success: false, error: 'User tidak ter-autentikasi' };
+
+    const { data, error } = await supabase
+      .from('personal_accounts')
+      .select('*')
+      .eq('owner_id', session.user.id)
+      .eq('is_active', true)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.log('❌ financeSupabase: Error fetching personal accounts:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: data || [] };
+  } catch (error) {
+    console.log('❌ financeSupabase: Exception in getPersonalAccounts:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Create new personal account
+export async function createPersonalAccount(accountData) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { success: false, error: 'Supabase tidak tersedia' };
+
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData?.session;
+    if (!session?.user) return { success: false, error: 'User tidak ter-autentikasi' };
+
+    const { data, error } = await supabase
+      .from('personal_accounts')
+      .insert({
+        owner_id: session.user.id,
+        name: accountData.name,
+        type: accountData.type,
+        balance: accountData.initialBalance || 0,
+        description: accountData.description
+      })
+      .select()
+      .single();
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+// Update personal account
+export async function updatePersonalAccount(id, updates) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { success: false, error: 'Supabase tidak tersedia' };
+
+  try {
+    const { error } = await supabase
+      .from('personal_accounts')
+      .update(updates)
+      .eq('id', id);
+
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+// Delete personal account
+export async function deletePersonalAccount(id) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { success: false, error: 'Supabase tidak tersedia' };
+
+  try {
+    // Soft delete
+    const { error } = await supabase
+      .from('personal_accounts')
+      .update({ is_active: false })
+      .eq('id', id);
+
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+// Get personal transactions
+export async function getPersonalTransactions(accountId = null, limit = 50) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { success: false, error: 'Supabase tidak tersedia' };
+
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData?.session;
+    if (!session?.user) return { success: false, error: 'User tidak ter-autentikasi' };
+
+    let query = supabase
+      .from('personal_transactions')
+      .select(`
+        *,
+        personal_accounts (
+          name,
+          type
+        )
+      `)
+      .eq('owner_id', session.user.id)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (accountId) {
+      query = query.eq('account_id', accountId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.log('❌ financeSupabase: Error fetching personal transactions:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: data || [] };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+// Record personal transaction
+export async function recordPersonalTransaction(data) {
+  console.log('💰 financeSupabase: recordPersonalTransaction called with:', data);
+  const { account_id, type, amount, category, description, transaction_date } = data;
+  
+  const supabase = getSupabaseClient();
+  if (!supabase) return { success: false, error: 'Supabase tidak tersedia' };
+
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData?.session;
+    if (!session?.user) return { success: false, error: 'User tidak ter-autentikasi' };
+
+    // 1. Get current account balance
+    const { data: account, error: accError } = await supabase
+      .from('personal_accounts')
+      .select('balance, name')
+      .eq('id', account_id)
+      .eq('owner_id', session.user.id)
+      .single();
+
+    if (accError || !account) return { success: false, error: 'Akun tidak ditemukan' };
+
+    const oldBalance = Number(account.balance) || 0;
+    const numAmount = Number(amount);
+    
+    // 2. Calculate new balance
+    let newBalance = oldBalance;
+    if (type === 'income') {
+      newBalance += numAmount;
+    } else {
+      newBalance -= numAmount;
+    }
+
+    // 3. Update account balance
+    const { error: updateError } = await supabase
+      .from('personal_accounts')
+      .update({ 
+        balance: newBalance,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', account_id);
+
+    if (updateError) return { success: false, error: updateError.message };
+
+    // 4. Create transaction record
+    const { data: trx, error: trxError } = await supabase
+      .from('personal_transactions')
+      .insert({
+        owner_id: session.user.id,
+        account_id,
+        type,
+        amount: numAmount,
+        category,
+        description,
+        transaction_date: transaction_date || new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (trxError) return { success: false, error: trxError.message };
+
+    return { success: true, data: trx };
+
+  } catch (error) {
+    console.log('❌ financeSupabase: Exception in recordPersonalTransaction:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// --- STORE FINANCE SERVICES (For Store Operations) ---
+
 // Get all payment channels for current user
 export async function getPaymentChannels() {
   console.log('💰 financeSupabase: getPaymentChannels called');
@@ -198,6 +409,76 @@ export async function deletePaymentChannel(channelId) {
   }
 }
 
+// Record a manual transaction (Income/Expense)
+export async function recordTransaction(data) {
+  console.log('💰 financeSupabase: recordTransaction called with:', data);
+  const { channel_id, type, amount, category, description, transaction_date } = data;
+  
+  const supabase = getSupabaseClient();
+  if (!supabase) return { success: false, error: 'Supabase tidak tersedia' };
+
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData?.session;
+    if (!session || !session.user) return { success: false, error: 'User tidak ter-autentikasi' };
+
+    // 1. Get current channel balance
+    const { data: channel, error: channelError } = await supabase
+      .from('payment_channels')
+      .select('balance, name')
+      .eq('id', channel_id)
+      .eq('owner_id', session.user.id)
+      .single();
+
+    if (channelError || !channel) return { success: false, error: 'Channel tidak ditemukan' };
+
+    const oldBalance = Number(channel.balance) || 0;
+    const numAmount = Number(amount);
+    
+    // 2. Calculate new balance
+    let newBalance = oldBalance;
+    if (type === 'income') {
+      newBalance += numAmount;
+    } else {
+      newBalance -= numAmount;
+    }
+
+    // 3. Update channel balance
+    const { error: updateError } = await supabase
+      .from('payment_channels')
+      .update({ 
+        balance: newBalance,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', channel_id);
+
+    if (updateError) return { success: false, error: updateError.message };
+
+    // 4. Create transaction record
+    const { data: trx, error: trxError } = await supabase
+      .from('finance_transactions')
+      .insert({
+        owner_id: session.user.id,
+        channel_id,
+        type,
+        amount: numAmount,
+        category,
+        description,
+        transaction_date: transaction_date || new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (trxError) return { success: false, error: trxError.message };
+
+    return { success: true, data: trx };
+
+  } catch (error) {
+    console.log('❌ financeSupabase: Exception in recordTransaction:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 // Create finance transaction
 export async function createFinanceTransaction(transactionData) {
   console.log('💰 financeSupabase: createFinanceTransaction called with:', transactionData);
@@ -240,9 +521,9 @@ export async function createFinanceTransaction(transactionData) {
   }
 }
 
-// Get finance transactions for a channel
-export async function getFinanceTransactions(channelId, limit = 50) {
-  console.log('💰 financeSupabase: getFinanceTransactions called for channel:', channelId);
+// Get finance transactions for a channel (or all if channelId is null)
+export async function getFinanceTransactions(channelId = null, limit = 50) {
+  console.log('💰 financeSupabase: getFinanceTransactions called for channel:', channelId || 'ALL');
   
   const supabase = getSupabaseClient();
   if (!supabase) {
@@ -259,13 +540,24 @@ export async function getFinanceTransactions(channelId, limit = 50) {
       return { success: false, error: 'User tidak ter-autentikasi' };
     }
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('finance_transactions')
-      .select('*')
+      .select(`
+        *,
+        payment_channels (
+          name,
+          type
+        )
+      `)
       .eq('owner_id', session.user.id)
-      .eq('payment_channel_id', channelId)
       .order('created_at', { ascending: false })
       .limit(limit);
+
+    if (channelId) {
+      query = query.eq('channel_id', channelId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.log('❌ financeSupabase: Error fetching finance transactions:', error);
