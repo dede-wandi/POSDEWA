@@ -24,7 +24,9 @@ import {
   updatePersonalAccount, 
   deletePersonalAccount,
   getPersonalTransactions,
-  recordPersonalTransaction
+  recordPersonalTransaction,
+  updatePersonalTransaction,
+  deletePersonalTransaction
 } from '../services/financeSupabase';
 import { formatCurrency } from '../utils/currency';
 import { Colors, Spacing, Shadows, Radii } from '../theme';
@@ -57,6 +59,19 @@ export default function FinanceScreen({ navigation }) {
   const [editingChannel, setEditingChannel] = useState(null);
   
   const [saving, setSaving] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState(null);
+
+  // Helper: Format number with thousand separator
+  const formatNumberInput = (value) => {
+    if (!value) return '';
+    const cleanValue = String(value).replace(/\D/g, '');
+    return cleanValue.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  };
+
+  const parseNumberInput = (formattedValue) => {
+    if (!formattedValue) return '';
+    return formattedValue.replace(/\./g, '');
+  };
 
   // Render Header with Back Button
   const renderHeader = () => (
@@ -64,8 +79,6 @@ export default function FinanceScreen({ navigation }) {
       <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
         <Ionicons name="arrow-back" size={24} color="#333" />
       </TouchableOpacity>
-      <Text style={styles.headerTitle}>Keuangan Pribadi</Text>
-      <View style={{ width: 40 }} />
     </View>
   );
 
@@ -108,6 +121,7 @@ export default function FinanceScreen({ navigation }) {
   // --- Transaction Handlers ---
   
   const handleAddTransaction = () => {
+    setEditingTransaction(null);
     setTrxType('expense');
     setTrxAmount('');
     setTrxCategory('');
@@ -119,29 +133,79 @@ export default function FinanceScreen({ navigation }) {
     setShowTransactionModal(true);
   };
 
+  const handleEditTransaction = (trx) => {
+    setEditingTransaction(trx);
+    setTrxType(trx.type);
+    setTrxAmount(formatNumberInput(trx.amount));
+    setTrxCategory(trx.category);
+    setTrxDescription(trx.description || '');
+    setTrxChannelId(trx.account_id);
+    setShowTransactionModal(true);
+  };
+
+  const handleDeleteTransaction = (trx) => {
+    Alert.alert(
+      'Hapus Transaksi',
+      'Yakin ingin menghapus transaksi ini? Saldo akan dikembalikan.',
+      [
+        { text: 'Batal', style: 'cancel' },
+        { 
+          text: 'Hapus', 
+          style: 'destructive', 
+          onPress: async () => {
+            setLoading(true);
+            const res = await deletePersonalTransaction(trx.id);
+            setLoading(false);
+            
+            if (res.success) {
+              showToast('Transaksi dihapus', 'success');
+              onRefresh();
+            } else {
+              showToast(res.error || 'Gagal menghapus', 'error');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const submitTransaction = async () => {
-    if (!trxAmount || !trxChannelId || !trxCategory) {
+    const rawAmount = parseNumberInput(trxAmount);
+    
+    if (!rawAmount || !trxChannelId || !trxCategory) {
       showToast('Mohon lengkapi jumlah, kategori, dan rekening', 'error');
       return;
     }
 
     setSaving(true);
-    const result = await recordPersonalTransaction({
-      account_id: trxChannelId,
-      type: trxType,
-      amount: trxAmount,
-      category: trxCategory,
-      description: trxDescription
-    });
+    
+    let result;
+    if (editingTransaction) {
+      result = await updatePersonalTransaction(editingTransaction.id, {
+        account_id: trxChannelId,
+        type: trxType,
+        amount: rawAmount,
+        category: trxCategory,
+        description: trxDescription
+      });
+    } else {
+      result = await recordPersonalTransaction({
+        account_id: trxChannelId,
+        type: trxType,
+        amount: rawAmount,
+        category: trxCategory,
+        description: trxDescription
+      });
+    }
 
     setSaving(false);
     
     if (result.success) {
-      showToast('Transaksi berhasil dicatat', 'success');
+      showToast(editingTransaction ? 'Transaksi diperbarui' : 'Transaksi berhasil dicatat', 'success');
       setShowTransactionModal(false);
       onRefresh();
     } else {
-      showToast(result.error || 'Gagal mencatat transaksi', 'error');
+      showToast(result.error || 'Gagal menyimpan transaksi', 'error');
     }
   };
 
@@ -161,7 +225,7 @@ export default function FinanceScreen({ navigation }) {
     setChannelName(channel.name);
     setChannelType(channel.type);
     setChannelDescription(channel.description || '');
-    setInitialBalance(''); // Can't edit initial balance
+    setInitialBalance(formatNumberInput(channel.balance));
     setShowChannelModal(true);
   };
 
@@ -197,14 +261,14 @@ export default function FinanceScreen({ navigation }) {
         name: channelName,
         type: channelType,
         description: channelDescription,
-        balance: editingChannel.balance // Preserve balance
+        balance: parseNumberInput(initialBalance)
       });
     } else {
       result = await createPersonalAccount({
         name: channelName,
         type: channelType,
         description: channelDescription,
-        initialBalance: parseFloat(initialBalance) || 0
+        initialBalance: parseFloat(parseNumberInput(initialBalance)) || 0
       });
     }
     setSaving(false);
@@ -221,7 +285,11 @@ export default function FinanceScreen({ navigation }) {
   // --- Renderers ---
 
   const renderTransactionItem = ({ item }) => (
-    <View style={styles.trxItem}>
+    <TouchableOpacity 
+      style={styles.trxItem}
+      onPress={() => handleEditTransaction(item)}
+      onLongPress={() => handleDeleteTransaction(item)}
+    >
       <View style={[styles.trxIcon, { backgroundColor: item.type === 'income' ? '#E8F5E9' : '#FFEBEE' }]}>
         <Ionicons 
           name={item.type === 'income' ? 'arrow-down' : 'arrow-up'} 
@@ -241,7 +309,7 @@ export default function FinanceScreen({ navigation }) {
       <Text style={[styles.trxAmount, { color: item.type === 'income' ? '#4CAF50' : '#F44336' }]}>
         {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount)}
       </Text>
-    </View>
+    </TouchableOpacity>
   );
 
   const renderChannelItem = ({ item }) => (
@@ -334,7 +402,7 @@ export default function FinanceScreen({ navigation }) {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Catat Transaksi</Text>
+              <Text style={styles.modalTitle}>{editingTransaction ? 'Edit Transaksi' : 'Catat Transaksi'}</Text>
               <TouchableOpacity onPress={() => setShowTransactionModal(false)}>
                 <Ionicons name="close" size={24} color="#333" />
               </TouchableOpacity>
@@ -361,7 +429,7 @@ export default function FinanceScreen({ navigation }) {
               <TextInput
                 style={styles.input}
                 value={trxAmount}
-                onChangeText={setTrxAmount}
+                onChangeText={(text) => setTrxAmount(formatNumberInput(text))}
                 keyboardType="numeric"
                 placeholder="0"
               />
@@ -455,18 +523,14 @@ export default function FinanceScreen({ navigation }) {
                 </TouchableOpacity>
               </View>
 
-              {!editingChannel && (
-                <>
-                  <Text style={styles.label}>Saldo Awal</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={initialBalance}
-                    onChangeText={setInitialBalance}
-                    keyboardType="numeric"
-                    placeholder="0"
-                  />
-                </>
-              )}
+              <Text style={styles.label}>Saldo {editingChannel ? 'Saat Ini' : 'Awal'}</Text>
+              <TextInput
+                style={styles.input}
+                value={initialBalance}
+                onChangeText={(text) => setInitialBalance(formatNumberInput(text))}
+                keyboardType="numeric"
+                placeholder="0"
+              />
 
               <TouchableOpacity 
                 style={[styles.submitBtn, saving && styles.disabledBtn]}
