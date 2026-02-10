@@ -62,6 +62,10 @@ export default function FinanceScreen({ navigation }) {
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [currentDate, setCurrentDate] = useState(new Date());
 
+  // Password Protection State
+  const [isLocked, setIsLocked] = useState(true);
+  const [password, setPassword] = useState('');
+
   // Helper: Format number with thousand separator
   const formatNumberInput = (value) => {
     if (!value) return '';
@@ -177,9 +181,20 @@ export default function FinanceScreen({ navigation }) {
 
   useFocusEffect(
     useCallback(() => {
+      setIsLocked(true); // Lock screen on focus
+      setPassword('');
       loadData();
     }, [currentDate])
   );
+
+  const handleUnlock = () => {
+    if (password === 'DUNhil00@#') {
+      setIsLocked(false);
+    } else {
+      Alert.alert('Akses Ditolak', 'Password salah!');
+      setPassword('');
+    }
+  };
 
   // --- Transaction Handlers ---
   
@@ -217,14 +232,23 @@ export default function FinanceScreen({ navigation }) {
           style: 'destructive', 
           onPress: async () => {
             setLoading(true);
-            const res = await deletePersonalTransaction(trx.id);
-            setLoading(false);
-            
-            if (res.success) {
-              showToast('Transaksi dihapus', 'success');
-              onRefresh();
-            } else {
-              showToast(res.error || 'Gagal menghapus', 'error');
+            try {
+              console.log('🗑️ FinanceScreen: Deleting transaction:', trx.id);
+              const res = await deletePersonalTransaction(trx.id);
+              setLoading(false);
+              
+              if (res.success) {
+                showToast('Transaksi dihapus', 'success');
+                onRefresh();
+              } else {
+                console.log('❌ FinanceScreen: Delete failed:', res.error);
+                // Use Alert for critical errors to ensure visibility
+                Alert.alert('Gagal Menghapus', res.error || 'Terjadi kesalahan saat menghapus');
+              }
+            } catch (e) {
+              setLoading(false);
+              console.log('❌ FinanceScreen: Delete exception:', e);
+              Alert.alert('Error', e.message);
             }
           }
         }
@@ -406,215 +430,248 @@ export default function FinanceScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
-      {renderHeader()}
-      
-      {/* Tabs */}
-      <View style={styles.tabs}>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'transactions' && styles.activeTab]}
-          onPress={() => setActiveTab('transactions')}
-        >
-          <Text style={[styles.tabText, activeTab === 'transactions' && styles.activeTabText]}>Transaksi</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'channels' && styles.activeTab]}
-          onPress={() => setActiveTab('channels')}
-        >
-          <Text style={[styles.tabText, activeTab === 'channels' && styles.activeTabText]}>Rekening</Text>
-        </TouchableOpacity>
-      </View>
-
-      {loading ? (
-        <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 20 }} />
+      {isLocked ? (
+        <View style={styles.lockContainer}>
+          <View style={styles.lockCard}>
+            <View style={styles.lockIconContainer}>
+              <Ionicons name="lock-closed" size={40} color={Colors.primary} />
+            </View>
+            <Text style={styles.lockTitle}>Keuangan Terkunci</Text>
+            <Text style={styles.lockSubtitle}>Masukkan password untuk mengakses{'\n'}data keuangan pribadi</Text>
+            
+            <TextInput
+              style={styles.lockInput}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              placeholder="Masukkan Password"
+              placeholderTextColor="#999"
+              autoCapitalize="none"
+              returnKeyType="done"
+              onSubmitEditing={handleUnlock}
+            />
+            
+            <TouchableOpacity 
+              style={styles.unlockBtn} 
+              onPress={handleUnlock}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.unlockBtnText}>Buka Kunci</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       ) : (
         <>
-          {activeTab === 'transactions' ? (
-            <FlatList
-              data={transactions}
-              renderItem={renderTransactionItem}
-              keyExtractor={item => item.id}
-              contentContainerStyle={styles.listContent}
-              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-              ListEmptyComponent={
-                <View style={styles.emptyState}>
-                  <Ionicons name="receipt-outline" size={48} color="#ccc" />
-                  <Text style={styles.emptyText}>Belum ada transaksi</Text>
-                </View>
-              }
-            />
+          {renderHeader()}
+          
+          {/* Tabs */}
+          <View style={styles.tabs}>
+            <TouchableOpacity 
+              style={[styles.tab, activeTab === 'transactions' && styles.activeTab]}
+              onPress={() => setActiveTab('transactions')}
+            >
+              <Text style={[styles.tabText, activeTab === 'transactions' && styles.activeTabText]}>Transaksi</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.tab, activeTab === 'channels' && styles.activeTab]}
+              onPress={() => setActiveTab('channels')}
+            >
+              <Text style={[styles.tabText, activeTab === 'channels' && styles.activeTabText]}>Rekening</Text>
+            </TouchableOpacity>
+          </View>
+
+          {loading ? (
+            <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 20 }} />
           ) : (
-            <FlatList
-              data={channels}
-              renderItem={renderChannelItem}
-              keyExtractor={item => item.id}
-              contentContainerStyle={styles.listContent}
-              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-              ListEmptyComponent={
-                <View style={styles.emptyState}>
-                  <Ionicons name="wallet-outline" size={48} color="#ccc" />
-                  <Text style={styles.emptyText}>Belum ada rekening</Text>
-                </View>
-              }
-            />
+            <>
+              {activeTab === 'transactions' ? (
+                <FlatList
+                  data={transactions}
+                  renderItem={renderTransactionItem}
+                  keyExtractor={item => item.id}
+                  contentContainerStyle={styles.listContent}
+                  refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                  ListEmptyComponent={
+                    <View style={styles.emptyState}>
+                      <Ionicons name="receipt-outline" size={48} color="#ccc" />
+                      <Text style={styles.emptyText}>Belum ada transaksi</Text>
+                    </View>
+                  }
+                />
+              ) : (
+                <FlatList
+                  data={channels}
+                  renderItem={renderChannelItem}
+                  keyExtractor={item => item.id}
+                  contentContainerStyle={styles.listContent}
+                  refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                  ListEmptyComponent={
+                    <View style={styles.emptyState}>
+                      <Ionicons name="wallet-outline" size={48} color="#ccc" />
+                      <Text style={styles.emptyText}>Belum ada rekening</Text>
+                    </View>
+                  }
+                />
+              )}
+            </>
           )}
+
+          {/* FAB */}
+          <TouchableOpacity 
+            style={styles.fab}
+            onPress={activeTab === 'transactions' ? handleAddTransaction : handleAddChannel}
+          >
+            <Ionicons name="add" size={28} color="#fff" />
+          </TouchableOpacity>
+
+          {/* Add Transaction Modal */}
+          <Modal visible={showTransactionModal} animationType="slide" transparent>
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>{editingTransaction ? 'Edit Transaksi' : 'Catat Transaksi'}</Text>
+                  <TouchableOpacity onPress={() => setShowTransactionModal(false)}>
+                    <Ionicons name="close" size={24} color="#333" />
+                  </TouchableOpacity>
+                </View>
+                
+                <ScrollView style={styles.modalBody}>
+                  {/* Type Switch */}
+                  <View style={styles.typeSelector}>
+                    <TouchableOpacity 
+                      style={[styles.typeBtn, trxType === 'expense' && styles.expenseBtn]}
+                      onPress={() => setTrxType('expense')}
+                    >
+                      <Text style={[styles.typeText, trxType === 'expense' && { color: '#fff' }]}>Pengeluaran</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[styles.typeBtn, trxType === 'income' && styles.incomeBtn]}
+                      onPress={() => setTrxType('income')}
+                    >
+                      <Text style={[styles.typeText, trxType === 'income' && { color: '#fff' }]}>Pemasukan</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <Text style={styles.label}>Jumlah (Rp)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={trxAmount}
+                    onChangeText={(text) => setTrxAmount(formatNumberInput(text))}
+                    keyboardType="numeric"
+                    placeholder="0"
+                  />
+
+                  <Text style={styles.label}>Rekening</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipContainer}>
+                    {channels.map(ch => (
+                      <TouchableOpacity
+                        key={ch.id}
+                        style={[styles.chip, trxChannelId === ch.id && styles.activeChip]}
+                        onPress={() => setTrxChannelId(ch.id)}
+                      >
+                        <Text style={[styles.chipText, trxChannelId === ch.id && styles.activeChipText]}>{ch.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+
+                  <Text style={styles.label}>Kategori</Text>
+                  <View style={styles.categoryChips}>
+                    {['Penjualan', 'Gaji', 'Listrik', 'Sewa', 'Lainnya'].map(cat => (
+                      <TouchableOpacity
+                        key={cat}
+                        style={[styles.smallChip, trxCategory === cat && styles.activeSmallChip]}
+                        onPress={() => setTrxCategory(cat)}
+                      >
+                        <Text style={[styles.smallChipText, trxCategory === cat && styles.activeSmallChipText]}>{cat}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <TextInput
+                    style={[styles.input, { marginTop: 8 }]}
+                    value={trxCategory}
+                    onChangeText={setTrxCategory}
+                    placeholder="Ketik kategori lain..."
+                  />
+
+                  <Text style={styles.label}>Deskripsi (Opsional)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={trxDescription}
+                    onChangeText={setTrxDescription}
+                    placeholder="Catatan..."
+                  />
+
+                  <TouchableOpacity 
+                    style={[styles.submitBtn, saving && styles.disabledBtn]}
+                    onPress={submitTransaction}
+                    disabled={saving}
+                  >
+                    {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Simpan</Text>}
+                  </TouchableOpacity>
+                </ScrollView>
+              </View>
+            </View>
+          </Modal>
+
+          {/* Add Channel Modal */}
+          <Modal visible={showChannelModal} animationType="slide" transparent>
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>{editingChannel ? 'Edit Rekening' : 'Tambah Rekening'}</Text>
+                  <TouchableOpacity onPress={() => setShowChannelModal(false)}>
+                    <Ionicons name="close" size={24} color="#333" />
+                  </TouchableOpacity>
+                </View>
+                
+                <View style={styles.modalBody}>
+                  <Text style={styles.label}>Nama Rekening</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={channelName}
+                    onChangeText={setChannelName}
+                    placeholder="Contoh: BCA, Kasir Utama"
+                  />
+
+                  <Text style={styles.label}>Tipe</Text>
+                  <View style={styles.row}>
+                    <TouchableOpacity 
+                      style={[styles.radioBtn, channelType === 'digital' && styles.radioActive]}
+                      onPress={() => setChannelType('digital')}
+                    >
+                      <Text style={channelType === 'digital' ? styles.radioTextActive : styles.radioText}>Digital/Bank</Text>
+                    </TouchableOpacity>
+                    <View style={{ width: 10 }} />
+                    <TouchableOpacity 
+                      style={[styles.radioBtn, channelType === 'cash' && styles.radioActive]}
+                      onPress={() => setChannelType('cash')}
+                    >
+                      <Text style={channelType === 'cash' ? styles.radioTextActive : styles.radioText}>Tunai</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <Text style={styles.label}>Saldo {editingChannel ? 'Saat Ini' : 'Awal'}</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={initialBalance}
+                    onChangeText={(text) => setInitialBalance(formatNumberInput(text))}
+                    keyboardType="numeric"
+                    placeholder="0"
+                  />
+
+                  <TouchableOpacity 
+                    style={[styles.submitBtn, saving && styles.disabledBtn]}
+                    onPress={submitChannel}
+                    disabled={saving}
+                  >
+                    {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Simpan</Text>}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
         </>
       )}
-
-      {/* FAB */}
-      <TouchableOpacity 
-        style={styles.fab}
-        onPress={activeTab === 'transactions' ? handleAddTransaction : handleAddChannel}
-      >
-        <Ionicons name="add" size={28} color="#fff" />
-      </TouchableOpacity>
-
-      {/* Add Transaction Modal */}
-      <Modal visible={showTransactionModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{editingTransaction ? 'Edit Transaksi' : 'Catat Transaksi'}</Text>
-              <TouchableOpacity onPress={() => setShowTransactionModal(false)}>
-                <Ionicons name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-            
-            <ScrollView style={styles.modalBody}>
-              {/* Type Switch */}
-              <View style={styles.typeSelector}>
-                <TouchableOpacity 
-                  style={[styles.typeBtn, trxType === 'expense' && styles.expenseBtn]}
-                  onPress={() => setTrxType('expense')}
-                >
-                  <Text style={[styles.typeText, trxType === 'expense' && { color: '#fff' }]}>Pengeluaran</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.typeBtn, trxType === 'income' && styles.incomeBtn]}
-                  onPress={() => setTrxType('income')}
-                >
-                  <Text style={[styles.typeText, trxType === 'income' && { color: '#fff' }]}>Pemasukan</Text>
-                </TouchableOpacity>
-              </View>
-
-              <Text style={styles.label}>Jumlah (Rp)</Text>
-              <TextInput
-                style={styles.input}
-                value={trxAmount}
-                onChangeText={(text) => setTrxAmount(formatNumberInput(text))}
-                keyboardType="numeric"
-                placeholder="0"
-              />
-
-              <Text style={styles.label}>Rekening</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipContainer}>
-                {channels.map(ch => (
-                  <TouchableOpacity
-                    key={ch.id}
-                    style={[styles.chip, trxChannelId === ch.id && styles.activeChip]}
-                    onPress={() => setTrxChannelId(ch.id)}
-                  >
-                    <Text style={[styles.chipText, trxChannelId === ch.id && styles.activeChipText]}>{ch.name}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              <Text style={styles.label}>Kategori</Text>
-              <View style={styles.categoryChips}>
-                {['Penjualan', 'Gaji', 'Listrik', 'Sewa', 'Lainnya'].map(cat => (
-                  <TouchableOpacity
-                    key={cat}
-                    style={[styles.smallChip, trxCategory === cat && styles.activeSmallChip]}
-                    onPress={() => setTrxCategory(cat)}
-                  >
-                    <Text style={[styles.smallChipText, trxCategory === cat && styles.activeSmallChipText]}>{cat}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <TextInput
-                style={[styles.input, { marginTop: 8 }]}
-                value={trxCategory}
-                onChangeText={setTrxCategory}
-                placeholder="Ketik kategori lain..."
-              />
-
-              <Text style={styles.label}>Deskripsi (Opsional)</Text>
-              <TextInput
-                style={styles.input}
-                value={trxDescription}
-                onChangeText={setTrxDescription}
-                placeholder="Catatan..."
-              />
-
-              <TouchableOpacity 
-                style={[styles.submitBtn, saving && styles.disabledBtn]}
-                onPress={submitTransaction}
-                disabled={saving}
-              >
-                {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Simpan</Text>}
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Add Channel Modal */}
-      <Modal visible={showChannelModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{editingChannel ? 'Edit Rekening' : 'Tambah Rekening'}</Text>
-              <TouchableOpacity onPress={() => setShowChannelModal(false)}>
-                <Ionicons name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.modalBody}>
-              <Text style={styles.label}>Nama Rekening</Text>
-              <TextInput
-                style={styles.input}
-                value={channelName}
-                onChangeText={setChannelName}
-                placeholder="Contoh: BCA, Kasir Utama"
-              />
-
-              <Text style={styles.label}>Tipe</Text>
-              <View style={styles.row}>
-                <TouchableOpacity 
-                  style={[styles.radioBtn, channelType === 'digital' && styles.radioActive]}
-                  onPress={() => setChannelType('digital')}
-                >
-                  <Text style={channelType === 'digital' ? styles.radioTextActive : styles.radioText}>Digital/Bank</Text>
-                </TouchableOpacity>
-                <View style={{ width: 10 }} />
-                <TouchableOpacity 
-                  style={[styles.radioBtn, channelType === 'cash' && styles.radioActive]}
-                  onPress={() => setChannelType('cash')}
-                >
-                  <Text style={channelType === 'cash' ? styles.radioTextActive : styles.radioText}>Tunai</Text>
-                </TouchableOpacity>
-              </View>
-
-              <Text style={styles.label}>Saldo {editingChannel ? 'Saat Ini' : 'Awal'}</Text>
-              <TextInput
-                style={styles.input}
-                value={initialBalance}
-                onChangeText={(text) => setInitialBalance(formatNumberInput(text))}
-                keyboardType="numeric"
-                placeholder="0"
-              />
-
-              <TouchableOpacity 
-                style={[styles.submitBtn, saving && styles.disabledBtn]}
-                onPress={submitChannel}
-                disabled={saving}
-              >
-                {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Simpan</Text>}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
     </SafeAreaView>
   );
 }
@@ -950,5 +1007,70 @@ const styles = StyleSheet.create({
   radioTextActive: {
     color: Colors.primary,
     fontWeight: '600',
+  },
+
+  // Lock Screen
+  lockContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#F5F7FA',
+  },
+  lockCard: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 32,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 360,
+    ...Shadows.md,
+  },
+  lockIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#E3F2FD',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  lockTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 8,
+  },
+  lockSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 20,
+  },
+  lockInput: {
+    width: '100%',
+    backgroundColor: '#F5F7FA',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    fontSize: 18,
+    textAlign: 'center',
+    color: '#333',
+  },
+  unlockBtn: {
+    width: '100%',
+    backgroundColor: Colors.primary,
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginTop: 24,
+    ...Shadows.sm,
+  },
+  unlockBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

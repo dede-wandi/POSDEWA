@@ -323,37 +323,51 @@ export async function deletePersonalTransaction(transactionId) {
       .eq('owner_id', session.user.id)
       .single();
 
-    if (trxError || !trx) return { success: false, error: 'Transaksi tidak ditemukan' };
-
-    // 2. Get current account balance
-    const { data: account, error: accError } = await supabase
-      .from('personal_accounts')
-      .select('balance')
-      .eq('id', trx.account_id)
-      .eq('owner_id', session.user.id)
-      .single();
-
-    if (accError || !account) return { success: false, error: 'Akun tidak ditemukan' };
-
-    let currentBalance = Number(account.balance) || 0;
-
-    // 3. Revert transaction effect
-    if (trx.type === 'income') {
-      currentBalance -= Number(trx.amount);
-    } else {
-      currentBalance += Number(trx.amount);
+    if (trxError || !trx) {
+      console.log('❌ financeSupabase: Transaction not found or error:', trxError);
+      return { success: false, error: 'Transaksi tidak ditemukan' };
     }
 
-    // 4. Update account balance
-    const { error: updateBalanceError } = await supabase
-      .from('personal_accounts')
-      .update({ 
-        balance: currentBalance,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', trx.account_id);
+    // 2. If transaction has an account, try to revert balance
+    if (trx.account_id) {
+      const { data: account, error: accError } = await supabase
+        .from('personal_accounts')
+        .select('balance')
+        .eq('id', trx.account_id)
+        .eq('owner_id', session.user.id)
+        .single();
 
-    if (updateBalanceError) return { success: false, error: updateBalanceError.message };
+      if (accError || !account) {
+        // If account not found, we cannot revert balance.
+        // For data integrity regarding "pastikan saldo kembali", we should probably stop.
+        console.log('❌ financeSupabase: Account not found for transaction:', trx.account_id);
+        return { success: false, error: 'Akun terkait tidak ditemukan. Saldo tidak dapat dikembalikan.' };
+      }
+
+      let currentBalance = Number(account.balance) || 0;
+      const amountToRevert = Number(trx.amount) || 0;
+
+      // 3. Revert transaction effect
+      if (trx.type === 'income') {
+        currentBalance -= amountToRevert;
+      } else {
+        currentBalance += amountToRevert;
+      }
+
+      // 4. Update account balance
+      const { error: updateBalanceError } = await supabase
+        .from('personal_accounts')
+        .update({ 
+          balance: currentBalance,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', trx.account_id);
+
+      if (updateBalanceError) {
+        console.log('❌ financeSupabase: Error updating balance:', updateBalanceError);
+        return { success: false, error: 'Gagal mengupdate saldo: ' + updateBalanceError.message };
+      }
+    }
 
     // 5. Delete transaction record
     const { error: deleteError } = await supabase
@@ -362,7 +376,10 @@ export async function deletePersonalTransaction(transactionId) {
       .eq('id', transactionId)
       .eq('owner_id', session.user.id);
 
-    if (deleteError) return { success: false, error: deleteError.message };
+    if (deleteError) {
+      console.log('❌ financeSupabase: Error deleting transaction:', deleteError);
+      return { success: false, error: 'Gagal menghapus transaksi: ' + deleteError.message };
+    }
 
     return { success: true };
 
