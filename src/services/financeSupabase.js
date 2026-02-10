@@ -100,7 +100,7 @@ export async function deletePersonalAccount(id) {
 }
 
 // Get personal transactions
-export async function getPersonalTransactions(accountId = null, limit = 50) {
+export async function getPersonalTransactions(accountId = null, limit = 50, startDate = null, endDate = null) {
   const supabase = getSupabaseClient();
   if (!supabase) return { success: false, error: 'Supabase tidak tersedia' };
 
@@ -119,11 +119,20 @@ export async function getPersonalTransactions(accountId = null, limit = 50) {
         )
       `)
       .eq('owner_id', session.user.id)
-      .order('created_at', { ascending: false })
-      .limit(limit);
+      .order('transaction_date', { ascending: false }); // Order by transaction_date, not created_at
 
     if (accountId) {
       query = query.eq('account_id', accountId);
+    }
+
+    if (startDate && endDate) {
+      // If date range is provided, use it and ignore limit (or make limit optional/larger)
+      query = query
+        .gte('transaction_date', startDate)
+        .lte('transaction_date', endDate);
+    } else {
+      // Default behavior with limit
+      query = query.limit(limit);
     }
 
     const { data, error } = await query;
@@ -205,6 +214,160 @@ export async function recordPersonalTransaction(data) {
 
   } catch (error) {
     console.log('❌ financeSupabase: Exception in recordPersonalTransaction:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Update personal transaction
+export async function updatePersonalTransaction(transactionId, updates) {
+  console.log('💰 financeSupabase: updatePersonalTransaction called with:', transactionId, updates);
+  
+  const supabase = getSupabaseClient();
+  if (!supabase) return { success: false, error: 'Supabase tidak tersedia' };
+
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData?.session;
+    if (!session?.user) return { success: false, error: 'User tidak ter-autentikasi' };
+
+    // 1. Get original transaction to revert balance
+    const { data: originalTrx, error: trxError } = await supabase
+      .from('personal_transactions')
+      .select('*')
+      .eq('id', transactionId)
+      .eq('owner_id', session.user.id)
+      .single();
+
+    if (trxError || !originalTrx) return { success: false, error: 'Transaksi tidak ditemukan' };
+
+    // 2. Get current account balance
+    const { data: account, error: accError } = await supabase
+      .from('personal_accounts')
+      .select('balance')
+      .eq('id', originalTrx.account_id)
+      .eq('owner_id', session.user.id)
+      .single();
+
+    if (accError || !account) return { success: false, error: 'Akun tidak ditemukan' };
+
+    let currentBalance = Number(account.balance) || 0;
+
+    // 3. Revert original transaction effect
+    if (originalTrx.type === 'income') {
+      currentBalance -= Number(originalTrx.amount);
+    } else {
+      currentBalance += Number(originalTrx.amount);
+    }
+
+    // 4. Apply new transaction effect (if amount or type changed)
+    const newType = updates.type || originalTrx.type;
+    const newAmount = updates.amount !== undefined ? Number(updates.amount) : Number(originalTrx.amount);
+
+    if (newType === 'income') {
+      currentBalance += newAmount;
+    } else {
+      currentBalance -= newAmount;
+    }
+
+    // 5. Update account balance
+    const { error: updateBalanceError } = await supabase
+      .from('personal_accounts')
+      .update({ 
+        balance: currentBalance,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', originalTrx.account_id);
+
+    if (updateBalanceError) return { success: false, error: updateBalanceError.message };
+
+    // 6. Update transaction record
+    const { data: updatedTrx, error: updateTrxError } = await supabase
+      .from('personal_transactions')
+      .update({
+        ...updates,
+        amount: newAmount,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', transactionId)
+      .eq('owner_id', session.user.id)
+      .select()
+      .single();
+
+    if (updateTrxError) return { success: false, error: updateTrxError.message };
+
+    return { success: true, data: updatedTrx };
+
+  } catch (error) {
+    console.log('❌ financeSupabase: Exception in updatePersonalTransaction:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Delete personal transaction
+export async function deletePersonalTransaction(transactionId) {
+  console.log('💰 financeSupabase: deletePersonalTransaction called with:', transactionId);
+  
+  const supabase = getSupabaseClient();
+  if (!supabase) return { success: false, error: 'Supabase tidak tersedia' };
+
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData?.session;
+    if (!session?.user) return { success: false, error: 'User tidak ter-autentikasi' };
+
+    // 1. Get transaction to revert balance
+    const { data: trx, error: trxError } = await supabase
+      .from('personal_transactions')
+      .select('*')
+      .eq('id', transactionId)
+      .eq('owner_id', session.user.id)
+      .single();
+
+    if (trxError || !trx) return { success: false, error: 'Transaksi tidak ditemukan' };
+
+    // 2. Get current account balance
+    const { data: account, error: accError } = await supabase
+      .from('personal_accounts')
+      .select('balance')
+      .eq('id', trx.account_id)
+      .eq('owner_id', session.user.id)
+      .single();
+
+    if (accError || !account) return { success: false, error: 'Akun tidak ditemukan' };
+
+    let currentBalance = Number(account.balance) || 0;
+
+    // 3. Revert transaction effect
+    if (trx.type === 'income') {
+      currentBalance -= Number(trx.amount);
+    } else {
+      currentBalance += Number(trx.amount);
+    }
+
+    // 4. Update account balance
+    const { error: updateBalanceError } = await supabase
+      .from('personal_accounts')
+      .update({ 
+        balance: currentBalance,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', trx.account_id);
+
+    if (updateBalanceError) return { success: false, error: updateBalanceError.message };
+
+    // 5. Delete transaction record
+    const { error: deleteError } = await supabase
+      .from('personal_transactions')
+      .delete()
+      .eq('id', transactionId)
+      .eq('owner_id', session.user.id);
+
+    if (deleteError) return { success: false, error: deleteError.message };
+
+    return { success: true };
+
+  } catch (error) {
+    console.log('❌ financeSupabase: Exception in deletePersonalTransaction:', error);
     return { success: false, error: error.message };
   }
 }

@@ -60,6 +60,7 @@ export default function FinanceScreen({ navigation }) {
   
   const [saving, setSaving] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
+  const [currentDate, setCurrentDate] = useState(new Date());
 
   // Helper: Format number with thousand separator
   const formatNumberInput = (value) => {
@@ -73,14 +74,77 @@ export default function FinanceScreen({ navigation }) {
     return formattedValue.replace(/\./g, '');
   };
 
-  // Render Header with Back Button
-  const renderHeader = () => (
-    <View style={styles.header}>
-      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-        <Ionicons name="arrow-back" size={24} color="#333" />
-      </TouchableOpacity>
-    </View>
-  );
+  // Date Helpers
+  const getStartOfMonth = (date) => {
+    const d = new Date(date.getFullYear(), date.getMonth(), 1);
+    d.setHours(0, 0, 0, 0);
+    return d.toISOString();
+  };
+
+  const getEndOfMonth = (date) => {
+    const d = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+    d.setHours(23, 59, 59, 999);
+    return d.toISOString();
+  };
+
+  const changeMonth = (delta) => {
+    const newDate = new Date(currentDate);
+    newDate.setMonth(newDate.getMonth() + delta);
+    setCurrentDate(newDate);
+  };
+
+  // Render Header with Month Selector and Summary
+  const renderHeader = () => {
+    const monthYear = currentDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+    
+    // Calculate Monthly Summary
+    const totalIncome = transactions
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+      
+    const totalExpense = transactions
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
+    const balance = totalIncome - totalExpense;
+
+    return (
+      <View style={styles.headerContainer}>
+        {/* Month Selector */}
+        <View style={styles.monthSelector}>
+          <TouchableOpacity onPress={() => changeMonth(-1)} style={styles.monthNavBtn}>
+            <Ionicons name="chevron-back" size={24} color={Colors.primary} />
+          </TouchableOpacity>
+          <Text style={styles.monthTitle}>{monthYear}</Text>
+          <TouchableOpacity onPress={() => changeMonth(1)} style={styles.monthNavBtn}>
+            <Ionicons name="chevron-forward" size={24} color={Colors.primary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Monthly Summary */}
+        {activeTab === 'transactions' && (
+          <View style={styles.summaryContainer}>
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryLabel}>Pemasukan</Text>
+              <Text style={[styles.summaryValue, { color: '#4CAF50' }]}>{formatCurrency(totalIncome)}</Text>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryLabel}>Pengeluaran</Text>
+              <Text style={[styles.summaryValue, { color: '#F44336' }]}>{formatCurrency(totalExpense)}</Text>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryLabel}>Selisih</Text>
+              <Text style={[styles.summaryValue, { color: balance >= 0 ? '#4CAF50' : '#F44336' }]}>
+                {formatCurrency(balance)}
+              </Text>
+            </View>
+          </View>
+        )}
+      </View>
+    );
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -100,7 +164,11 @@ export default function FinanceScreen({ navigation }) {
   };
 
   const loadTransactions = async () => {
-    const result = await getPersonalTransactions(null, 50);
+    const startDate = getStartOfMonth(currentDate);
+    const endDate = getEndOfMonth(currentDate);
+    
+    // Get all transactions for the month (limit set high to catch all)
+    const result = await getPersonalTransactions(null, 2000, startDate, endDate);
     if (result.success) {
       setTransactions(result.data);
     }
@@ -115,7 +183,7 @@ export default function FinanceScreen({ navigation }) {
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [])
+    }, [currentDate])
   );
 
   // --- Transaction Handlers ---
@@ -553,24 +621,52 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F7FA',
   },
-  header: {
+  headerContainer: {
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    paddingBottom: 16,
+    ...Shadows.sm,
+    zIndex: 10,
+  },
+  monthSelector: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
-  headerTitle: {
+  monthTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: '#333',
   },
-  backButton: {
+  monthNavBtn: {
     padding: 8,
-    marginLeft: -8,
+  },
+  summaryContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    marginTop: 4,
+  },
+  summaryItem: {
+    alignItems: 'center',
+  },
+  summaryLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
+  },
+  summaryValue: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  summaryDivider: {
+    width: 1,
+    backgroundColor: '#E0E0E0',
+    height: 30,
+    alignSelf: 'center',
   },
   tabs: {
     flexDirection: 'row',
