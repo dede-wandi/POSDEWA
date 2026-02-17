@@ -49,6 +49,7 @@ import { CartProvider } from './src/contexts/CartContext';
 import { ToastProvider } from './src/contexts/ToastContext';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import CartScreen from './src/screens/PublicProducts/CartScreen';
+import AntiGoresStockScreen from './src/screens/AntiGoresStockScreen';
 
 enableScreens(true);
 
@@ -330,6 +331,14 @@ function MainStack() {
         component={TransactionAnalysisScreen}
         options={{
           presentation: 'card',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen 
+        name="AntiGoresStock" 
+        component={AntiGoresStockScreen}
+        options={{
+          presentation: 'modal',
           headerShown: false,
         }}
       />

@@ -104,6 +104,13 @@ export default function MoreMenuScreen({ navigation }) {
       onPress: () => navigation.navigate('AIAssistant'),
     },
     {
+      label: 'Cek Stok Antigores',
+      icon: 'shield-checkmark',
+      iconColor: '#607D8B',
+      bgColor: '#ECEFF1',
+      onPress: () => navigation.navigate('AntiGoresStock'),
+    },
+    {
       label: 'Top Penjualan',
       icon: 'trending-up',
       iconColor: '#FFC107',

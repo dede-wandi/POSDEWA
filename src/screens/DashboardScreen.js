@@ -232,6 +232,13 @@ export default function DashboardScreen({ navigation }) {
             <TouchableOpacity 
               style={styles.headerIconButton} 
               activeOpacity={0.8}
+              onPress={() => navigation.navigate('AIAssistant')}
+            >
+              <Ionicons name="chatbubble-ellipses-outline" size={22} color={Colors.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.headerIconButton} 
+              activeOpacity={0.8}
               onPress={() => navigation.navigate('History')}
             >
               <View>
