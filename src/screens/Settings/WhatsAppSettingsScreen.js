@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { getSupabaseClient } from '../../services/supabase';
 import { useToast } from '../../contexts/ToastContext';
+import { checkWaConfigReady, getWaConfig, upsertWaConfig } from '../../services/waNotifSupabase';
 
 export default function WhatsAppSettingsScreen({ navigation }) {
   const { user } = useAuth();
@@ -15,6 +16,9 @@ export default function WhatsAppSettingsScreen({ navigation }) {
     wa_target_2: '',
     wa_target_3: ''
   });
+  const [waCfg, setWaCfg] = useState({ token: '' });
+  const [schemaReady, setSchemaReady] = useState(true);
+  const [schemaMsg, setSchemaMsg] = useState('');
 
   useEffect(() => {
     loadSettings();
@@ -38,6 +42,16 @@ export default function WhatsAppSettingsScreen({ navigation }) {
           wa_target_2: currentUser.user_metadata.wa_target_2 || '',
           wa_target_3: currentUser.user_metadata.wa_target_3 || ''
         });
+      }
+      const chk = await checkWaConfigReady();
+      if (!chk.ready) {
+        setSchemaReady(false);
+        setSchemaMsg(chk.message || '');
+      } else {
+        setSchemaReady(true);
+        setSchemaMsg('');
+        const cfg = await getWaConfig({ ownerId: currentUser.id });
+        if (cfg) setWaCfg({ token: cfg.token || '' });
       }
     } catch (error) {
       console.error('Exception loading settings:', error);
@@ -67,6 +81,12 @@ export default function WhatsAppSettingsScreen({ navigation }) {
         showToast('Gagal menyimpan pengaturan: ' + error.message, 'error');
         return;
       }
+      if (schemaReady) {
+        await upsertWaConfig({
+          ownerId: user.id,
+          token: waCfg.token.trim()
+        });
+      }
 
       showToast('Pengaturan berhasil disimpan', 'success');
       navigation.goBack();
@@ -83,6 +103,51 @@ export default function WhatsAppSettingsScreen({ navigation }) {
       ...prev,
       [field]: value
     }));
+  };
+  const updateCfg = (field, value) => {
+    setWaCfg(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+  const WA_SCHEMA_SQL = `
+create table if not exists public.wa_notif_config (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null,
+  token text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.wa_notif_config enable row level security;
+
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='wa_notif_config' and policyname='wa_notif_select_own') then
+    create policy wa_notif_select_own on public.wa_notif_config for select using (auth.uid() = owner_id);
+  end if;
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='wa_notif_config' and policyname='wa_notif_mod_own') then
+    create policy wa_notif_mod_own on public.wa_notif_config for all using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
+  end if;
+end $$;
+`;
+  const copySql = async () => {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(WA_SCHEMA_SQL);
+        showToast('SQL schema disalin ke clipboard', 'success');
+        return;
+      }
+      const ta = document.createElement('textarea');
+      ta.value = WA_SCHEMA_SQL;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('SQL schema disalin ke clipboard', 'success');
+    } catch {
+      showToast('Gagal menyalin SQL schema', 'error');
+    }
   };
 
   return (
@@ -159,6 +224,37 @@ export default function WhatsAppSettingsScreen({ navigation }) {
                 Notifikasi akan dikirim dengan jeda 5-10 detik untuk menghindari pembatasan broadcast.
               </Text>
             </View>
+
+            <View style={[styles.separatorLine]} />
+
+            {!schemaReady ? (
+              <View style={styles.schemaBox}>
+                <Ionicons name="alert-circle-outline" size={20} color="#b00020" style={{ marginRight: 8 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.schemaTitle}>Skema WA Notif belum tersedia</Text>
+                  <Text style={styles.schemaMsg}>{schemaMsg}</Text>
+                </View>
+              </View>
+            ) : null}
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Token API</Text>
+              <TextInput
+                style={styles.input}
+                value={waCfg.token}
+                onChangeText={(v) => updateCfg('token', v)}
+                placeholder="Masukkan token WA provider"
+                placeholderTextColor="#999"
+                secureTextEntry
+              />
+            </View>
+
+            {!schemaReady ? (
+              <TouchableOpacity style={styles.sqlButton} onPress={copySql}>
+                <Ionicons name="copy-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={styles.sqlButtonText}>Salin SQL Skema WA Notif</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -267,4 +363,44 @@ const styles = StyleSheet.create({
     color: '#666',
     lineHeight: 18,
   },
+  separatorLine: {
+    height: 1,
+    backgroundColor: '#E5E5EA',
+    marginVertical: 20,
+  },
+  schemaBox: {
+    flexDirection: 'row',
+    backgroundColor: '#FDECEE',
+    borderColor: '#F9CADA',
+    borderWidth: 1,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 12
+  },
+  schemaTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#b00020',
+    marginBottom: 4
+  },
+  schemaMsg: {
+    fontSize: 12,
+    color: '#b00020'
+  },
+  sqlButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#007AFF',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginTop: 10
+  },
+  sqlButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600'
+  }
 });

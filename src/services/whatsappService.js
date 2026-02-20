@@ -1,8 +1,9 @@
 
 import { getSupabaseClient } from './supabase';
+import { getWaConfig } from './waNotifSupabase';
 
 export const sendWhatsAppNotification = async (saleData, items) => {
-  const token = 'zXq9ZwXzDF4SpQCcWum2';
+  let token = '';
   const url = 'https://api.fonnte.com/send';
 
   console.log('🚀 Starting WhatsApp notification service...');
@@ -26,10 +27,22 @@ export const sendWhatsAppNotification = async (saleData, items) => {
     }
 
     console.log('🎯 Notification Targets:', target);
+    // 1.1 Get Provider Token
+    try {
+      const cfg = await getWaConfig({ ownerId: user?.id });
+      token = cfg?.token || '';
+    } catch (e) {
+      console.warn('⚠️ WA config not found, using empty token');
+      token = '';
+    }
 
     // 2. Validate Input
     if (!saleData || !items) {
       console.error('❌ WhatsApp Service: Missing saleData or items');
+      return;
+    }
+    if (!token) {
+      console.warn('⚠️ WhatsApp token not set. Skip sending notification.');
       return;
     }
 
