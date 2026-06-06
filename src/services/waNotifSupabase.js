@@ -5,9 +5,17 @@ export async function checkWaConfigReady() {
   try {
     const { error } = await supabase
       .from('wa_notif_config')
-      .select('id', { head: true, count: 'exact' })
+      .select('id, provider')
       .limit(0);
-    if (error) return { ready: false, message: error.message };
+    if (error) {
+      if (error.message.includes('does not exist') && !error.message.includes('column')) {
+        return { ready: false, message: 'Tabel wa_notif_config belum dibuat. Silakan jalankan SQL Skema.' };
+      }
+      if (error.message.includes('column') || error.message.includes('provider')) {
+        return { ready: false, columnMissing: true, message: 'Kolom baru (provider, appkey, authkey) belum dibuat. Silakan jalankan migrasi SQL.' };
+      }
+      return { ready: false, message: error.message };
+    }
     return { ready: true };
   } catch (e) {
     return { ready: false, message: e?.message || 'unknown' };
@@ -18,19 +26,36 @@ export async function getWaConfig({ ownerId }) {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('wa_notif_config')
-    .select('id, token')
+    .select('id, token, provider, appkey, authkey')
     .eq('owner_id', ownerId)
     .limit(1)
     .maybeSingle();
-  if (error) throw new Error(error.message);
+
+  if (error) {
+    if (error.message.includes('column') || error.message.includes('does not exist')) {
+      console.warn('⚠️ Missing new columns in wa_notif_config, falling back to legacy schema', error.message);
+      const { data: legacyData, error: legacyError } = await supabase
+        .from('wa_notif_config')
+        .select('id, token')
+        .eq('owner_id', ownerId)
+        .limit(1)
+        .maybeSingle();
+      if (legacyError) throw new Error(legacyError.message);
+      return legacyData ? { ...legacyData, provider: 'fonnte', appkey: '', authkey: '' } : null;
+    }
+    throw new Error(error.message);
+  }
   return data || null;
 }
 
-export async function upsertWaConfig({ ownerId, token }) {
+export async function upsertWaConfig({ ownerId, token, provider, appkey, authkey }) {
   const supabase = getSupabaseClient();
   const payload = {
     owner_id: ownerId,
-    token: token || ''
+    provider: provider || 'fonnte',
+    token: token || '',
+    appkey: appkey || '',
+    authkey: authkey || ''
   };
   const { data: existing, error: e1 } = await supabase
     .from('wa_notif_config')
@@ -45,15 +70,48 @@ export async function upsertWaConfig({ ownerId, token }) {
       .update(payload)
       .eq('id', existing.id)
       .eq('owner_id', ownerId);
-    if (error) throw new Error(error.message);
+    if (error) {
+      if (error.message.includes('column') || error.message.includes('does not exist')) {
+        console.warn('⚠️ Missing new columns on update, falling back to legacy payload');
+        const legacyPayload = {
+          owner_id: ownerId,
+          token: token || ''
+        };
+        const { error: legacyError } = await supabase
+          .from('wa_notif_config')
+          .update(legacyPayload)
+          .eq('id', existing.id)
+          .eq('owner_id', ownerId);
+        if (legacyError) throw new Error(legacyError.message);
+      } else {
+        throw new Error(error.message);
+      }
+    }
     return { success: true, id: existing.id };
   } else {
     const { data, error } = await supabase
       .from('wa_notif_config')
       .insert(payload)
       .select('id')
-      .single();
-    if (error) throw new Error(error.message);
-    return { success: true, id: data.id };
+      .maybeSingle();
+    if (error) {
+      if (error.message.includes('column') || error.message.includes('does not exist')) {
+        console.warn('⚠️ Missing new columns on insert, falling back to legacy payload');
+        const legacyPayload = {
+          owner_id: ownerId,
+          token: token || ''
+        };
+        const { data: legacyData, error: legacyError } = await supabase
+          .from('wa_notif_config')
+          .insert(legacyPayload)
+          .select('id')
+          .maybeSingle();
+        if (legacyError) throw new Error(legacyError.message);
+        return { success: true, id: legacyData?.id };
+      } else {
+        throw new Error(error.message);
+      }
+    }
+    return { success: true, id: data?.id };
   }
 }

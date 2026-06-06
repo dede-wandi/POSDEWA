@@ -19,6 +19,7 @@ import { getDashboardStats, getRecentSales } from '../services/dashboardSupabase
 import { Colors, Spacing, Radii, Shadows } from '../theme';
 
 const { width } = Dimensions.get('window');
+const GRAB_GREEN = '#00B14F';
 
 export default function DashboardScreen({ navigation }) {
   const { user, getBusinessName } = useAuth();
@@ -111,21 +112,18 @@ export default function DashboardScreen({ navigation }) {
 
   const StatCard = ({ title, value, subtitle, icon, color = Colors.primary, onPress, comparison }) => (
     <TouchableOpacity
-      style={[
-        styles.statCard,
-        { borderColor: Colors.border }
-      ]}
+      style={styles.statCard}
       onPress={onPress}
       disabled={!onPress}
       activeOpacity={0.85}
     >
       <View style={styles.statCardHeader}>
-        <View style={[styles.iconBadge, { backgroundColor: `${color}22` }]}> 
-          <Ionicons name={icon} size={20} color={color} />
+        <View style={[styles.iconBadge, { backgroundColor: `${color}15` }]}> 
+          <Ionicons name={icon} size={18} color={color} />
         </View>
         <Text style={styles.statCardTitle}>{title}</Text>
       </View>
-      <Text style={[styles.statCardValue]}>{value}</Text>
+      <Text style={styles.statCardValue}>{value}</Text>
       {subtitle && <Text style={styles.statCardSubtitle}>{subtitle}</Text>}
       {comparison && (
         <View style={styles.comparisonContainer}>
@@ -135,10 +133,10 @@ export default function DashboardScreen({ navigation }) {
            <View style={[styles.comparisonBadge, { backgroundColor: comparison.isUp ? '#E8F5E9' : '#FFEBEE' }]}>
              <Ionicons 
                 name={comparison.isUp ? "arrow-up" : "arrow-down"} 
-                size={12} 
-                color={comparison.isUp ? Colors.success : Colors.danger} 
+                size={10} 
+                color={comparison.isUp ? '#4CAF50' : '#F44336'} 
              />
-             <Text style={[styles.comparisonText, { color: comparison.isUp ? Colors.success : Colors.danger }]}>
+             <Text style={[styles.comparisonText, { color: comparison.isUp ? '#4CAF50' : '#F44336' }]}>
                 {comparison.diff}
              </Text>
            </View>
@@ -201,7 +199,7 @@ export default function DashboardScreen({ navigation }) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <ActivityIndicator size="large" color={GRAB_GREEN} />
         </View>
       </SafeAreaView>
     );
@@ -219,7 +217,7 @@ export default function DashboardScreen({ navigation }) {
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={styles.shopBadge}>
-              <Ionicons name="storefront" size={18} color="#fff" />
+              <Ionicons name="storefront" size={20} color="#fff" />
             </View>
             <View style={styles.shopInfo}>
               <Text style={styles.shopName}>{getBusinessName()}</Text>
@@ -234,7 +232,7 @@ export default function DashboardScreen({ navigation }) {
               activeOpacity={0.8}
               onPress={() => navigation.navigate('AIAssistant')}
             >
-              <Ionicons name="chatbubble-ellipses-outline" size={22} color={Colors.primary} />
+              <Ionicons name="chatbubble-ellipses-outline" size={22} color={GRAB_GREEN} />
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.headerIconButton} 
@@ -242,18 +240,18 @@ export default function DashboardScreen({ navigation }) {
               onPress={() => navigation.navigate('History')}
             >
               <View>
-                <Ionicons name="notifications-outline" size={20} color={Colors.text} />
+                <Ionicons name="notifications-outline" size={22} color="#1C1C1E" />
                 {(stats?.today?.transactions || 0) > 0 && (
                   <View style={{
                     position: 'absolute',
                     top: -2,
                     right: -2,
-                    backgroundColor: Colors.danger,
-                    borderRadius: 6,
+                    backgroundColor: '#FF3B30',
+                    borderRadius: 5,
                     width: 10,
                     height: 10,
-                    borderWidth: 1,
-                    borderColor: Colors.card
+                    borderWidth: 1.5,
+                    borderColor: '#FFFFFF'
                   }} />
                 )}
               </View>
@@ -263,7 +261,7 @@ export default function DashboardScreen({ navigation }) {
               activeOpacity={0.8}
               onPress={() => navigation.navigate('Akun')}
             >
-              <Ionicons name="person-circle" size={26} color={Colors.primary} />
+              <Ionicons name="person-circle-outline" size={26} color={GRAB_GREEN} />
             </TouchableOpacity>
           </View>
         </View>
@@ -271,58 +269,58 @@ export default function DashboardScreen({ navigation }) {
         {/* Menu Grid */}
         <View style={styles.menuContainer}>
           <View style={styles.menuGrid}>
-            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Penjualan')}>
-              <View style={[styles.menuIcon, { backgroundColor: '#E3F2FD' }]}>
-                <Ionicons name="cart" size={24} color="#2196F3" />
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Penjualan')} activeOpacity={0.85}>
+              <View style={[styles.menuIcon, { backgroundColor: '#3078F0' }]}>
+                <Ionicons name="cart" size={24} color="#FFFFFF" />
               </View>
               <Text style={styles.menuLabel}>Kasir</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Produk', { screen: 'DaftarProduk' })}>
-              <View style={[styles.menuIcon, { backgroundColor: '#E8F5E9' }]}>
-                <Ionicons name="cube" size={24} color="#4CAF50" />
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Produk', { screen: 'DaftarProduk' })} activeOpacity={0.85}>
+              <View style={[styles.menuIcon, { backgroundColor: '#00B14F' }]}>
+                <Ionicons name="cube" size={24} color="#FFFFFF" />
               </View>
               <Text style={styles.menuLabel}>Produk</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Produk', { screen: 'PublicProductsAdmin' })}>
-              <View style={[styles.menuIcon, { backgroundColor: '#F3E5F5' }]}>
-                <Ionicons name="globe" size={24} color="#9C27B0" />
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Produk', { screen: 'PublicProductsAdmin' })} activeOpacity={0.85}>
+              <View style={[styles.menuIcon, { backgroundColor: '#9C27B0' }]}>
+                <Ionicons name="globe" size={24} color="#FFFFFF" />
               </View>
               <Text style={styles.menuLabel}>Produk Publik</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('History')}>
-              <View style={[styles.menuIcon, { backgroundColor: '#FFF3E0' }]}>
-                <Ionicons name="time" size={24} color="#FF9800" />
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('History')} activeOpacity={0.85}>
+              <View style={[styles.menuIcon, { backgroundColor: '#FF9500' }]}>
+                <Ionicons name="time" size={24} color="#FFFFFF" />
               </View>
               <Text style={styles.menuLabel}>Riwayat</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Scan')}>
-              <View style={[styles.menuIcon, { backgroundColor: '#F5F5F5' }]}>
-                <Ionicons name="scan" size={24} color={Colors.text} />
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Scan')} activeOpacity={0.85}>
+              <View style={[styles.menuIcon, { backgroundColor: '#5E5E5E' }]}>
+                <Ionicons name="scan" size={24} color="#FFFFFF" />
               </View>
               <Text style={styles.menuLabel}>Barcode</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('StockManagement')}>
-              <View style={[styles.menuIcon, { backgroundColor: '#FFEBEE' }]}>
-                <Ionicons name="layers" size={24} color="#F44336" />
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('StockManagement')} activeOpacity={0.85}>
+              <View style={[styles.menuIcon, { backgroundColor: '#FF3B30' }]}>
+                <Ionicons name="layers" size={24} color="#FFFFFF" />
               </View>
               <Text style={styles.menuLabel}>Stok</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('SalesReport')}>
-              <View style={[styles.menuIcon, { backgroundColor: '#E0F2F1' }]}>
-                <Ionicons name="clipboard" size={24} color="#009688" />
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('SalesReport')} activeOpacity={0.85}>
+              <View style={[styles.menuIcon, { backgroundColor: '#009688' }]}>
+                <Ionicons name="clipboard" size={24} color="#FFFFFF" />
               </View>
               <Text style={styles.menuLabel}>Penjualan</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('MoreMenu')}>
-              <View style={[styles.menuIcon, { backgroundColor: '#E3F2FD' }]}>
-                <Ionicons name="grid" size={24} color={Colors.primary} />
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('MoreMenu')} activeOpacity={0.85}>
+              <View style={[styles.menuIcon, { backgroundColor: '#5856D6' }]}>
+                <Ionicons name="grid" size={24} color="#FFFFFF" />
               </View>
               <Text style={styles.menuLabel}>More</Text>
             </TouchableOpacity>
@@ -338,7 +336,7 @@ export default function DashboardScreen({ navigation }) {
               value={formatCurrency(stats?.today?.total)}
               subtitle={`${stats?.today?.transactions || 0} transaksi`}
               icon="cash-outline"
-              color={Colors.success}
+              color="#4CAF50"
               onPress={() => navigation.navigate('SalesAnalytics', { type: 'sales', period: 'today' })}
               comparison={{
                 label: 'Kemarin',
@@ -354,7 +352,7 @@ export default function DashboardScreen({ navigation }) {
               value={formatCurrency(stats?.today?.profit)}
               subtitle="Keuntungan hari ini"
               icon="trending-up-outline"
-              color={Colors.warning}
+              color="#FF9500"
               onPress={() => navigation.navigate('SalesAnalytics', { type: 'profit', period: 'today' })}
               comparison={{
                 label: 'Kemarin',
@@ -377,7 +375,7 @@ export default function DashboardScreen({ navigation }) {
               value={formatCurrency(stats?.month?.total)}
               subtitle={`${stats?.month?.transactions || 0} transaksi`}
               icon="calendar-outline"
-              color={Colors.primary}
+              color={GRAB_GREEN}
               onPress={() => navigation.navigate('SalesAnalytics', { type: 'sales', period: 'month' })}
               comparison={{
                 label: 'Bulan Lalu',
@@ -393,7 +391,7 @@ export default function DashboardScreen({ navigation }) {
               value={formatCurrency(stats?.month?.profit)}
               subtitle="Keuntungan bulan ini"
               icon="bar-chart-outline"
-              color={Colors.secondary}
+              color="#5856D6"
               onPress={() => navigation.navigate('SalesAnalytics', { type: 'profit', period: 'month' })}
               comparison={{
                 label: 'Bulan Lalu',
@@ -436,7 +434,7 @@ export default function DashboardScreen({ navigation }) {
             <View style={styles.alertCard}>
               <View style={styles.alertHeader}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="warning" size={20} color={Colors.danger} />
+                  <Ionicons name="warning" size={20} color="#FF3B30" />
                   <Text style={styles.alertTitle}>Peringatan Stock</Text>
                 </View>
                 <TouchableOpacity 
@@ -450,7 +448,7 @@ export default function DashboardScreen({ navigation }) {
                 {stats.products.lowStock.length} produk memiliki stock menipis
               </Text>
             </View>
-        </View>
+          </View>
         )}
 
         {/* Recent Sales */}
@@ -483,7 +481,7 @@ export default function DashboardScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#F2F2F7',
   },
   scrollView: {
     flex: 1,
@@ -493,19 +491,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  loadingText: {
-    fontSize: 16,
-    color: Colors.muted,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.lg,
-    backgroundColor: Colors.card,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: '#F2F2F7',
   },
   headerLeft: {
     flexDirection: 'row',
@@ -513,13 +507,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   shopBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.primary,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: GRAB_GREEN,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: Spacing.md,
+    marginRight: 12,
+    shadowColor: GRAB_GREEN,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
   },
   shopInfo: {
     flex: 1,
@@ -527,32 +526,32 @@ const styles = StyleSheet.create({
   shopName: {
     fontSize: 18,
     fontWeight: '700',
-    color: Colors.text,
+    color: '#1C1C1E',
   },
   shopSubtitle: {
-    marginTop: 2,
-    fontSize: 12,
-    color: Colors.muted,
+    marginTop: 4,
+    fontSize: 11,
+    color: '#8E8E93',
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   headerIconButton: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
   },
   comparisonContainer: {
     marginTop: 8,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: '#f2f2f7',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   comparisonLabel: {
     fontSize: 10,
-    color: Colors.muted,
+    color: '#8E8E93',
   },
   comparisonBadge: {
     flexDirection: 'row',
@@ -567,43 +566,48 @@ const styles = StyleSheet.create({
     marginLeft: 2,
   },
   section: {
-    marginTop: Spacing.xl,
-    paddingHorizontal: Spacing.xl,
+    marginTop: 20,
+    paddingHorizontal: 16,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.md,
+    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '800',
-    color: Colors.text,
-    marginBottom: Spacing.md,
+    fontWeight: '700',
+    color: '#1C1C1E',
+    marginBottom: 12,
   },
   seeAllText: {
-    fontSize: 16,
-    color: Colors.primary,
-    fontWeight: '500',
+    fontSize: 14,
+    color: GRAB_GREEN,
+    fontWeight: '600',
   },
   statsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: Spacing.md,
+    gap: 12,
   },
   statCard: {
     flex: 1,
-    backgroundColor: Colors.card,
-    borderRadius: Radii.md,
-    padding: Spacing.lg,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
     borderWidth: 1,
-    ...Shadows.card,
+    borderColor: '#E5E5EA',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
   },
   statCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Spacing.sm,
+    marginBottom: 4,
   },
   iconBadge: {
     width: 32,
@@ -613,96 +617,108 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   statCardTitle: {
-    fontSize: 14,
-    color: Colors.muted,
-    marginLeft: Spacing.sm,
-    fontWeight: '500',
+    fontSize: 13,
+    color: '#8E8E93',
+    marginLeft: 8,
+    fontWeight: '600',
   },
   statCardValue: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: Colors.text,
-    marginBottom: Spacing.xs,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1C1C1E',
+    marginTop: 10,
+    marginBottom: 4,
   },
   statCardSubtitle: {
-    fontSize: 12,
-    color: Colors.muted,
+    fontSize: 11,
+    color: '#8E8E93',
   },
   alertCard: {
-    backgroundColor: '#FFF5F5',
-    borderRadius: Radii.md,
-    padding: Spacing.lg,
+    backgroundColor: '#FFF2F2',
+    borderRadius: 16,
+    padding: 16,
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: '#FFE0E0',
+    shadowColor: '#FF3B30',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
   },
   alertHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: Spacing.sm,
+    marginBottom: 8,
   },
   alertTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#DC2626',
-    marginLeft: Spacing.sm,
+    color: '#FF3B30',
+    marginLeft: 8,
   },
   alertText: {
     fontSize: 14,
-    color: '#7F1D1D',
+    color: '#FF3B30',
   },
   alertButton: {
-    backgroundColor: Colors.danger,
-    borderRadius: Radii.sm,
+    backgroundColor: '#FF3B30',
+    borderRadius: 8,
     paddingVertical: 4,
     paddingHorizontal: 8,
   },
   alertButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
   },
   saleItem: {
-    backgroundColor: Colors.card,
-    borderRadius: Radii.md,
-    padding: Spacing.lg,
-    marginBottom: Spacing.sm,
-    ...Shadows.card,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 4,
+    elevation: 1,
   },
   saleItemHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.sm,
+    marginBottom: 8,
   },
   saleItemInvoice: {
     fontSize: 12,
     fontWeight: '600',
-    color: Colors.text,
+    color: '#1C1C1E',
   },
   saleItemDate: {
     fontSize: 10,
-    color: Colors.muted,
+    color: '#8E8E93',
   },
   saleItemDetails: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.xs,
+    marginBottom: 4,
   },
   saleItemTotal: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: Colors.success,
+    color: '#4CAF50',
   },
   saleItemProfit: {
     fontSize: 10,
-    color: Colors.warning,
+    color: '#FF9500',
     fontWeight: '500',
   },
   saleItemCount: {
     fontSize: 10,
-    color: Colors.muted,
+    color: '#8E8E93',
   },
   emptyState: {
     alignItems: 'center',
@@ -710,40 +726,51 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     fontSize: 16,
-    color: Colors.muted,
-    marginTop: Spacing.sm,
+    color: '#8E8E93',
+    marginTop: 12,
   },
   menuContainer: {
-    paddingHorizontal: Spacing.lg,
-    marginTop: Spacing.md,
-    marginBottom: Spacing.sm,
+    paddingHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
   },
   menuGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    backgroundColor: Colors.card,
-    borderRadius: Radii.lg,
-    padding: Spacing.md,
-    ...Shadows.card,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingTop: 20,
+    paddingBottom: 4,
+    paddingHorizontal: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 3,
   },
   menuItem: {
-    width: '23%',
+    width: '25%',
     alignItems: 'center',
-    marginBottom: Spacing.md,
+    marginBottom: 16,
   },
   menuIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Spacing.xs,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   menuLabel: {
     fontSize: 12,
-    color: Colors.text,
+    color: '#1C1C1E',
     textAlign: 'center',
-    fontWeight: '500',
+    fontWeight: '600',
   },
 });

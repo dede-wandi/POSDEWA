@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { getSupabaseClient } from '../../services/supabase';
 import { useToast } from '../../contexts/ToastContext';
-import { checkWaConfigReady, getWaConfig, upsertWaConfig } from '../../services/waNotifSupabase';
+import { getWaConfig, upsertWaConfig } from '../../services/waNotifSupabase';
 
 export default function WhatsAppSettingsScreen({ navigation }) {
   const { user } = useAuth();
@@ -16,9 +16,12 @@ export default function WhatsAppSettingsScreen({ navigation }) {
     wa_target_2: '',
     wa_target_3: ''
   });
-  const [waCfg, setWaCfg] = useState({ token: '' });
-  const [schemaReady, setSchemaReady] = useState(true);
-  const [schemaMsg, setSchemaMsg] = useState('');
+  const [waCfg, setWaCfg] = useState({
+    provider: 'fonnte',
+    token: '',
+    appkey: '',
+    authkey: ''
+  });
 
   useEffect(() => {
     loadSettings();
@@ -43,15 +46,15 @@ export default function WhatsAppSettingsScreen({ navigation }) {
           wa_target_3: currentUser.user_metadata.wa_target_3 || ''
         });
       }
-      const chk = await checkWaConfigReady();
-      if (!chk.ready) {
-        setSchemaReady(false);
-        setSchemaMsg(chk.message || '');
-      } else {
-        setSchemaReady(true);
-        setSchemaMsg('');
-        const cfg = await getWaConfig({ ownerId: currentUser.id });
-        if (cfg) setWaCfg({ token: cfg.token || '' });
+      
+      const cfg = await getWaConfig({ ownerId: currentUser.id });
+      if (cfg) {
+        setWaCfg({
+          provider: cfg.provider || 'fonnte',
+          token: cfg.token || '',
+          appkey: cfg.appkey || '',
+          authkey: cfg.authkey || ''
+        });
       }
     } catch (error) {
       console.error('Exception loading settings:', error);
@@ -81,12 +84,14 @@ export default function WhatsAppSettingsScreen({ navigation }) {
         showToast('Gagal menyimpan pengaturan: ' + error.message, 'error');
         return;
       }
-      if (schemaReady) {
-        await upsertWaConfig({
-          ownerId: user.id,
-          token: waCfg.token.trim()
-        });
-      }
+      
+      await upsertWaConfig({
+        ownerId: user.id,
+        provider: waCfg.provider || 'fonnte',
+        token: (waCfg.token || '').trim(),
+        appkey: (waCfg.appkey || '').trim(),
+        authkey: (waCfg.authkey || '').trim()
+      });
 
       showToast('Pengaturan berhasil disimpan', 'success');
       navigation.goBack();
@@ -109,45 +114,6 @@ export default function WhatsAppSettingsScreen({ navigation }) {
       ...prev,
       [field]: value
     }));
-  };
-  const WA_SCHEMA_SQL = `
-create table if not exists public.wa_notif_config (
-  id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null,
-  token text not null default '',
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-alter table public.wa_notif_config enable row level security;
-
-do $$
-begin
-  if not exists (select 1 from pg_policies where schemaname='public' and tablename='wa_notif_config' and policyname='wa_notif_select_own') then
-    create policy wa_notif_select_own on public.wa_notif_config for select using (auth.uid() = owner_id);
-  end if;
-  if not exists (select 1 from pg_policies where schemaname='public' and tablename='wa_notif_config' and policyname='wa_notif_mod_own') then
-    create policy wa_notif_mod_own on public.wa_notif_config for all using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
-  end if;
-end $$;
-`;
-  const copySql = async () => {
-    try {
-      if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(WA_SCHEMA_SQL);
-        showToast('SQL schema disalin ke clipboard', 'success');
-        return;
-      }
-      const ta = document.createElement('textarea');
-      ta.value = WA_SCHEMA_SQL;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-      showToast('SQL schema disalin ke clipboard', 'success');
-    } catch {
-      showToast('Gagal menyalin SQL schema', 'error');
-    }
   };
 
   return (
@@ -227,34 +193,76 @@ end $$;
 
             <View style={[styles.separatorLine]} />
 
-            {!schemaReady ? (
-              <View style={styles.schemaBox}>
-                <Ionicons name="alert-circle-outline" size={20} color="#b00020" style={{ marginRight: 8 }} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.schemaTitle}>Skema WA Notif belum tersedia</Text>
-                  <Text style={styles.schemaMsg}>{schemaMsg}</Text>
-                </View>
-              </View>
-            ) : null}
-
+            {/* Provider Selector */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Token API</Text>
-              <TextInput
-                style={styles.input}
-                value={waCfg.token}
-                onChangeText={(v) => updateCfg('token', v)}
-                placeholder="Masukkan token WA provider"
-                placeholderTextColor="#999"
-                secureTextEntry
-              />
+              <Text style={styles.label}>Provider WhatsApp</Text>
+              <View style={styles.providerSelector}>
+                <TouchableOpacity
+                  style={[
+                    styles.providerTab,
+                    (waCfg.provider || 'fonnte') === 'fonnte' && styles.providerTabActive
+                  ]}
+                  onPress={() => updateCfg('provider', 'fonnte')}
+                >
+                  <Text style={[
+                    styles.providerTabText,
+                    (waCfg.provider || 'fonnte') === 'fonnte' && styles.providerTabTextActive
+                  ]}>Fonnte</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.providerTab,
+                    waCfg.provider === 'wapanels' && styles.providerTabActive
+                  ]}
+                  onPress={() => updateCfg('provider', 'wapanels')}
+                >
+                  <Text style={[
+                    styles.providerTabText,
+                    waCfg.provider === 'wapanels' && styles.providerTabTextActive
+                  ]}>Wapanels</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
-            {!schemaReady ? (
-              <TouchableOpacity style={styles.sqlButton} onPress={copySql}>
-                <Ionicons name="copy-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
-                <Text style={styles.sqlButtonText}>Salin SQL Skema WA Notif</Text>
-              </TouchableOpacity>
-            ) : null}
+            {/* Conditionally rendered credentials */}
+            {(waCfg.provider || 'fonnte') === 'fonnte' ? (
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Token API Fonnte</Text>
+                <TextInput
+                  style={styles.input}
+                  value={waCfg.token}
+                  onChangeText={(v) => updateCfg('token', v)}
+                  placeholder="Masukkan token Fonnte"
+                  placeholderTextColor="#999"
+                  secureTextEntry
+                />
+              </View>
+            ) : (
+              <>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>App Key Wapanels</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={waCfg.appkey}
+                    onChangeText={(v) => updateCfg('appkey', v)}
+                    placeholder="Masukkan App Key Wapanels"
+                    placeholderTextColor="#999"
+                    secureTextEntry
+                  />
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Auth Key Wapanels</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={waCfg.authkey}
+                    onChangeText={(v) => updateCfg('authkey', v)}
+                    placeholder="Masukkan Auth Key Wapanels"
+                    placeholderTextColor="#999"
+                    secureTextEntry
+                  />
+                </View>
+              </>
+            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -349,6 +357,36 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
+  providerSelector: {
+    flexDirection: 'row',
+    backgroundColor: '#E5E5EA',
+    borderRadius: 12,
+    padding: 3,
+    marginBottom: 10,
+  },
+  providerTab: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 10,
+  },
+  providerTabActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1.5,
+    elevation: 2,
+  },
+  providerTabText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#666',
+  },
+  providerTabTextActive: {
+    color: '#007AFF',
+    fontWeight: '600',
+  },
   infoBox: {
     flexDirection: 'row',
     backgroundColor: '#E8E8E8',
@@ -367,40 +405,6 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#E5E5EA',
     marginVertical: 20,
-  },
-  schemaBox: {
-    flexDirection: 'row',
-    backgroundColor: '#FDECEE',
-    borderColor: '#F9CADA',
-    borderWidth: 1,
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 12
-  },
-  schemaTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#b00020',
-    marginBottom: 4
-  },
-  schemaMsg: {
-    fontSize: 12,
-    color: '#b00020'
-  },
-  sqlButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#007AFF',
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginTop: 10
-  },
-  sqlButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600'
   }
 });
+

@@ -180,8 +180,16 @@ export default function PaymentScreen({ navigation, route }) {
       }
 
       // 4. Send WhatsApp Notification (Background process)
-      sendWhatsAppNotification(saleData, saleData.items).catch(err => {
+      sendWhatsAppNotification(saleData, saleData.items).then(res => {
+        console.log('📡 WhatsApp Notification Result:', res);
+        if (res && (res.message_status === 'Success' || res.status === true)) {
+          showToast('Notifikasi WhatsApp terkirim!', 'success');
+        } else if (res) {
+          showToast('WA gagal/lewati: ' + (res.message || JSON.stringify(res)), 'warning');
+        }
+      }).catch(err => {
         console.error('⚠️ Failed to send WhatsApp notification:', err);
+        showToast('Gagal mengirim WA: ' + err.message, 'error');
       });
 
       // 5. Show success and navigate to invoice

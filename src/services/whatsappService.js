@@ -3,9 +3,6 @@ import { getSupabaseClient } from './supabase';
 import { getWaConfig } from './waNotifSupabase';
 
 export const sendWhatsAppNotification = async (saleData, items) => {
-  let token = '';
-  const url = 'https://api.fonnte.com/send';
-
   console.log('🚀 Starting WhatsApp notification service...');
 
   try {
@@ -27,63 +24,83 @@ export const sendWhatsAppNotification = async (saleData, items) => {
     }
 
     console.log('🎯 Notification Targets:', target);
-    // 1.1 Get Provider Token
+    
+    // 1.1 Get Provider Config
+    let waConfig = null;
     try {
-      const cfg = await getWaConfig({ ownerId: user?.id });
-      token = cfg?.token || '';
+      waConfig = await getWaConfig({ ownerId: user?.id });
     } catch (e) {
-      console.warn('⚠️ WA config not found, using empty token');
-      token = '';
+      console.warn('⚠️ WA config not found or error loading:', e);
     }
+
+    const provider = waConfig?.provider || 'fonnte';
 
     // 2. Validate Input
     if (!saleData || !items) {
       console.error('❌ WhatsApp Service: Missing saleData or items');
-      return;
+      return { status: false, message: 'Data transaksi atau item kosong' };
     }
-    if (!token) {
-      console.warn('⚠️ WhatsApp token not set. Skip sending notification.');
-      return;
+    
+    if (provider === 'wapanels') {
+      if (!waConfig?.appkey || !waConfig?.authkey) {
+        console.warn('⚠️ Wapanels appkey or authkey not set. Skip sending notification.');
+        return { status: false, message: 'Konfigurasi Wapanels belum lengkap (App Key / Auth Key kosong)' };
+      }
+    } else {
+      if (!waConfig?.token) {
+        console.warn('⚠️ Fonnte token not set. Skip sending notification.');
+        return { status: false, message: 'Token Fonnte belum dikonfigurasi' };
+      }
     }
 
-    // 2.5 Fetch Daily Stats
+    // 2.5 Fetch Daily & Monthly Stats
     let dailyTrxCount = 0;
     let dailyProfitTotal = 0;
+    let monthlyProfitTotal = 0;
 
     try {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
       const todayEnd = new Date();
       todayEnd.setHours(23, 59, 59, 999);
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
 
       if (user) {
-        const { data: dailySales, error: dailyError } = await supabase
+        const { data: monthSales, error: dbError } = await supabase
           .from('sales')
-          .select('profit, sale_items(line_profit, price, cost_price, qty)')
+          .select('created_at, profit, sale_items(line_profit, price, cost_price, qty)')
           .eq('user_id', user.id)
-          .gte('created_at', todayStart.toISOString())
+          .gte('created_at', monthStart.toISOString())
           .lt('created_at', todayEnd.toISOString());
 
-        if (!dailyError && dailySales) {
-          dailyTrxCount = dailySales.length;
-          
-          dailyProfitTotal = dailySales.reduce((sum, sale) => {
-            // Try to use item level profit if available for accuracy
+        if (!dbError && monthSales) {
+          monthSales.forEach((sale) => {
+            let saleProfit = 0;
             if (sale.sale_items && sale.sale_items.length > 0) {
-              const saleProfit = sale.sale_items.reduce((s, i) => {
+              saleProfit = sale.sale_items.reduce((s, i) => {
                 const p = i.line_profit !== undefined && i.line_profit !== null 
                   ? i.line_profit 
                   : ((i.price || 0) - (i.cost_price || 0)) * (i.qty || 0);
                 return s + p;
               }, 0);
-              return sum + saleProfit;
+            } else {
+              saleProfit = sale.profit || 0;
             }
-            return sum + (sale.profit || 0);
-          }, 0);
+
+            monthlyProfitTotal += saleProfit;
+
+            const saleDate = new Date(sale.created_at);
+            if (saleDate >= todayStart && saleDate <= todayEnd) {
+              dailyTrxCount++;
+              dailyProfitTotal += saleProfit;
+            }
+          });
         }
       }
     } catch (err) {
-      console.error('⚠️ Failed to fetch daily stats for WhatsApp:', err);
+      console.error('⚠️ Failed to fetch stats for WhatsApp:', err);
     }
 
     // 3. Construct Message
@@ -120,11 +137,12 @@ export const sendWhatsAppNotification = async (saleData, items) => {
       message += `   Rp ${subtotal.toLocaleString('id-ID')} (Profit: Rp ${itemProfit.toLocaleString('id-ID')})\n`;
     });
 
-    // Add Daily Stats
+    // Add Daily & Monthly Stats
     message += `\n------------------\n`;
     message += `📊 *Statistik Hari Ini*\n`;
     message += `🛒 Total Transaksi: ${dailyTrxCount} trx\n`;
     message += `💰 Total Profit: Rp ${dailyProfitTotal.toLocaleString('id-ID')}\n`;
+    message += `📈 Profit Bulan Ini: Rp ${monthlyProfitTotal.toLocaleString('id-ID')}\n`;
     
     // Get sender name (business name or user name)
     let senderName = 'POSDEWA';
@@ -138,43 +156,97 @@ export const sendWhatsAppNotification = async (saleData, items) => {
     
     message += `\n_Dikirim otomatis dari ${senderName}_`;
 
-    console.log('📤 Sending to Fonnte...', { target, messageLength: message.length });
-    
-    // 4. Prepare FormData
-    const formData = new FormData();
-    formData.append('target', target);
-    formData.append('message', message);
-    formData.append('delay', '5-10'); // Add delay as requested
-
-    // 5. Send Request
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': token,
-        // IMPORTANT: Do NOT set Content-Type manually for FormData, 
-        // fetch will set it with the correct boundary.
-      },
-      body: formData,
-      redirect: 'follow'
-    });
-
-    console.log('📡 Response status:', response.status);
-    
-    // 6. Handle Response
-    const textResult = await response.text();
-    console.log('📦 Raw response:', textResult);
-
-    try {
-      const jsonResult = JSON.parse(textResult);
-      if (jsonResult.status) {
-        console.log('✅ WhatsApp sent successfully!');
-      } else {
-        console.warn('⚠️ WhatsApp API returned error:', jsonResult);
+    const sanitizePhoneNumber = (num) => {
+      let cleaned = num.replace(/[^0-9]/g, '');
+      if (cleaned.startsWith('0')) {
+        cleaned = '62' + cleaned.slice(1);
+      } else if (cleaned.startsWith('8')) {
+        cleaned = '62' + cleaned;
       }
-      return jsonResult;
-    } catch (e) {
-      console.warn('⚠️ Could not parse response as JSON');
-      return { success: false, raw: textResult };
+      return cleaned;
+    };
+
+    if (provider === 'wapanels') {
+      const appkey = waConfig.appkey;
+      const authkey = waConfig.authkey;
+      const targetNumbers = target.split(',').map(num => num.trim()).filter(Boolean).map(sanitizePhoneNumber);
+      
+      console.log('📤 Sending to Wapanels...', { targetNumbers, messageLength: message.length });
+      
+      const results = [];
+      for (const num of targetNumbers) {
+        console.log(`📤 Sending to Wapanels receiver: ${num}`);
+        const formData = new FormData();
+        formData.append('appkey', appkey);
+        formData.append('authkey', authkey);
+        formData.append('to', num);
+        formData.append('message', message);
+
+        try {
+          const response = await fetch('https://app.wapanels.com/api/create-message', {
+            method: 'POST',
+            body: formData,
+            redirect: 'follow'
+          });
+
+          console.log(`📡 Response status for ${num}:`, response.status);
+          const textResult = await response.text();
+          console.log(`📦 Raw response for ${num}:`, textResult);
+
+          try {
+            const jsonResult = JSON.parse(textResult);
+            results.push(jsonResult);
+          } catch (e) {
+            results.push({ success: false, raw: textResult });
+          }
+        } catch (err) {
+          console.error(`❌ Fetch error sending to Wapanels receiver ${num}:`, err);
+          results.push({ success: false, error: err.message });
+        }
+      }
+      return results[0];
+    } else {
+      // 4. Prepare FormData for Fonnte
+      const url = 'https://api.fonnte.com/send';
+      const token = waConfig.token;
+      const targetNumbers = target.split(',').map(num => num.trim()).filter(Boolean).map(sanitizePhoneNumber);
+      const sanitizedTarget = targetNumbers.join(',');
+      
+      console.log('📤 Sending to Fonnte...', { target: sanitizedTarget, messageLength: message.length });
+      
+      const formData = new FormData();
+      formData.append('target', sanitizedTarget);
+      formData.append('message', message);
+      formData.append('delay', '5-10');
+
+      // 5. Send Request
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': token,
+        },
+        body: formData,
+        redirect: 'follow'
+      });
+
+      console.log('📡 Response status:', response.status);
+      
+      // 6. Handle Response
+      const textResult = await response.text();
+      console.log('📦 Raw response:', textResult);
+
+      try {
+        const jsonResult = JSON.parse(textResult);
+        if (jsonResult.status) {
+          console.log('✅ WhatsApp sent successfully!');
+        } else {
+          console.warn('⚠️ WhatsApp API returned error:', jsonResult);
+        }
+        return jsonResult;
+      } catch (e) {
+        console.warn('⚠️ Could not parse response as JSON');
+        return { success: false, raw: textResult };
+      }
     }
 
   } catch (error) {
