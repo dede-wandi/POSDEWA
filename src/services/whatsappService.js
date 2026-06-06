@@ -254,3 +254,5 @@ export const sendWhatsAppNotification = async (saleData, items) => {
     return null;
   }
 };
+
+// Trigger Vercel deploy
