@@ -206,62 +206,94 @@ export default function DashboardScreen({ navigation }) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Header (Vibrant Green Background) */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <View style={styles.shopBadge}>
+            <Ionicons name="storefront" size={20} color={GRAB_GREEN} />
+          </View>
+          <View style={styles.shopInfo}>
+            <Text style={styles.shopName}>{getBusinessName()}</Text>
+            <Text style={styles.shopSubtitle}>
+              {formatDashboardDate(currentDateTime)} • {formatDashboardTime(currentDateTime)}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.headerRight}>
+          <TouchableOpacity 
+            style={styles.headerIconButton} 
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('AIAssistant')}
+          >
+            <Ionicons name="chatbubble-ellipses-outline" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.headerIconButton} 
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('History')}
+          >
+            <View>
+              <Ionicons name="notifications-outline" size={22} color="#FFFFFF" />
+              {(stats?.today?.transactions || 0) > 0 && (
+                <View style={{
+                  position: 'absolute',
+                  top: -2,
+                  right: -2,
+                  backgroundColor: '#FF3B30',
+                  borderRadius: 5,
+                  width: 10,
+                  height: 10,
+                  borderWidth: 1.5,
+                  borderColor: GRAB_GREEN
+                }} />
+              )}
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.headerIconButton} 
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('Akun')}
+          >
+            <Ionicons name="person-circle-outline" size={26} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <ScrollView
         style={styles.scrollView}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <View style={styles.shopBadge}>
-              <Ionicons name="storefront" size={20} color="#fff" />
-            </View>
-            <View style={styles.shopInfo}>
-              <Text style={styles.shopName}>{getBusinessName()}</Text>
-              <Text style={styles.shopSubtitle}>
-                {formatDashboardDate(currentDateTime)} • {formatDashboardTime(currentDateTime)}
-              </Text>
-            </View>
+        {/* Floating Wallet-Style Summary Card */}
+        <View style={styles.walletCard}>
+          <View style={styles.walletCardHeader}>
+            <Ionicons name="wallet-outline" size={16} color={GRAB_GREEN} />
+            <Text style={styles.walletCardTitle}>RINGKASAN HARI INI</Text>
           </View>
-          <View style={styles.headerRight}>
+          <View style={styles.walletDivider} />
+          <View style={styles.walletRow}>
             <TouchableOpacity 
-              style={styles.headerIconButton} 
+              style={styles.walletCol}
               activeOpacity={0.8}
-              onPress={() => navigation.navigate('AIAssistant')}
+              onPress={() => navigation.navigate('SalesAnalytics', { type: 'sales', period: 'today' })}
             >
-              <Ionicons name="chatbubble-ellipses-outline" size={22} color={GRAB_GREEN} />
+              <Text style={styles.walletLabel}>Pendapatan</Text>
+              <Text style={styles.walletValue}>{formatCurrency(stats?.today?.total)}</Text>
+              <Text style={styles.walletSub}>{stats?.today?.transactions || 0} Transaksi</Text>
             </TouchableOpacity>
+            
+            <View style={styles.walletVerticalDivider} />
+
             <TouchableOpacity 
-              style={styles.headerIconButton} 
+              style={styles.walletCol}
               activeOpacity={0.8}
-              onPress={() => navigation.navigate('History')}
+              onPress={() => navigation.navigate('SalesAnalytics', { type: 'profit', period: 'today' })}
             >
-              <View>
-                <Ionicons name="notifications-outline" size={22} color="#1C1C1E" />
-                {(stats?.today?.transactions || 0) > 0 && (
-                  <View style={{
-                    position: 'absolute',
-                    top: -2,
-                    right: -2,
-                    backgroundColor: '#FF3B30',
-                    borderRadius: 5,
-                    width: 10,
-                    height: 10,
-                    borderWidth: 1.5,
-                    borderColor: '#FFFFFF'
-                  }} />
-                )}
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.headerIconButton} 
-              activeOpacity={0.8}
-              onPress={() => navigation.navigate('Akun')}
-            >
-              <Ionicons name="person-circle-outline" size={26} color={GRAB_GREEN} />
+              <Text style={styles.walletLabel}>Profit</Text>
+              <Text style={[styles.walletValue, { color: GRAB_GREEN }]}>{formatCurrency(stats?.today?.profit)}</Text>
+              <Text style={styles.walletSub}>Keuntungan</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -324,45 +356,6 @@ export default function DashboardScreen({ navigation }) {
               </View>
               <Text style={styles.menuLabel}>More</Text>
             </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Today's Stats */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Hari Ini</Text>
-          <View style={styles.statsGrid}>
-            <StatCard
-              title="Total Penjualan"
-              value={formatCurrency(stats?.today?.total)}
-              subtitle={`${stats?.today?.transactions || 0} transaksi`}
-              icon="cash-outline"
-              color="#4CAF50"
-              onPress={() => navigation.navigate('SalesAnalytics', { type: 'sales', period: 'today' })}
-              comparison={{
-                label: 'Kemarin',
-                value: formatCurrency(stats?.today?.yesterdayTotal),
-                isUp: (stats?.today?.total || 0) >= (stats?.today?.yesterdayTotal || 0),
-                diff: (stats?.today?.yesterdayTotal || 0) > 0 
-                  ? `${Math.abs(((stats?.today?.total - stats.today.yesterdayTotal) / stats.today.yesterdayTotal) * 100).toFixed(1)}%`
-                  : stats?.today?.total > 0 ? '100%' : '0%'
-              }}
-            />
-            <StatCard
-              title="Profit"
-              value={formatCurrency(stats?.today?.profit)}
-              subtitle="Keuntungan hari ini"
-              icon="trending-up-outline"
-              color="#FF9500"
-              onPress={() => navigation.navigate('SalesAnalytics', { type: 'profit', period: 'today' })}
-              comparison={{
-                label: 'Kemarin',
-                value: formatCurrency(stats?.today?.yesterdayProfit),
-                isUp: (stats?.today?.profit || 0) >= (stats?.today?.yesterdayProfit || 0),
-                diff: (stats?.today?.yesterdayProfit || 0) > 0 
-                  ? `${Math.abs(((stats?.today?.profit - stats?.today?.yesterdayProfit) / stats?.today?.yesterdayProfit) * 100).toFixed(1)}%`
-                  : stats?.today?.profit > 0 ? '100%' : '0%'
-              }}
-            />
           </View>
         </View>
 
@@ -496,10 +489,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F2F2F7',
+    paddingTop: 16,
+    paddingBottom: 48, // Tall bottom padding to let the wallet card overlap beautifully
+    backgroundColor: GRAB_GREEN,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -510,15 +502,15 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: GRAB_GREEN,
+    backgroundColor: '#FFFFFF', // White circle storefront badge
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
-    shadowColor: GRAB_GREEN,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   shopInfo: {
     flex: 1,
@@ -526,12 +518,12 @@ const styles = StyleSheet.create({
   shopName: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1C1C1E',
+    color: '#FFFFFF', // Crisp white text
   },
   shopSubtitle: {
     marginTop: 4,
     fontSize: 11,
-    color: '#8E8E93',
+    color: '#E8F5E9', // Soft light green subtext
   },
   headerRight: {
     flexDirection: 'row',
@@ -772,5 +764,65 @@ const styles = StyleSheet.create({
     color: '#1C1C1E',
     textAlign: 'center',
     fontWeight: '600',
+  },
+  // Wallet-style floating card styles
+  walletCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginHorizontal: 16,
+    marginTop: -32, // Overlaps the header!
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  walletCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  walletCardTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8E8E93',
+    marginLeft: 6,
+    letterSpacing: 0.5,
+  },
+  walletDivider: {
+    height: 1,
+    backgroundColor: '#F2F2F7',
+    marginBottom: 12,
+  },
+  walletRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  walletCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  walletLabel: {
+    fontSize: 12,
+    color: '#8E8E93',
+    marginBottom: 4,
+  },
+  walletValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1C1C1E',
+  },
+  walletSub: {
+    fontSize: 10,
+    color: '#AEAEB2',
+    marginTop: 2,
+  },
+  walletVerticalDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#F2F2F7',
   },
 });
