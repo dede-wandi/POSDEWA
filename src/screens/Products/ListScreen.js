@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, Alert, StyleSheet, Dimensions, RefreshControl, Image, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { getProducts, deleteProduct, findProducts, getCategories, getBrands } from '../../services/products';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { formatIDR } from '../../utils/currency';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../../theme';
+import { Colors, FontSize, FontWeight, Radii, Spacing, Shadows } from '../../theme';
 
 const { width } = Dimensions.get('window');
 
@@ -145,7 +146,7 @@ export default function ListScreen({ navigation, route }) {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Search and Actions Section */}
       <View style={styles.searchSection}>
         <View style={styles.searchRow}>
@@ -384,7 +385,7 @@ export default function ListScreen({ navigation, route }) {
           </View>
         )}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -393,26 +394,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  header: {
-    backgroundColor: Colors.card,
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: Colors.text,
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: Colors.muted,
-  },
   searchSection: {
-    padding: 16,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    paddingBottom: Spacing.sm,
     backgroundColor: Colors.card,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
@@ -426,200 +411,196 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.card,
-    borderRadius: 12,
-    paddingHorizontal: 12,
+    backgroundColor: Colors.lightBg,
+    borderRadius: Radii.sm,
+    paddingHorizontal: Spacing.md,
+    height: 40,
     borderWidth: 1,
     borderColor: Colors.border,
-    marginRight: 12,
-    height: 48,
+    marginRight: Spacing.sm,
   },
   searchIcon: {
-    fontSize: 16,
-    marginRight: 8,
+    marginRight: Spacing.sm,
   },
   searchInput: {
     flex: 1,
-    paddingVertical: 12,
-    fontSize: 16,
+    fontSize: FontSize.body,
     color: Colors.text,
-  },
-  warningContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff3cd',
-    margin: 16,
-    padding: 12,
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#ffc107',
-  },
-  warningIcon: {
-    fontSize: 16,
-    marginRight: 8,
-  },
-  warningText: {
-    flex: 1,
-    color: '#856404',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  listContainer: {
-    padding: 16,
-    paddingBottom: 100,
-  },
-  productCard: {
-    backgroundColor: Colors.card,
-    borderRadius: 12,
-    padding: 10,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  productImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    marginRight: 10,
-    backgroundColor: '#f5f5f5',
-  },
-  productName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.text,
-    flex: 1,
-    marginRight: 8,
-  },
-  infoText: {
-    fontSize: 11,
-    color: Colors.muted,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyIcon: {
-    marginBottom: 16,
-  },
-  inlineIcon: {
-    marginRight: 6,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.text,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: Colors.muted,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  emptyButton: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginTop: 16,
-  },
-  emptyButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
   },
   viewToggleGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: 12,
   },
   viewToggleButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.background,
-    marginLeft: 6,
+    width: 38,
+    height: 38,
+    borderRadius: Radii.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.border,
   },
   viewToggleButtonActive: {
     backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  productCardGrid: {
-    backgroundColor: Colors.card,
-    borderRadius: 12,
-    padding: 8,
-    marginBottom: 12,
-    marginHorizontal: 4,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    width: (width - 16 * 2 - 8) / 2,
-  },
-  productImageGrid: {
-    width: '100%',
-    height: 140,
-    borderRadius: 8,
-    marginBottom: 8,
-    backgroundColor: '#f5f5f5',
-  },
-  productInfoGrid: {
-    paddingHorizontal: 4,
-  },
-  productNameGrid: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.text,
-    marginBottom: 4,
-    height: 40, // Fixed height for 2 lines
-  },
-  productPriceGrid: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.success,
-    marginBottom: 2,
-  },
-  productStockGrid: {
-    fontSize: 12,
-    color: Colors.muted,
-  },
-  productCategoryGrid: {
-    fontSize: 11,
-    color: Colors.muted,
-    marginBottom: 2,
-  },
-  productCategoryText: {
-    fontSize: 12,
-    color: Colors.muted,
-    marginBottom: 4,
   },
   filterChip: {
-    paddingHorizontal: 12,
+    paddingHorizontal: Spacing.md,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: Radii.pill,
+    backgroundColor: Colors.lightBg,
     borderWidth: 1,
     borderColor: Colors.border,
-    backgroundColor: '#fff',
   },
   filterChipActive: {
+    backgroundColor: Colors.primary,
     borderColor: Colors.primary,
-    backgroundColor: '#ffe5ef',
   },
   filterChipText: {
-    fontSize: 12,
+    fontSize: FontSize.sm,
     color: Colors.text,
+    fontWeight: FontWeight.medium,
   },
   filterChipTextActive: {
+    color: Colors.white,
+    fontWeight: FontWeight.semibold,
+  },
+  listContent: {
+    padding: Spacing.lg,
+    paddingBottom: 80,
+  },
+  card: {
+    backgroundColor: Colors.card,
+    borderRadius: Radii.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadows.card,
+  },
+  cardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  productImage: {
+    width: 52,
+    height: 52,
+    borderRadius: Radii.sm,
+    backgroundColor: Colors.lightBg,
+    marginRight: Spacing.md,
+  },
+  productImagePlaceholder: {
+    width: 52,
+    height: 52,
+    borderRadius: Radii.sm,
+    backgroundColor: Colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.md,
+  },
+  productInfo: {
+    flex: 1,
+    marginRight: Spacing.sm,
+  },
+  productName: {
+    fontSize: FontSize.body,
+    fontWeight: FontWeight.bold,
+    color: Colors.textPrimary,
+    marginBottom: 2,
+  },
+  productCategory: {
+    fontSize: FontSize.xs,
+    color: Colors.muted,
+    marginBottom: 4,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  productPrice: {
+    fontSize: FontSize.bodyLg,
+    fontWeight: FontWeight.extrabold,
     color: Colors.primary,
-    fontWeight: '600',
+  },
+  productBuyPrice: {
+    fontSize: FontSize.xs,
+    color: Colors.muted,
+    textDecorationLine: 'line-through',
+  },
+  productBarcode: {
+    fontSize: FontSize.xs,
+    color: Colors.muted,
+    marginTop: 2,
+  },
+  stockBadge: {
+    backgroundColor: Colors.successLight,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 3,
+    borderRadius: Radii.pill,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+  },
+  stockBadgeLow: {
+    backgroundColor: Colors.warningLight,
+    borderColor: Colors.warning,
+  },
+  stockBadgeOut: {
+    backgroundColor: Colors.dangerLight,
+    borderColor: Colors.danger,
+  },
+  stockText: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.bold,
+    color: Colors.primary,
+  },
+  stockTextLow: {
+    color: Colors.warning,
+  },
+  stockTextOut: {
+    color: Colors.danger,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  editButton: {
+    padding: Spacing.sm,
+    borderRadius: Radii.sm,
+    backgroundColor: Colors.infoLight,
+  },
+  deleteButton: {
+    padding: Spacing.sm,
+    borderRadius: Radii.sm,
+    backgroundColor: Colors.dangerLight,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 60,
+  },
+  emptyTitle: {
+    fontSize: FontSize.title,
+    fontWeight: FontWeight.bold,
+    color: Colors.textPrimary,
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.sm,
+  },
+  emptyText: {
+    fontSize: FontSize.body,
+    color: Colors.muted,
+    textAlign: 'center',
+    paddingHorizontal: 32,
+    marginBottom: Spacing.xl,
+  },
+  emptyButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: Radii.md,
+    paddingHorizontal: Spacing.xxl,
+    paddingVertical: Spacing.md,
+  },
+  emptyButtonText: {
+    fontSize: FontSize.body,
+    fontWeight: FontWeight.bold,
+    color: Colors.white,
   },
 });
+

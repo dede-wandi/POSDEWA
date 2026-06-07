@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: Spacing.md,
     marginBottom: Spacing.sm,
-    ...Shadows.sm,
+    ...Shadows.card,
   },
   rankContainer: {
     marginRight: Spacing.md,

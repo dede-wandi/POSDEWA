@@ -8,7 +8,8 @@ import {
   TouchableOpacity,
   Alert,
   Dimensions,
-  ActivityIndicator
+  ActivityIndicator,
+  Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,10 +17,11 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { getDashboardStats, getRecentSales } from '../services/dashboardSupabase';
-import { Colors, Spacing, Radii, Shadows } from '../theme';
+import { getMenuConfigs } from '../services/menuConfigSupabase';
+import { getDashboardShortcuts } from '../models/Shortcut';
+import { Colors, Spacing, Radii, Shadows, FontSize, FontWeight, TextStyles } from '../theme';
 
 const { width } = Dimensions.get('window');
-const GRAB_GREEN = '#00B14F';
 
 export default function DashboardScreen({ navigation }) {
   const { user, getBusinessName } = useAuth();
@@ -29,6 +31,8 @@ export default function DashboardScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
+  const [menuConfigs, setMenuConfigs] = useState({});
+  const [menuErrors, setMenuErrors] = useState({});
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentDateTime(new Date()), 1000);
@@ -52,6 +56,14 @@ export default function DashboardScreen({ navigation }) {
     });
   };
 
+  const getDynamicGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 11) return 'Selamat Pagi';
+    if (hour < 15) return 'Selamat Siang';
+    if (hour < 18) return 'Selamat Sore';
+    return 'Selamat Malam';
+  };
+
   const loadDashboardData = async () => {
     try {
       console.log('📊 DashboardScreen: Loading dashboard data...');
@@ -71,6 +83,15 @@ export default function DashboardScreen({ navigation }) {
         setRecentSales(salesResult.data);
       } else {
         console.log('❌ DashboardScreen: Error loading recent sales:', salesResult.error);
+      }
+
+      // Load menu configurations
+      if (user?.id) {
+        const configResult = await getMenuConfigs(user.id);
+        if (configResult.success && configResult.data) {
+          setMenuConfigs(configResult.data);
+          setMenuErrors({}); // Reset error states on reload
+        }
       }
 
     } catch (error) {
@@ -110,12 +131,14 @@ export default function DashboardScreen({ navigation }) {
     });
   };
 
+
+
   const StatCard = ({ title, value, subtitle, icon, color = Colors.primary, onPress, comparison }) => (
     <TouchableOpacity
       style={styles.statCard}
       onPress={onPress}
       disabled={!onPress}
-      activeOpacity={0.85}
+      activeOpacity={0.7}
     >
       <View style={styles.statCardHeader}>
         <View style={[styles.iconBadge, { backgroundColor: `${color}15` }]}> 
@@ -134,9 +157,9 @@ export default function DashboardScreen({ navigation }) {
              <Ionicons 
                 name={comparison.isUp ? "arrow-up" : "arrow-down"} 
                 size={10} 
-                color={comparison.isUp ? '#4CAF50' : '#F44336'} 
+                color={comparison.isUp ? '#03AC0E' : '#F44336'} 
              />
-             <Text style={[styles.comparisonText, { color: comparison.isUp ? '#4CAF50' : '#F44336' }]}>
+             <Text style={[styles.comparisonText, { color: comparison.isUp ? '#03AC0E' : '#F44336' }]}>
                 {comparison.diff}
              </Text>
            </View>
@@ -149,57 +172,71 @@ export default function DashboardScreen({ navigation }) {
     <TouchableOpacity 
       style={styles.saleItem}
       onPress={() => navigation.navigate('History')}
+      activeOpacity={0.7}
     >
       <View style={styles.saleItemHeader}>
-        <Text style={styles.saleItemInvoice}>
-          {sale.no_invoice || `#${sale.id.substring(0, 8)}`}
-        </Text>
+        <View style={styles.invoiceBadge}>
+          <Ionicons name="receipt-outline" size={12} color="#4B5563" style={{ marginRight: 4 }} />
+          <Text style={styles.saleItemInvoice}>
+            {sale.no_invoice || `#${sale.id.substring(0, 8)}`}
+          </Text>
+        </View>
         <Text style={styles.saleItemDate}>{formatDateString(sale.created_at)}</Text>
       </View>
+
       <View style={styles.saleItemDetails}>
-        <Text style={styles.saleItemTotal}>{formatCurrency(sale.total)}</Text>
-        <Text style={styles.saleItemProfit}>
-          Profit: {formatCurrency(sale.profit)}
-        </Text>
+        <View>
+          <Text style={styles.saleItemLabel}>Total Transaksi</Text>
+          <Text style={styles.saleItemTotal}>{formatCurrency(sale.total)}</Text>
+        </View>
+        <View style={styles.profitBadgeContainer}>
+          <Text style={styles.saleItemLabelProfit}>Profit</Text>
+          <Text style={styles.saleItemProfit}>
+            {formatCurrency(sale.profit)}
+          </Text>
+        </View>
       </View>
-      <View style={{ marginTop: 8 }}>
-            {(() => {
-               const items = sale.sale_items || [];
-               if (items.length === 0) return <Text style={styles.saleItemCount}>0 Items</Text>;
 
-               if (items.length === 1) {
-                  return (
-                     <Text style={styles.saleItemCount}>
-                        1 Item : {items[0].qty}x {items[0].product_name} {formatCurrency(items[0].price)}
-                     </Text>
-                  );
-               }
+      <View style={styles.dividerLine} />
 
-               return (
-                  <View>
-                     <Text style={styles.saleItemCount}>{items.length} Items :</Text>
-                     {items.slice(0, 3).map((prod, idx) => (
-                        <Text key={idx} style={[styles.saleItemCount, { marginLeft: 8, marginTop: 2 }]}>
-                           - {prod.qty}x {prod.product_name} {formatCurrency(prod.price)}
-                        </Text>
-                     ))}
-                     {items.length > 3 && (
-                        <Text style={[styles.saleItemCount, { marginLeft: 8, marginTop: 2 }]}>
-                           ... dan {items.length - 3} lainnya
-                        </Text>
-                     )}
-                  </View>
-               );
-            })()}
-          </View>
+      <View style={styles.saleItemsList}>
+        {(() => {
+           const items = sale.sale_items || [];
+           if (items.length === 0) return <Text style={styles.saleItemCount}>Tidak ada item</Text>;
+
+           if (items.length === 1) {
+              return (
+                 <Text style={styles.saleItemCount} numberOfLines={1}>
+                    1 Item: {items[0].qty}x {items[0].product_name} ({formatCurrency(items[0].price)})
+                 </Text>
+              );
+           }
+
+           return (
+              <View>
+                 <Text style={styles.saleItemCountHeader}>{items.length} Item Terjual:</Text>
+                 {items.slice(0, 2).map((prod, idx) => (
+                    <Text key={idx} style={styles.saleItemCount} numberOfLines={1}>
+                       • {prod.qty}x {prod.product_name} ({formatCurrency(prod.price)})
+                    </Text>
+                 ))}
+                 {items.length > 2 && (
+                    <Text style={[styles.saleItemCount, { fontStyle: 'italic', color: '#9CA3AF' }]}>
+                       ... dan {items.length - 2} item lainnya
+                    </Text>
+                 )}
+              </View>
+           );
+        })()}
+      </View>
     </TouchableOpacity>
   );
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={GRAB_GREEN} />
+          <ActivityIndicator size="large" color={Colors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -207,55 +244,66 @@ export default function DashboardScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header (Vibrant Green Background) */}
+      {/* Premium Header */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View style={styles.shopBadge}>
-            <Ionicons name="storefront" size={20} color={GRAB_GREEN} />
-          </View>
-          <View style={styles.shopInfo}>
-            <Text style={styles.shopName}>{getBusinessName()}</Text>
-            <Text style={styles.shopSubtitle}>
-              {formatDashboardDate(currentDateTime)} • {formatDashboardTime(currentDateTime)}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.headerRight}>
+        {/* Profile Row */}
+        <View style={styles.profileHeaderRow}>
           <TouchableOpacity 
-            style={styles.headerIconButton} 
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('AIAssistant')}
-          >
-            <Ionicons name="chatbubble-ellipses-outline" size={22} color="#FFFFFF" />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.headerIconButton} 
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('History')}
-          >
-            <View>
-              <Ionicons name="notifications-outline" size={22} color="#FFFFFF" />
-              {(stats?.today?.transactions || 0) > 0 && (
-                <View style={{
-                  position: 'absolute',
-                  top: -2,
-                  right: -2,
-                  backgroundColor: '#FF3B30',
-                  borderRadius: 5,
-                  width: 10,
-                  height: 10,
-                  borderWidth: 1.5,
-                  borderColor: GRAB_GREEN
-                }} />
-              )}
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.headerIconButton} 
+            style={styles.profileInfoBlock}
             activeOpacity={0.8}
             onPress={() => navigation.navigate('Akun')}
           >
-            <Ionicons name="person-circle-outline" size={26} color="#FFFFFF" />
+            <View style={styles.headerAvatar}>
+              <Text style={styles.headerAvatarText}>
+                {getBusinessName()?.charAt(0).toUpperCase() || 'M'}
+              </Text>
+            </View>
+            <View style={styles.greetingColumn}>
+              <Text style={styles.greetingSub}>{getDynamicGreeting()}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={styles.businessNameTitle} numberOfLines={1}>
+                  {getBusinessName()}
+                </Text>
+                <View style={styles.memberBadge}>
+                  <Ionicons name="shield-checkmark" size={10} color={Colors.primary} style={{ marginRight: 2 }} />
+                  <Text style={styles.memberBadgeText}>Mitra Dewa</Text>
+                </View>
+              </View>
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.headerIcons}>
+            <TouchableOpacity 
+              style={styles.headerIconButton} 
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('AIAssistant')}
+            >
+              <Ionicons name="chatbubble-ellipses-outline" size={22} color="#4B5563" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.headerIconButton} 
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('History')}
+            >
+              <View>
+                <Ionicons name="notifications-outline" size={22} color="#4B5563" />
+                {(stats?.today?.transactions || 0) > 0 && (
+                  <View style={styles.notiBadge} />
+                )}
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Search Bar Row */}
+        <View style={styles.searchBarRow}>
+          <TouchableOpacity 
+            style={styles.searchBar} 
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('Produk', { screen: 'DaftarProduk' })}
+          >
+            <Ionicons name="search-outline" size={16} color="#9CA3AF" style={{ marginRight: 8 }} />
+            <Text style={styles.searchBarText}>Cari produk, transaksi, atau fitur...</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -266,96 +314,69 @@ export default function DashboardScreen({ navigation }) {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Floating Wallet-Style Summary Card */}
-        <View style={styles.walletCard}>
-          <View style={styles.walletCardHeader}>
-            <Ionicons name="wallet-outline" size={16} color={GRAB_GREEN} />
-            <Text style={styles.walletCardTitle}>RINGKASAN HARI INI</Text>
-          </View>
-          <View style={styles.walletDivider} />
-          <View style={styles.walletRow}>
-            <TouchableOpacity 
-              style={styles.walletCol}
-              activeOpacity={0.8}
-              onPress={() => navigation.navigate('SalesAnalytics', { type: 'sales', period: 'today' })}
-            >
-              <Text style={styles.walletLabel}>Pendapatan</Text>
-              <Text style={styles.walletValue}>{formatCurrency(stats?.today?.total)}</Text>
-              <Text style={styles.walletSub}>{stats?.today?.transactions || 0} Transaksi</Text>
-            </TouchableOpacity>
-            
-            <View style={styles.walletVerticalDivider} />
+        {/* Premium Financial Summary Row */}
+        <View style={styles.financialRow}>
+          <TouchableOpacity 
+            style={[styles.financialCard, styles.omsetCard]}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('SalesAnalytics', { type: 'sales', period: 'today' })}
+          >
+            <View style={styles.financialCardHeader}>
+              <View style={[styles.miniIconCircle, { backgroundColor: '#E8F5E9' }]}>
+                <Ionicons name="trending-up" size={14} color={Colors.primary} />
+              </View>
+              <Text style={styles.financialCardTitle}>Omset Hari Ini</Text>
+            </View>
+            <Text style={styles.financialCardValue}>{formatCurrency(stats?.today?.total)}</Text>
+            <View style={styles.financialCardFooter}>
+              <Text style={styles.financialCardSub}>{stats?.today?.transactions || 0} Transaksi</Text>
+              <Ionicons name="chevron-forward" size={12} color="#9CA3AF" />
+            </View>
+          </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.walletCol}
-              activeOpacity={0.8}
-              onPress={() => navigation.navigate('SalesAnalytics', { type: 'profit', period: 'today' })}
-            >
-              <Text style={styles.walletLabel}>Profit</Text>
-              <Text style={[styles.walletValue, { color: GRAB_GREEN }]}>{formatCurrency(stats?.today?.profit)}</Text>
-              <Text style={styles.walletSub}>Keuntungan</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity 
+            style={[styles.financialCard, styles.profitCard]}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('SalesAnalytics', { type: 'profit', period: 'today' })}
+          >
+            <View style={styles.financialCardHeader}>
+              <View style={[styles.miniIconCircle, { backgroundColor: '#E3F2FD' }]}>
+                <Ionicons name="wallet" size={14} color="#007AFF" />
+              </View>
+              <Text style={styles.financialCardTitle}>Profit Hari Ini</Text>
+            </View>
+            <Text style={[styles.financialCardValue, { color: Colors.primary }]}>{formatCurrency(stats?.today?.profit)}</Text>
+            <View style={styles.financialCardFooter}>
+              <Text style={styles.financialCardSub}>Keuntungan Bersih</Text>
+              <Ionicons name="chevron-forward" size={12} color="#9CA3AF" />
+            </View>
+          </TouchableOpacity>
         </View>
 
-        {/* Menu Grid */}
+        {/* Menu Grid (Tokopedia Style Shortcuts) */}
         <View style={styles.menuContainer}>
           <View style={styles.menuGrid}>
-            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Penjualan')} activeOpacity={0.85}>
-              <View style={[styles.menuIcon, { backgroundColor: '#3078F0' }]}>
-                <Ionicons name="cart" size={24} color="#FFFFFF" />
-              </View>
-              <Text style={styles.menuLabel}>Kasir</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Produk', { screen: 'DaftarProduk' })} activeOpacity={0.85}>
-              <View style={[styles.menuIcon, { backgroundColor: '#00B14F' }]}>
-                <Ionicons name="cube" size={24} color="#FFFFFF" />
-              </View>
-              <Text style={styles.menuLabel}>Produk</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Produk', { screen: 'PublicProductsAdmin' })} activeOpacity={0.85}>
-              <View style={[styles.menuIcon, { backgroundColor: '#9C27B0' }]}>
-                <Ionicons name="globe" size={24} color="#FFFFFF" />
-              </View>
-              <Text style={styles.menuLabel}>Produk Publik</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('History')} activeOpacity={0.85}>
-              <View style={[styles.menuIcon, { backgroundColor: '#FF9500' }]}>
-                <Ionicons name="time" size={24} color="#FFFFFF" />
-              </View>
-              <Text style={styles.menuLabel}>Riwayat</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Scan')} activeOpacity={0.85}>
-              <View style={[styles.menuIcon, { backgroundColor: '#5E5E5E' }]}>
-                <Ionicons name="scan" size={24} color="#FFFFFF" />
-              </View>
-              <Text style={styles.menuLabel}>Barcode</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('StockManagement')} activeOpacity={0.85}>
-              <View style={[styles.menuIcon, { backgroundColor: '#FF3B30' }]}>
-                <Ionicons name="layers" size={24} color="#FFFFFF" />
-              </View>
-              <Text style={styles.menuLabel}>Stok</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('SalesReport')} activeOpacity={0.85}>
-              <View style={[styles.menuIcon, { backgroundColor: '#009688' }]}>
-                <Ionicons name="clipboard" size={24} color="#FFFFFF" />
-              </View>
-              <Text style={styles.menuLabel}>Penjualan</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('MoreMenu')} activeOpacity={0.85}>
-              <View style={[styles.menuIcon, { backgroundColor: '#5856D6' }]}>
-                <Ionicons name="grid" size={24} color="#FFFFFF" />
-              </View>
-              <Text style={styles.menuLabel}>More</Text>
-            </TouchableOpacity>
+            {getDashboardShortcuts().map((item) => (
+              <TouchableOpacity
+                key={item.key}
+                style={styles.menuItem}
+                onPress={() => item.onPress(navigation)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.menuIconWrapper}>
+                  {item.renderIcon(menuConfigs, menuErrors, setMenuErrors)}
+                  {item.badgeText && (
+                    <View style={[
+                      styles.badgeContainer,
+                      { backgroundColor: item.badgeText === 'HOT' ? '#FF3B30' : '#FF9500' }
+                    ]}>
+                      <Text style={styles.badgeText}>{item.badgeText}</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.menuLabel}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
 
@@ -368,7 +389,7 @@ export default function DashboardScreen({ navigation }) {
               value={formatCurrency(stats?.month?.total)}
               subtitle={`${stats?.month?.transactions || 0} transaksi`}
               icon="calendar-outline"
-              color={GRAB_GREEN}
+              color={Colors.primary}
               onPress={() => navigation.navigate('SalesAnalytics', { type: 'sales', period: 'month' })}
               comparison={{
                 label: 'Bulan Lalu',
@@ -433,6 +454,7 @@ export default function DashboardScreen({ navigation }) {
                 <TouchableOpacity 
                   style={styles.alertButton}
                   onPress={() => navigation.navigate('StockManagement')}
+                  activeOpacity={0.7}
                 >
                   <Text style={styles.alertButtonText}>Kelola Stock</Text>
                 </TouchableOpacity>
@@ -450,6 +472,7 @@ export default function DashboardScreen({ navigation }) {
             <Text style={styles.sectionTitle}>Penjualan Terbaru</Text>
             <TouchableOpacity 
               onPress={() => navigation.navigate('History')}
+              activeOpacity={0.7}
             >
               <Text style={styles.seeAllText}>Lihat Semua</Text>
             </TouchableOpacity>
@@ -474,7 +497,7 @@ export default function DashboardScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background,
   },
   scrollView: {
     flex: 1,
@@ -485,98 +508,149 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   header: {
+    backgroundColor: Colors.card,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+  },
+  profileHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 48, // Tall bottom padding to let the wallet card overlap beautifully
-    backgroundColor: GRAB_GREEN,
+    marginBottom: 12,
   },
-  headerLeft: {
+  profileInfoBlock: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    marginRight: 16,
   },
-  shopBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF', // White circle storefront badge
+  headerAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    marginRight: 10,
   },
-  shopInfo: {
+  headerAvatarText: {
+    color: Colors.white,
+    fontSize: FontSize.subtitle,
+    fontWeight: FontWeight.bold,
+  },
+  greetingColumn: {
     flex: 1,
   },
-  shopName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF', // Crisp white text
+  greetingSub: {
+    fontSize: FontSize.sm,
+    color: Colors.muted,
+    fontWeight: FontWeight.medium,
+    marginBottom: 1,
   },
-  shopSubtitle: {
-    marginTop: 4,
-    fontSize: 11,
-    color: '#E8F5E9', // Soft light green subtext
+  businessNameTitle: {
+    fontSize: FontSize.body,
+    fontWeight: FontWeight.bold,
+    color: Colors.textPrimary,
+    marginRight: 6,
   },
-  headerRight: {
+  searchBarRow: {
+    width: '100%',
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.lightBg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radii.sm,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  searchBarText: {
+    fontSize: FontSize.caption,
+    color: Colors.placeholder,
+  },
+  headerIcons: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   headerIconButton: {
+    paddingHorizontal: Spacing.sm,
+    position: 'relative',
+  },
+  notiBadge: {
+    position: 'absolute',
+    top: -1,
+    right: 2,
+    backgroundColor: Colors.danger,
+    borderRadius: 4,
+    width: 8,
+    height: 8,
+    borderWidth: 1,
+    borderColor: Colors.white,
+  },
+  memberBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primaryLight,
+    borderRadius: Radii.xs,
     paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginLeft: 6,
+  },
+  memberBadgeText: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.bold,
+    color: Colors.primary,
   },
   comparisonContainer: {
     marginTop: 8,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#f2f2f7',
+    borderTopColor: Colors.borderLight,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   comparisonLabel: {
-    fontSize: 10,
-    color: '#8E8E93',
+    fontSize: FontSize.xs,
+    color: Colors.placeholder,
   },
   comparisonBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 8,
+    borderRadius: Radii.sm,
   },
   comparisonText: {
-    fontSize: 10,
-    fontWeight: 'bold',
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.bold,
     marginLeft: 2,
   },
   section: {
-    marginTop: 20,
-    paddingHorizontal: 16,
+    marginTop: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1C1C1E',
-    marginBottom: 12,
+    fontSize: FontSize.body,
+    fontWeight: FontWeight.bold,
+    color: Colors.textPrimary,
+    marginBottom: 8,
   },
   seeAllText: {
-    fontSize: 14,
-    color: GRAB_GREEN,
-    fontWeight: '600',
+    fontSize: FontSize.caption,
+    color: Colors.primary,
+    fontWeight: FontWeight.semibold,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -585,16 +659,12 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: Colors.card,
+    borderRadius: Radii.md,
+    padding: Spacing.md,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 2,
+    borderColor: Colors.border,
+    ...Shadows.card,
   },
   statCardHeader: {
     flexDirection: 'row',
@@ -602,227 +672,261 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   iconBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   statCardTitle: {
-    fontSize: 13,
-    color: '#8E8E93',
-    marginLeft: 8,
-    fontWeight: '600',
+    fontSize: FontSize.caption,
+    color: Colors.muted,
+    marginLeft: 6,
+    fontWeight: FontWeight.semibold,
   },
   statCardValue: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1C1C1E',
-    marginTop: 10,
-    marginBottom: 4,
+    fontSize: FontSize.body,
+    fontWeight: FontWeight.bold,
+    color: Colors.textPrimary,
+    marginTop: 8,
+    marginBottom: 2,
   },
   statCardSubtitle: {
-    fontSize: 11,
-    color: '#8E8E93',
+    fontSize: FontSize.sm,
+    color: Colors.muted,
   },
   alertCard: {
-    backgroundColor: '#FFF2F2',
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: Colors.dangerLight,
+    borderRadius: Radii.md,
+    padding: Spacing.md,
     borderWidth: 1,
-    borderColor: '#FFE0E0',
-    shadowColor: '#FF3B30',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
+    borderColor: '#FED7D7',
   },
   alertHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   alertTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FF3B30',
-    marginLeft: 8,
+    fontSize: FontSize.body,
+    fontWeight: FontWeight.semibold,
+    color: '#E53E3E',
+    marginLeft: 6,
   },
   alertText: {
-    fontSize: 14,
-    color: '#FF3B30',
+    fontSize: FontSize.caption,
+    color: '#C53030',
   },
   alertButton: {
-    backgroundColor: '#FF3B30',
-    borderRadius: 8,
+    backgroundColor: '#E53E3E',
+    borderRadius: Radii.xs,
     paddingVertical: 4,
     paddingHorizontal: 8,
   },
   alertButtonText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
+    color: Colors.white,
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
   },
   saleItem: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: Colors.card,
+    borderRadius: Radii.md,
+    padding: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 4,
-    elevation: 1,
+    borderColor: Colors.border,
+    ...Shadows.card,
   },
   saleItemHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
+  },
+  invoiceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.lightBg,
+    borderRadius: Radii.xs,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
   saleItemInvoice: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1C1C1E',
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
+    color: Colors.textSecondary,
   },
   saleItemDate: {
-    fontSize: 10,
-    color: '#8E8E93',
+    fontSize: FontSize.xs,
+    color: Colors.muted,
   },
   saleItemDetails: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 10,
+  },
+  saleItemLabel: {
+    fontSize: FontSize.xxs,
+    color: Colors.muted,
+    marginBottom: 2,
   },
   saleItemTotal: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#4CAF50',
+    fontSize: FontSize.body,
+    fontWeight: FontWeight.bold,
+    color: Colors.primary,
+  },
+  profitBadgeContainer: {
+    alignItems: 'flex-end',
+  },
+  saleItemLabelProfit: {
+    fontSize: FontSize.xxs,
+    color: Colors.muted,
+    marginBottom: 2,
+    textAlign: 'right',
   },
   saleItemProfit: {
-    fontSize: 10,
-    color: '#FF9500',
-    fontWeight: '500',
+    fontSize: FontSize.caption,
+    color: Colors.warning,
+    fontWeight: FontWeight.semibold,
+  },
+  dividerLine: {
+    height: 1,
+    backgroundColor: Colors.borderLight,
+    marginVertical: 10,
+  },
+  saleItemsList: {
+    marginTop: 2,
+  },
+  saleItemCountHeader: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
+    color: Colors.textSecondary,
+    marginBottom: 4,
   },
   saleItemCount: {
-    fontSize: 10,
-    color: '#8E8E93',
+    fontSize: FontSize.xs,
+    color: Colors.muted,
+    marginTop: 2,
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 40,
+    paddingVertical: 30,
   },
   emptyStateText: {
-    fontSize: 16,
-    color: '#8E8E93',
-    marginTop: 12,
+    fontSize: FontSize.body,
+    color: Colors.muted,
+    marginTop: 8,
   },
   menuContainer: {
-    paddingHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 8,
+    paddingHorizontal: Spacing.lg,
+    marginTop: 14,
   },
   menuGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingTop: 20,
+    backgroundColor: Colors.card,
+    borderRadius: Radii.lg,
+    paddingTop: 18,
     paddingBottom: 4,
     paddingHorizontal: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    ...Shadows.card,
   },
   menuItem: {
     width: '25%',
     alignItems: 'center',
-    marginBottom: 16,
-  },
-  menuIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    marginBottom: 14,
   },
   menuLabel: {
-    fontSize: 12,
-    color: '#1C1C1E',
+    fontSize: FontSize.caption,
+    color: Colors.textSecondary,
     textAlign: 'center',
-    fontWeight: '600',
-  },
-  // Wallet-style floating card styles
-  walletCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginHorizontal: 16,
-    marginTop: -32, // Overlaps the header!
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 6,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-  },
-  walletCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  walletCardTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#8E8E93',
-    marginLeft: 6,
-    letterSpacing: 0.5,
-  },
-  walletDivider: {
-    height: 1,
-    backgroundColor: '#F2F2F7',
-    marginBottom: 12,
-  },
-  walletRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  walletCol: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  walletLabel: {
-    fontSize: 12,
-    color: '#8E8E93',
-    marginBottom: 4,
-  },
-  walletValue: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#1C1C1E',
-  },
-  walletSub: {
-    fontSize: 10,
-    color: '#AEAEB2',
+    fontWeight: FontWeight.semibold,
     marginTop: 2,
   },
-  walletVerticalDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: '#F2F2F7',
+  financialRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    marginTop: 14,
+    gap: 12,
+  },
+  financialCard: {
+    flex: 1,
+    borderRadius: Radii.md,
+    padding: Spacing.md,
+    borderWidth: 1,
+    backgroundColor: Colors.card,
+    ...Shadows.card,
+  },
+  omsetCard: {
+    borderColor: Colors.primaryLight,
+    backgroundColor: Colors.successLight,
+  },
+  profitCard: {
+    borderColor: Colors.secondaryLight,
+    backgroundColor: '#FAFCFE',
+  },
+  financialCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  miniIconCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 6,
+  },
+  financialCardTitle: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.bold,
+    color: Colors.muted,
+  },
+  financialCardValue: {
+    fontSize: FontSize.body,
+    fontWeight: FontWeight.extrabold,
+    color: Colors.textPrimary,
+    marginBottom: 8,
+  },
+  financialCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+    paddingTop: 6,
+  },
+  financialCardSub: {
+    fontSize: FontSize.xxs,
+    color: Colors.placeholder,
+  },
+  menuIconWrapper: {
+    position: 'relative',
+    marginBottom: 6,
+  },
+  badgeContainer: {
+    position: 'absolute',
+    top: -6,
+    right: -10,
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    zIndex: 10,
+    borderWidth: 1.5,
+    borderColor: Colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    color: Colors.white,
+    fontSize: 8,
+    fontWeight: FontWeight.extrabold,
   },
 });

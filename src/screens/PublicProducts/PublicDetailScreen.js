@@ -113,7 +113,7 @@ export default function PublicDetailScreen({ navigation, route }) {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollContainer}>
         {/* Header Navigation Overlay */}
         <View style={styles.headerOverlay}>
@@ -326,7 +326,7 @@ export default function PublicDetailScreen({ navigation, route }) {
         <View style={styles.verticalDivider} />
 
         {cartQty > 0 ? (
-          <View style={[styles.addToCartButton, { paddingHorizontal: 0, justifyContent: 'space-between', borderColor: Colors.primary, backgroundColor: '#f0f9ff' }]}>
+          <View style={[styles.addToCartButton, { paddingHorizontal: 0, justifyContent: 'space-between', borderColor: Colors.primary, backgroundColor: Colors.primaryLight }]}>
              <TouchableOpacity 
                style={{ width: 40, height: '100%', alignItems: 'center', justifyContent: 'center', borderRightWidth: 1, borderColor: Colors.primary }} 
                onPress={() => updateQuantity(product.id, cartQty - 1)}
@@ -514,7 +514,7 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: Colors.danger || '#e91e63',
+    color: Colors.success,
   },
   stock: {
     fontSize: 14,
@@ -553,7 +553,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: '#f2f2f7',
+    backgroundColor: Colors.lightBg,
   },
   soldPillText: {
     fontSize: 12,

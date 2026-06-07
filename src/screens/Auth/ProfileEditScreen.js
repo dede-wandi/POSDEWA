@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { getSupabaseClient } from '../../services/supabase';
 import { useToast } from '../../contexts/ToastContext';
+import { Colors, Shadows } from '../../theme';
 
 export default function ProfileEditScreen({ navigation }) {
   const { user, updateUser } = useAuth();
@@ -111,7 +112,7 @@ export default function ProfileEditScreen({ navigation }) {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color="#007AFF" />
+          <Ionicons name="arrow-back" size={24} color={Colors.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Edit Profil</Text>
         <TouchableOpacity 
@@ -141,7 +142,7 @@ export default function ProfileEditScreen({ navigation }) {
                 value={profile.full_name}
                 onChangeText={(value) => updateField('full_name', value)}
                 placeholder="Masukkan nama lengkap"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.placeholder}
               />
             </View>
 
@@ -152,7 +153,7 @@ export default function ProfileEditScreen({ navigation }) {
                 value={profile.phone}
                 onChangeText={(value) => updateField('phone', value)}
                 placeholder="Masukkan nomor telepon"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.placeholder}
                 keyboardType="phone-pad"
               />
             </View>
@@ -164,7 +165,7 @@ export default function ProfileEditScreen({ navigation }) {
                 value={profile.address}
                 onChangeText={(value) => updateField('address', value)}
                 placeholder="Masukkan alamat lengkap"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.placeholder}
                 multiline
                 numberOfLines={3}
                 textAlignVertical="top"
@@ -183,7 +184,7 @@ export default function ProfileEditScreen({ navigation }) {
                 value={profile.business_name}
                 onChangeText={(value) => updateField('business_name', value)}
                 placeholder="Masukkan nama bisnis"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.placeholder}
               />
             </View>
 
@@ -194,7 +195,7 @@ export default function ProfileEditScreen({ navigation }) {
                 value={profile.business_address}
                 onChangeText={(value) => updateField('business_address', value)}
                 placeholder="Masukkan alamat bisnis"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.placeholder}
                 multiline
                 numberOfLines={3}
                 textAlignVertical="top"
@@ -208,7 +209,7 @@ export default function ProfileEditScreen({ navigation }) {
                 value={profile.business_phone}
                 onChangeText={(value) => updateField('business_phone', value)}
                 placeholder="Masukkan telepon bisnis"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.placeholder}
                 keyboardType="phone-pad"
               />
             </View>
@@ -237,7 +238,7 @@ export default function ProfileEditScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -245,22 +246,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.card,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: Colors.border,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.borderLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#000000',
+    color: Colors.darkText,
     flex: 1,
     textAlign: 'center',
   },
@@ -268,10 +269,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#007AFF',
+    backgroundColor: Colors.primary,
   },
   saveButtonText: {
-    color: '#FFFFFF',
+    color: Colors.white,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -291,7 +292,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: Colors.darkText,
     marginBottom: 16,
   },
   inputGroup: {
@@ -300,19 +301,19 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: Colors.text,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.card,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#1a1a1a',
+    color: Colors.text,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
-    shadowColor: '#000',
+    borderColor: Colors.border,
+    shadowColor: Colors.black,
     shadowOffset: {
       width: 0,
       height: 1,
@@ -326,21 +327,21 @@ const styles = StyleSheet.create({
     paddingTop: 14,
   },
   disabledInput: {
-    backgroundColor: '#F8F9FA',
+    backgroundColor: Colors.lightBg,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: Colors.border,
   },
   disabledText: {
     fontSize: 16,
-    color: '#6c757d',
+    color: Colors.muted,
     marginBottom: 4,
   },
   disabledNote: {
     fontSize: 12,
-    color: '#999',
+    color: Colors.placeholder,
     fontStyle: 'italic',
   },
   bottomPadding: {

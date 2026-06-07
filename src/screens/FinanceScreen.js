@@ -130,12 +130,12 @@ export default function FinanceScreen({ navigation }) {
           <View style={styles.summaryContainer}>
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Pengeluaran</Text>
-              <Text style={[styles.summaryValue, { color: '#F44336' }]}>{formatCurrency(totalExpense)}</Text>
+              <Text style={[styles.summaryValue, { color: Colors.danger }]}>{formatCurrency(totalExpense)}</Text>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Saldo</Text>
-              <Text style={[styles.summaryValue, { color: balance >= 0 ? '#4CAF50' : '#F44336' }]}>
+              <Text style={[styles.summaryValue, { color: balance >= 0 ? Colors.success : Colors.danger }]}>
                 {formatCurrency(balance)}
               </Text>
             </View>
@@ -377,11 +377,11 @@ export default function FinanceScreen({ navigation }) {
         style={styles.trxContent}
         onPress={() => handleEditTransaction(item)}
       >
-        <View style={[styles.trxIcon, { backgroundColor: item.type === 'income' ? '#E8F5E9' : '#FFEBEE' }]}>
+        <View style={[styles.trxIcon, { backgroundColor: item.type === 'income' ? Colors.successLight : Colors.dangerLight }]}>
           <Ionicons 
             name={item.type === 'income' ? 'arrow-down' : 'arrow-up'} 
             size={20} 
-            color={item.type === 'income' ? '#4CAF50' : '#F44336'} 
+            color={item.type === 'income' ? Colors.success : Colors.danger} 
           />
         </View>
         <View style={{ flex: 1, marginLeft: 12 }}>
@@ -393,7 +393,7 @@ export default function FinanceScreen({ navigation }) {
             {new Date(item.transaction_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
           </Text>
         </View>
-        <Text style={[styles.trxAmount, { color: item.type === 'income' ? '#4CAF50' : '#F44336' }]}>
+        <Text style={[styles.trxAmount, { color: item.type === 'income' ? Colors.success : Colors.danger }]}>
           {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount)}
         </Text>
       </TouchableOpacity>
@@ -402,7 +402,7 @@ export default function FinanceScreen({ navigation }) {
         style={styles.deleteAction}
         onPress={() => handleDeleteTransaction(item)}
       >
-        <Ionicons name="trash-outline" size={20} color="#FF5252" />
+        <Ionicons name="trash-outline" size={20} color={Colors.danger} />
       </TouchableOpacity>
     </View>
   );
@@ -413,11 +413,11 @@ export default function FinanceScreen({ navigation }) {
       onPress={() => handleEditChannel(item)}
       onLongPress={() => handleDeleteChannel(item)}
     >
-      <View style={[styles.channelIcon, { backgroundColor: item.type === 'cash' ? '#FFF3E0' : '#E3F2FD' }]}>
+      <View style={[styles.channelIcon, { backgroundColor: item.type === 'cash' ? Colors.warningLight : Colors.secondaryLight }]}>
         <Ionicons 
           name={item.type === 'cash' ? 'cash' : 'card'} 
           size={24} 
-          color={item.type === 'cash' ? '#FF9800' : '#2196F3'} 
+          color={item.type === 'cash' ? Colors.warning : Colors.secondary} 
         />
       </View>
       <View style={{ flex: 1, marginLeft: 12 }}>
@@ -679,14 +679,14 @@ export default function FinanceScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: Colors.background,
   },
   headerContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: Colors.card,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: Colors.border,
     paddingBottom: 16,
-    ...Shadows.sm,
+    ...Shadows.card,
     zIndex: 10,
   },
   monthSelector: {
@@ -699,7 +699,7 @@ const styles = StyleSheet.create({
   monthTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#333',
+    color: Colors.darkText,
   },
   monthNavBtn: {
     padding: 8,
@@ -716,7 +716,7 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 12,
-    color: '#666',
+    color: Colors.muted,
     marginBottom: 4,
   },
   summaryValue: {
@@ -725,17 +725,19 @@ const styles = StyleSheet.create({
   },
   summaryDivider: {
     width: 1,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: Colors.border,
     height: 30,
     alignSelf: 'center',
   },
   tabs: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
+    backgroundColor: Colors.card,
     padding: 4,
     margin: 16,
     borderRadius: 12,
-    ...Shadows.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadows.card,
   },
   tab: {
     flex: 1,
@@ -748,10 +750,10 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontWeight: '600',
-    color: '#666',
+    color: Colors.muted,
   },
   activeTabText: {
-    color: '#fff',
+    color: Colors.white,
   },
   listContent: {
     padding: 16,
@@ -762,7 +764,7 @@ const styles = StyleSheet.create({
     marginTop: 60,
   },
   emptyText: {
-    color: '#999',
+    color: Colors.muted,
     marginTop: 10,
   },
   fab: {
@@ -775,17 +777,19 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    ...Shadows.md,
+    ...Shadows.card,
   },
   
   // Transaction Item
   trxItemWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: Colors.card,
     marginBottom: 10,
     borderRadius: 12,
-    ...Shadows.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadows.card,
     overflow: 'hidden',
   },
   trxContent: {
@@ -799,9 +803,9 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFEBEE',
+    backgroundColor: Colors.dangerLight,
     borderLeftWidth: 1,
-    borderLeftColor: '#FFCDD2',
+    borderLeftColor: Colors.border,
   },
   trxIcon: {
     width: 40,
@@ -812,16 +816,16 @@ const styles = StyleSheet.create({
   },
   trxCategory: {
     fontWeight: '600',
-    color: '#333',
+    color: Colors.darkText,
   },
   trxDesc: {
     fontSize: 12,
-    color: '#777',
+    color: Colors.muted,
     marginTop: 2,
   },
   trxDate: {
     fontSize: 10,
-    color: '#999',
+    color: Colors.placeholder,
     marginTop: 2,
   },
   trxAmount: {
@@ -832,11 +836,13 @@ const styles = StyleSheet.create({
   channelItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: Colors.card,
     padding: 16,
     marginBottom: 10,
     borderRadius: 12,
-    ...Shadows.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadows.card,
   },
   channelIcon: {
     width: 48,
@@ -848,11 +854,11 @@ const styles = StyleSheet.create({
   channelName: {
     fontWeight: '600',
     fontSize: 16,
-    color: '#333',
+    color: Colors.darkText,
   },
   channelDesc: {
     fontSize: 12,
-    color: '#777',
+    color: Colors.muted,
   },
   channelBalance: {
     fontWeight: '700',
@@ -867,7 +873,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: Colors.card,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '85%',
@@ -878,28 +884,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: Colors.border,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
+    color: Colors.darkText,
   },
   modalBody: {
     padding: 20,
   },
   label: {
     fontWeight: '600',
-    color: '#444',
+    color: Colors.darkText,
     marginBottom: 8,
     marginTop: 12,
   },
   input: {
-    backgroundColor: '#F5F7FA',
+    backgroundColor: Colors.lightBg,
     padding: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: Colors.border,
     fontSize: 16,
+    color: Colors.darkText,
   },
   submitBtn: {
     backgroundColor: Colors.primary,
@@ -913,7 +921,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   submitBtnText: {
-    color: '#fff',
+    color: Colors.white,
     fontWeight: '700',
     fontSize: 16,
   },
@@ -921,7 +929,7 @@ const styles = StyleSheet.create({
   // Type Selector
   typeSelector: {
     flexDirection: 'row',
-    backgroundColor: '#F5F7FA',
+    backgroundColor: Colors.lightBg,
     padding: 4,
     borderRadius: 12,
     marginBottom: 12,
@@ -933,14 +941,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   expenseBtn: {
-    backgroundColor: '#F44336',
+    backgroundColor: Colors.danger,
   },
   incomeBtn: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: Colors.success,
   },
   typeText: {
     fontWeight: '600',
-    color: '#666',
+    color: Colors.muted,
   },
 
   // Chips
@@ -952,17 +960,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: Colors.borderLight,
     marginRight: 8,
   },
   activeChip: {
     backgroundColor: Colors.primary,
   },
   chipText: {
-    color: '#555',
+    color: Colors.muted,
   },
   activeChipText: {
-    color: '#fff',
+    color: Colors.white,
   },
   categoryChips: {
     flexDirection: 'row',
@@ -972,7 +980,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: Colors.borderLight,
     marginRight: 8,
     marginBottom: 8,
   },
@@ -981,10 +989,10 @@ const styles = StyleSheet.create({
   },
   smallChipText: {
     fontSize: 12,
-    color: '#555',
+    color: Colors.muted,
   },
   activeSmallChipText: {
-    color: '#fff',
+    color: Colors.white,
   },
   row: {
     flexDirection: 'row',
@@ -992,17 +1000,18 @@ const styles = StyleSheet.create({
   radioBtn: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: Colors.border,
     padding: 12,
     borderRadius: 12,
     alignItems: 'center',
+    backgroundColor: Colors.card,
   },
   radioActive: {
     borderColor: Colors.primary,
-    backgroundColor: '#E3F2FD',
+    backgroundColor: Colors.primaryLight,
   },
   radioText: {
-    color: '#666',
+    color: Colors.muted,
   },
   radioTextActive: {
     color: Colors.primary,
@@ -1015,22 +1024,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: Colors.background,
   },
   lockCard: {
-    backgroundColor: '#fff',
+    backgroundColor: Colors.card,
     borderRadius: 24,
     padding: 32,
     alignItems: 'center',
     width: '100%',
     maxWidth: 360,
-    ...Shadows.md,
+    ...Shadows.card,
   },
   lockIconContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#E3F2FD',
+    backgroundColor: Colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -1038,26 +1047,26 @@ const styles = StyleSheet.create({
   lockTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#333',
+    color: Colors.darkText,
     marginBottom: 8,
   },
   lockSubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: Colors.muted,
     textAlign: 'center',
     marginBottom: 32,
     lineHeight: 20,
   },
   lockInput: {
     width: '100%',
-    backgroundColor: '#F5F7FA',
+    backgroundColor: Colors.lightBg,
     padding: 16,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: Colors.border,
     fontSize: 18,
     textAlign: 'center',
-    color: '#333',
+    color: Colors.darkText,
   },
   unlockBtn: {
     width: '100%',
@@ -1066,10 +1075,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     marginTop: 24,
-    ...Shadows.sm,
+    ...Shadows.card,
   },
   unlockBtnText: {
-    color: '#fff',
+    color: Colors.white,
     fontSize: 16,
     fontWeight: '700',
   },

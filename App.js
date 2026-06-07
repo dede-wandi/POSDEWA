@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, View, Text, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, View, Text, TouchableOpacity, Platform } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from './src/theme';
@@ -31,6 +31,7 @@ import WhatsAppSettingsScreen from './src/screens/Settings/WhatsAppSettingsScree
 import CustomInvoiceListScreen from './src/screens/Settings/CustomInvoiceListScreen';
 import CustomInvoiceFormScreen from './src/screens/Settings/CustomInvoiceFormScreen';
 import PaymentChannelsScreen from './src/screens/Settings/PaymentChannelsScreen';
+import MenuSettingsScreen from './src/screens/Settings/MenuSettingsScreen';
 import TopSalesMenuScreen from './src/screens/TopSales/TopSalesMenuScreen';
 import TopListScreen from './src/screens/TopSales/TopListScreen';
 import ProfitAnalysisScreen from './src/screens/TopSales/ProfitAnalysisScreen';
@@ -169,10 +170,10 @@ function MainTabs() {
           backgroundColor: '#ffffff',
           borderTopWidth: 1,
           borderTopColor: '#e9ecef',
-          // Responsif terhadap safe area di perangkat dengan notch / gesture navigation
-          height: 65, // Increased height slightly to accommodate labels
-          paddingBottom: Math.max(12, insets.bottom),
-          paddingTop: 8,
+          // Responsif terhadap safe area di perangkat dengan notch / navigasi tombol
+          height: insets.bottom > 0 ? (56 + insets.bottom) : 60,
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 6,
+          paddingTop: 6,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -2 },
           shadowOpacity: 0.05,
@@ -273,6 +274,14 @@ function MainStack() {
       <Stack.Screen 
         name="WhatsAppSettings" 
         component={WhatsAppSettingsScreen}
+        options={{
+          presentation: 'modal',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen 
+        name="MenuSettings" 
+        component={MenuSettingsScreen}
         options={{
           presentation: 'modal',
           headerShown: false,
@@ -418,6 +427,7 @@ function AppNavigator() {
         TransactionHistory: 'riwayat-transaksi',
         InvoiceSettings: 'pengaturan-invoice',
         WhatsAppSettings: 'pengaturan-whatsapp',
+        MenuSettings: 'pengaturan-menu',
         ProfileEdit: 'profil/edit',
       },
     },

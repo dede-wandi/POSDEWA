@@ -10,7 +10,7 @@ import { adjustStockOnSale } from '../../services/productsSupabase';
 import { createSale } from '../../services/sales';
 import { getPaymentChannels, processPayment } from '../../services/financeSupabase';
 import { sendWhatsAppNotification } from '../../services/whatsappService';
-import { Colors } from '../../theme';
+import { Colors, Spacing, Radii, Shadows, Typography } from '../../theme';
 
 export default function PaymentScreen({ navigation, route }) {
   const { user } = useAuth();
@@ -18,7 +18,7 @@ export default function PaymentScreen({ navigation, route }) {
   const { cart = [], total = 0, profit = 0 } = route.params || {};
   
   // Payment states
-  const [cashAmount, setCashAmount] = useState('');
+  const [cashAmount, setCashAmount] = useState(total ? total.toString() : '');
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('cash');
   const [selectedChannel, setSelectedChannel] = useState(null);
@@ -294,19 +294,19 @@ export default function PaymentScreen({ navigation, route }) {
               key={index}
               style={[
                 styles.summaryRow,
-                { borderBottomWidth: 1, borderBottomColor: Colors.border, paddingBottom: 8, marginBottom: 8 }
+                { borderBottomWidth: 1, borderBottomColor: Colors.borderLight, paddingBottom: 10, marginBottom: 10 }
               ]}
             >
               <View style={{ flex: 1 }}>
-                <Text style={[styles.summaryValue, { marginBottom: 4 }]}>{item.name}</Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: Colors.darkText, marginBottom: 2 }}>{item.name}</Text>
                 <Text style={styles.summaryLabel}>{item.qty} x {formatIDR(item.price)}</Text>
               </View>
-              <Text style={styles.summaryValue}>{formatIDR(item.price * item.qty)}</Text>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: Colors.darkText }}>{formatIDR(item.price * item.qty)}</Text>
             </View>
           ))}
-          <View style={[styles.summaryRow, { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: Colors.border }]}>
-            <Text style={[styles.summaryLabel, { fontWeight: 'bold', color: Colors.text }]}>Total Bayar:</Text>
-            <Text style={[styles.summaryValue, { fontSize: 16, fontWeight: 'bold', color: Colors.primary }]}>{formatIDR(total)}</Text>
+          <View style={[styles.summaryRow, { marginTop: 4, paddingTop: 10, alignItems: 'center' }]}>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: Colors.darkText }}>Total Bayar:</Text>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: Colors.primary }}>{formatIDR(total)}</Text>
           </View>
         </View>
 
@@ -321,7 +321,7 @@ export default function PaymentScreen({ navigation, route }) {
               ]}
               onPress={() => handlePaymentMethodChange('cash')}
             >
-              <Ionicons name="cash" size={24} color={selectedPaymentMethod === 'cash' ? '#fff' : '#007AFF'} />
+              <Ionicons name="cash" size={20} color={selectedPaymentMethod === 'cash' ? Colors.primary : Colors.muted} style={{ marginRight: 8 }} />
               <Text style={[
                 styles.paymentMethodText,
                 selectedPaymentMethod === 'cash' && styles.selectedPaymentMethodText
@@ -335,7 +335,7 @@ export default function PaymentScreen({ navigation, route }) {
               ]}
               onPress={() => handlePaymentMethodChange('non-cash')}
             >
-              <Ionicons name="card" size={24} color={selectedPaymentMethod === 'non-cash' ? '#fff' : '#007AFF'} />
+              <Ionicons name="card" size={20} color={selectedPaymentMethod === 'non-cash' ? Colors.primary : Colors.muted} style={{ marginRight: 8 }} />
               <Text style={[
                 styles.paymentMethodText,
                 selectedPaymentMethod === 'non-cash' && styles.selectedPaymentMethodText
@@ -355,7 +355,7 @@ export default function PaymentScreen({ navigation, route }) {
               <View style={styles.selectedChannelInfo}>
                 <Ionicons 
                   name={getChannelTypeIcon(selectedChannel.type)} 
-                  size={24} 
+                  size={22} 
                   color={getChannelTypeColor(selectedChannel.type)} 
                 />
                 <View style={styles.selectedChannelDetails}>
@@ -363,7 +363,7 @@ export default function PaymentScreen({ navigation, route }) {
                   <Text style={styles.selectedChannelBalance}>Saldo: {formatIDR(selectedChannel.balance)}</Text>
                 </View>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#8E8E93" />
+              <Ionicons name="chevron-forward" size={20} color={Colors.muted} />
             </TouchableOpacity>
           </View>
         )}
@@ -377,15 +377,16 @@ export default function PaymentScreen({ navigation, route }) {
               value={cashAmount}
               onChangeText={setCashAmount}
               placeholder="Masukkan jumlah uang"
+              placeholderTextColor={Colors.placeholder}
               keyboardType="numeric"
             />
 
             {/* Uang Pas Button */}
             <TouchableOpacity
-              style={[styles.quickAmountButton, { width: '100%', marginTop: 10, backgroundColor: Colors.primary }]}
+              style={[styles.quickAmountButton, { width: '100%', marginTop: 12, backgroundColor: Colors.primary, borderColor: Colors.primary }]}
               onPress={() => setCashAmount(total.toString())}
             >
-              <Text style={[styles.quickAmountText, { color: '#fff' }]}>Uang Pas ({formatIDR(total)})</Text>
+              <Text style={[styles.quickAmountText, { color: Colors.white }]}>Uang Pas ({formatIDR(total)})</Text>
             </TouchableOpacity>
             
             {/* Quick Amount Buttons */}
@@ -419,7 +420,7 @@ export default function PaymentScreen({ navigation, route }) {
         )}
 
         {/* Process Payment Button */}
-        <View style={styles.section}>
+        <View style={[styles.section, { backgroundColor: 'transparent', borderWidth: 0, shadowOpacity: 0, elevation: 0, marginTop: 4, marginBottom: 20 }]}>
           <TouchableOpacity
             style={[
               styles.processButton,
@@ -429,7 +430,7 @@ export default function PaymentScreen({ navigation, route }) {
             disabled={!selectedChannel || isProcessing || (selectedPaymentMethod === 'cash' && cashValue < total)}
           >
             {isProcessing ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={Colors.white} />
             ) : (
               <Text style={styles.processButtonText}>
                 {selectedPaymentMethod === 'cash' ? 'Proses Pembayaran Tunai' : 'Proses Pembayaran Non-Tunai'}
@@ -502,65 +503,66 @@ const styles = StyleSheet.create({
   },
   section: {
     backgroundColor: Colors.card,
-    marginTop: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 15,
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadows.card,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: Colors.text,
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 12,
+    color: Colors.darkText,
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
   },
   summaryLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: Colors.muted,
   },
   summaryValue: {
     fontSize: 14,
-    fontWeight: '500',
     color: Colors.text,
   },
   paymentMethods: {
     flexDirection: 'row',
-    gap: 15,
+    gap: 12,
   },
   paymentMethodButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: Colors.primary,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
     backgroundColor: Colors.card,
   },
   selectedPaymentMethod: {
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.primaryLight,
+    borderColor: Colors.primary,
   },
   paymentMethodText: {
-    marginLeft: 8,
-    fontSize: 16,
-    fontWeight: '500',
-    color: Colors.primary,
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.muted,
   },
   selectedPaymentMethodText: {
-    color: '#fff',
+    color: Colors.primary,
   },
   selectedChannelContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 15,
-    paddingHorizontal: 15,
-    backgroundColor: Colors.background,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    backgroundColor: Colors.lightBg,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -575,12 +577,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   selectedChannelName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: Colors.text,
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.darkText,
   },
   selectedChannelBalance: {
-    fontSize: 14,
+    fontSize: 13,
     color: Colors.muted,
     marginTop: 2,
   },
@@ -588,30 +590,34 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: 8,
-    paddingHorizontal: 15,
+    paddingHorizontal: 16,
     paddingVertical: 12,
-    fontSize: 16,
-    backgroundColor: Colors.card,
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.darkText,
+    backgroundColor: Colors.lightBg,
   },
   quickAmounts: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
-    marginTop: 15,
+    marginTop: 12,
   },
   quickAmountButton: {
     flex: 1,
     minWidth: '45%',
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    backgroundColor: Colors.background,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.card,
     borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   quickAmountText: {
     fontSize: 14,
-    color: Colors.primary,
-    fontWeight: '500',
+    color: Colors.text,
+    fontWeight: '600',
   },
   changeContainer: {
     flexDirection: 'row',
@@ -620,12 +626,12 @@ const styles = StyleSheet.create({
     marginTop: 15,
     paddingTop: 15,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderTopColor: Colors.borderLight,
   },
   changeLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: Colors.text,
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.darkText,
   },
   changeAmount: {
     fontSize: 18,
@@ -639,19 +645,20 @@ const styles = StyleSheet.create({
   },
   processButton: {
     backgroundColor: Colors.primary,
-    paddingVertical: 15,
-    borderRadius: 10,
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 50,
+    minHeight: 52,
+    ...Shadows.card,
   },
   disabledButton: {
-    backgroundColor: Colors.muted,
+    backgroundColor: '#D1D5DB', // Light gray disabled state
   },
   processButtonText: {
-    color: '#fff',
+    color: Colors.white,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
   modalContainer: {
     flex: 1,
@@ -670,25 +677,27 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
+    color: Colors.darkText,
   },
   modalCancelButton: {
     fontSize: 16,
     color: Colors.primary,
+    fontWeight: '600',
   },
   channelList: {
-    padding: 20,
+    padding: 16,
   },
   channelItem: {
     backgroundColor: Colors.card,
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 10,
-    borderWidth: 1,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1.5,
     borderColor: Colors.border,
   },
   selectedChannelItem: {
     borderColor: Colors.primary,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.primaryLight,
   },
   channelItemHeader: {
     flexDirection: 'row',
@@ -701,34 +710,35 @@ const styles = StyleSheet.create({
   channelItemTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 5,
+    marginBottom: 4,
   },
   channelItemName: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginLeft: 10,
-    color: Colors.text,
+    fontSize: 15,
+    fontWeight: '600',
+    marginLeft: 8,
+    color: Colors.darkText,
   },
   channelItemType: {
-    fontSize: 12,
+    fontSize: 11,
     color: Colors.muted,
     textTransform: 'uppercase',
+    fontWeight: '600',
   },
   channelItemBalance: {
     alignItems: 'flex-end',
   },
   channelItemBalanceLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: Colors.muted,
   },
   channelItemBalanceAmount: {
     fontSize: 14,
-    fontWeight: '500',
-    color: Colors.text,
+    fontWeight: '600',
+    color: Colors.darkText,
   },
   selectedIndicator: {
     position: 'absolute',
-    top: 10,
-    right: 10,
+    top: 12,
+    right: 12,
   },
 });

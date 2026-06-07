@@ -482,11 +482,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: Colors.border,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
   },
   filterChipActive: {
     borderColor: Colors.primary,
-    backgroundColor: '#ffe5ef',
+    backgroundColor: Colors.primaryLight,
   },
   filterChipText: {
     fontSize: 11,

@@ -524,7 +524,7 @@ const styles = StyleSheet.create({
   },
   optionChipActive: {
     borderColor: Colors.primary,
-    backgroundColor: '#ffe5ef',
+    backgroundColor: Colors.primaryLight,
   },
   optionChipText: {
     fontSize: 12,

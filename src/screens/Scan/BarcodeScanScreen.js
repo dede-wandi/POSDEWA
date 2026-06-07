@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../theme';
@@ -32,15 +33,15 @@ export default function BarcodeScanScreen({ navigation, route }) {
 
   if (!permission) {
     return (
-      <View style={styles.center}>
+      <SafeAreaView style={styles.center}>
         <Text style={styles.info}>Menyiapkan izin kamera…</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (!permission.granted) {
     return (
-      <View style={styles.center}>
+      <SafeAreaView style={styles.center}>
         <Ionicons name="camera" size={48} color={Colors.muted} />
         <Text style={styles.info}>Izin kamera belum diberikan.</Text>
         <TouchableOpacity style={styles.backButton} onPress={requestPermission}>
@@ -49,12 +50,12 @@ export default function BarcodeScanScreen({ navigation, route }) {
         <TouchableOpacity style={[styles.backButton, { marginTop: 8 }]} onPress={() => navigation.goBack()}>
           <Text style={styles.backButtonText}>Kembali</Text>
         </TouchableOpacity>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <CameraView
         style={StyleSheet.absoluteFillObject}
         facing="back"
@@ -83,7 +84,7 @@ export default function BarcodeScanScreen({ navigation, route }) {
           </TouchableOpacity>
         </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 

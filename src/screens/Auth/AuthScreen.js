@@ -107,7 +107,7 @@ export default function AuthScreen() {
               autoCapitalize="none"
               keyboardType="email-address"
               style={styles.input}
-              placeholderTextColor="#999"
+              placeholderTextColor={Colors.placeholder}
             />
           </View>
 
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -253,10 +253,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   submitButtonDisabled: {
-    backgroundColor: '#C7C7CC',
+    backgroundColor: Colors.muted,
   },
   submitButtonText: {
-    color: '#ffffff',
+    color: Colors.white,
     ...Typography.label,
   },
   switchButton: {
@@ -270,13 +270,13 @@ const styles = StyleSheet.create({
   errorContainer: {
     marginTop: Spacing.xl,
     padding: Spacing.lg,
-    backgroundColor: '#fff3cd',
+    backgroundColor: Colors.warningLight,
     borderRadius: 8,
     borderLeftWidth: 4,
-    borderLeftColor: '#ffc107',
+    borderLeftColor: Colors.warning,
   },
   errorText: {
-    color: '#856404',
+    color: Colors.darkText,
     ...Typography.small,
     lineHeight: 20,
   },

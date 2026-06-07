@@ -28,6 +28,7 @@ export default function SalesReportScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [sales, setSales] = useState([]);
   const [flattenedItems, setFlattenedItems] = useState([]);
+  const [filteredSalesList, setFilteredSalesList] = useState([]);
   
   // Filter state
   const [filterType, setFilterType] = useState('today'); // 'today', 'yesterday', 'thisMonth', 'custom', 'month', 'year'
@@ -52,6 +53,7 @@ export default function SalesReportScreen({ navigation }) {
     date: true,
     invoice: false,
     product: true,
+    qty: true,
     capitalPrice: false,
     price: true,
     profit: true,
@@ -254,8 +256,10 @@ export default function SalesReportScreen({ navigation }) {
 
     // Sort by date descending
     items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    filteredSales.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     setFlattenedItems(items);
+    setFilteredSalesList(filteredSales);
   };
 
   const exportToExcel = async () => {
@@ -407,6 +411,38 @@ export default function SalesReportScreen({ navigation }) {
     );
   };
 
+  const handleDeleteSale = async (saleId) => {
+    Alert.alert(
+      'Hapus Transaksi',
+      'Apakah Anda yakin ingin menghapus SELURUH transaksi (Invoice) ini? Semua item di dalamnya akan ikut terhapus.',
+      [
+        { text: 'Batal', style: 'cancel' },
+        { 
+          text: 'Hapus Transaksi', 
+          style: 'destructive',
+          onPress: async () => {
+            setLoading(true);
+            try {
+              const result = await deleteSale(saleId);
+              if (result.success) {
+                showToast('Transaksi berhasil dihapus', 'success');
+                setTimeout(async () => {
+                  await loadData();
+                }, 500);
+              } else {
+                showToast('Gagal menghapus transaksi: ' + result.error, 'error');
+              }
+            } catch (err) {
+              showToast(err.message, 'error');
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const onDayPress = (day) => {
     if (!customRange.startDate || (customRange.startDate && customRange.endDate)) {
       setCustomRange({ startDate: day.dateString, endDate: null });
@@ -503,7 +539,7 @@ export default function SalesReportScreen({ navigation }) {
               </Text>
             </View>
           )}
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: 130 }}
         />
       </View>
     );
@@ -514,7 +550,8 @@ export default function SalesReportScreen({ navigation }) {
       {visibleColumns.no && <Text style={[styles.headerCell, { width: 30 }]}>No</Text>}
       {visibleColumns.date && <Text style={[styles.headerCell, { width: 65 }]}>Tanggal</Text>}
       {visibleColumns.invoice && <Text style={[styles.headerCell, { width: 105, marginRight: 8 }]}>No. Inv</Text>}
-      {visibleColumns.product && <Text style={[styles.headerCell, { flex: 1 }]}>Nama Produk</Text>}
+      {visibleColumns.product && <Text style={[styles.headerCell, { flex: 1 }]}>Nama Produk / Invoice</Text>}
+      {visibleColumns.qty && <Text style={[styles.headerCell, { width: 35, textAlign: 'center' }]}>Qty</Text>}
       {visibleColumns.capitalPrice && <Text style={[styles.headerCell, { width: 75, textAlign: 'right' }]}>Modal</Text>}
       {visibleColumns.price && <Text style={[styles.headerCell, { width: 75, textAlign: 'right' }]}>Harga</Text>}
       {visibleColumns.profit && <Text style={[styles.headerCell, { width: 75, textAlign: 'right' }]}>Profit</Text>}
@@ -524,32 +561,124 @@ export default function SalesReportScreen({ navigation }) {
     </View>
   );
 
-  const renderItem = ({ item, index }) => (
-    <View style={styles.row}>
-      {visibleColumns.no && <Text style={[styles.cell, { width: 30 }]}>{index + 1}</Text>}
-      {visibleColumns.date && <Text style={[styles.cell, { width: 65, fontSize: 10 }]}>{formatDateStr(item.created_at)}</Text>}
-      {visibleColumns.invoice && <Text style={[styles.cell, { width: 105, fontSize: 9, marginRight: 8, color: '#555' }]}>
-        {item.original_sale?.no_invoice || '-'}
-      </Text>}
-      {visibleColumns.product && <Text style={[styles.cell, { flex: 1 }]}>{item.product_name} {item.qty > 1 ? `(${item.qty}x)` : ''}</Text>}
-      {visibleColumns.capitalPrice && <Text style={[styles.cell, { width: 75, textAlign: 'right', fontSize: 10 }]}>{formatCurrency((item.cost_price || 0) * (item.qty || 1))}</Text>}
-      {visibleColumns.price && <Text style={[styles.cell, { width: 75, textAlign: 'right', fontSize: 10 }]}>{formatCurrency(item.line_total)}</Text>}
-      {visibleColumns.profit && <Text style={[styles.cell, { width: 75, textAlign: 'right', fontSize: 10, color: item.line_profit >= 0 ? 'green' : 'red' }]}>
-        {formatCurrency(item.line_profit)}
-      </Text>}
-      {visibleColumns.action && isSelectMode && (
-        <View style={[styles.cell, { width: 40, alignItems: 'center', justifyContent: 'center' }]}>
-          <TouchableOpacity 
-            onPress={() => handleDeleteItem(item)}
-            style={styles.deleteButton}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="trash-outline" size={20} color={Colors.danger || '#F44336'} />
-          </TouchableOpacity>
+  const renderItem = ({ item: sale, index }) => {
+    const saleItems = sale.items || sale.sale_items || [];
+    const totalQtyInSale = saleItems.reduce((sum, it) => sum + (it.qty || 0), 0);
+
+    return (
+      <View style={styles.transactionGroup}>
+        {/* Transaction Parent Row */}
+        <View style={styles.parentRow}>
+          {visibleColumns.no && <Text style={[styles.cell, { width: 30, fontWeight: '700' }]}>{index + 1}</Text>}
+          {visibleColumns.date && <Text style={[styles.cell, { width: 65, fontSize: 10, fontWeight: '600' }]}>{formatDateStr(sale.created_at)}</Text>}
+          
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="receipt-outline" size={12} color={Colors.primary} style={{ marginRight: 4 }} />
+            <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.darkText }} numberOfLines={1}>
+              {sale.no_invoice || `TRX-${sale.id.slice(-6).toUpperCase()}`}
+            </Text>
+            <Text style={{ fontSize: 9, color: Colors.muted, marginLeft: 6 }}>
+              ({sale.payment_method === 'cash' ? 'Tunai' : 'Non-Tunai'})
+            </Text>
+          </View>
+
+          {visibleColumns.qty && (
+            <Text style={[styles.cell, { width: 35, textAlign: 'center', fontWeight: '700', fontSize: 11 }]}>
+              {totalQtyInSale}
+            </Text>
+          )}
+          
+          {visibleColumns.capitalPrice && (
+            <Text style={[styles.cell, { width: 75, textAlign: 'right', fontSize: 10, color: Colors.muted }]}>
+              -
+            </Text>
+          )}
+
+          {visibleColumns.price && (
+            <Text style={[styles.cell, { width: 75, textAlign: 'right', fontSize: 11, fontWeight: '700', color: Colors.darkText }]}>
+              {formatCurrency(sale.total)}
+            </Text>
+          )}
+
+          {visibleColumns.profit && (
+            <Text style={[styles.cell, { width: 75, textAlign: 'right', fontSize: 11, fontWeight: '700', color: Colors.primary }]}>
+              {formatCurrency(sale.profit)}
+            </Text>
+          )}
+
+          {visibleColumns.action && isSelectMode && (
+            <View style={[styles.cell, { width: 40, alignItems: 'center', justifyContent: 'center' }]}>
+              <TouchableOpacity 
+                onPress={() => handleDeleteSale(sale.id)}
+                style={styles.deleteButton}
+              >
+                <Ionicons name="trash-outline" size={18} color={Colors.danger} />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
-      )}
-    </View>
-  );
+
+        {/* Transaction Child Items (Breakdown Bagan) */}
+        <View style={styles.childRowsContainer}>
+          {saleItems.map((item, itemIdx) => (
+            <View key={`${item.id}-${itemIdx}`} style={styles.childRow}>
+              {/* Spacer cells matching parent column widths */}
+              {visibleColumns.no && <View style={{ width: 30 }} />}
+              {visibleColumns.date && <View style={{ width: 65 }} />}
+              
+              {/* Product name cell with indentation */}
+              <View style={{ flex: 1, paddingLeft: 10 }}>
+                <Text style={styles.childProductName} numberOfLines={2}>
+                  ↳ {item.product_name}
+                </Text>
+                {item.barcode ? <Text style={styles.childProductBarcode}>{item.barcode}</Text> : null}
+              </View>
+
+              {/* Individual Item Qty */}
+              {visibleColumns.qty && (
+                <Text style={[styles.cell, { width: 35, textAlign: 'center', color: Colors.text, fontSize: 11 }]}>
+                  {item.qty || 1}
+                </Text>
+              )}
+
+              {/* Individual Capital Price */}
+              {visibleColumns.capitalPrice && (
+                <Text style={[styles.cell, { width: 75, textAlign: 'right', color: Colors.muted, fontSize: 10 }]}>
+                  {formatCurrency((item.cost_price || 0) * (item.qty || 1))}
+                </Text>
+              )}
+
+              {/* Individual Total Price */}
+              {visibleColumns.price && (
+                <Text style={[styles.cell, { width: 75, textAlign: 'right', color: Colors.muted, fontSize: 10 }]}>
+                  {formatCurrency(item.line_total)}
+                </Text>
+              )}
+
+              {/* Individual Profit */}
+              {visibleColumns.profit && (
+                <Text style={[styles.cell, { width: 75, textAlign: 'right', color: item.line_profit >= 0 ? '#10B981' : '#EF4444', fontSize: 10 }]}>
+                  {formatCurrency(item.line_profit)}
+                </Text>
+              )}
+
+              {/* Action cell for individual item deletion if needed */}
+              {visibleColumns.action && isSelectMode && (
+                <View style={{ width: 40, alignItems: 'center', justifyContent: 'center' }}>
+                  <TouchableOpacity 
+                    onPress={() => handleDeleteItem(item)}
+                    style={styles.deleteButton}
+                  >
+                    <Ionicons name="close-circle-outline" size={16} color={Colors.danger} />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -564,10 +693,10 @@ export default function SalesReportScreen({ navigation }) {
         
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity 
-            style={[styles.exportButton, { backgroundColor: '#607D8B', marginRight: 8 }]} 
+            style={[styles.exportButton, { backgroundColor: Colors.secondary, marginRight: 8 }]} 
             onPress={openColumnModal}
           >
-            <Ionicons name="options" size={20} color="#fff" />
+            <Ionicons name="options" size={20} color={Colors.white} />
             <Text style={styles.exportButtonText}>Atur Kolom</Text>
           </TouchableOpacity>
 
@@ -575,7 +704,7 @@ export default function SalesReportScreen({ navigation }) {
             style={styles.exportButton} 
             onPress={exportToExcel}
           >
-            <Ionicons name="download" size={20} color="#fff" />
+            <Ionicons name="download" size={20} color={Colors.white} />
             <Text style={styles.exportButtonText}>Excel</Text>
           </TouchableOpacity>
 
@@ -649,10 +778,10 @@ export default function SalesReportScreen({ navigation }) {
           
           {(filterType !== 'today') && (
             <TouchableOpacity 
-              style={[styles.filterBtn, { backgroundColor: '#FFEBEE', borderColor: '#FFCDD2' }]}
+              style={[styles.filterBtn, { backgroundColor: Colors.dangerLight, borderColor: Colors.danger }]}
               onPress={resetFilters}
             >
-              <Text style={[styles.filterText, { color: '#D32F2F' }]}>Reset</Text>
+              <Text style={[styles.filterText, { color: Colors.danger }]}>Reset</Text>
             </TouchableOpacity>
           )}
         </ScrollView>
@@ -669,16 +798,24 @@ export default function SalesReportScreen({ navigation }) {
         <View style={styles.tableContainer}>
           {renderHeader()}
           <FlatList
-            data={flattenedItems}
+            data={filteredSalesList}
             renderItem={renderItem}
-            keyExtractor={(item, index) => `${item.id}-${index}`}
-            contentContainerStyle={{ paddingBottom: 100 }}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={{ paddingBottom: 130 }}
           />
         </View>
       )}
 
       {/* Footer Summary */}
       <View style={styles.footer}>
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryLabel}>Total Item Terjual (Qty):</Text>
+          <Text style={styles.summaryValue}>
+             {filterType === 'year' 
+               ? '-' 
+               : `${flattenedItems.reduce((sum, item) => sum + (item.qty || 0), 0)} Pcs`}
+          </Text>
+        </View>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Total Harga Penjualan:</Text>
           <Text style={styles.summaryValue}>
@@ -729,7 +866,7 @@ export default function SalesReportScreen({ navigation }) {
                   }
                 }}
               >
-                <Text style={[styles.modalBtnText, { color: '#fff' }]}>Terapkan</Text>
+                <Text style={[styles.modalBtnText, { color: Colors.white }]}>Terapkan</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -747,7 +884,7 @@ export default function SalesReportScreen({ navigation }) {
                   key={year}
                   style={[
                     styles.modalBtn, 
-                    selectedYear === year ? styles.confirmBtn : { backgroundColor: '#f0f0f0' },
+                    selectedYear === year ? styles.confirmBtn : { backgroundColor: Colors.borderLight },
                     { marginBottom: 8, width: '100%' }
                   ]}
                   onPress={() => {
@@ -757,7 +894,7 @@ export default function SalesReportScreen({ navigation }) {
                 >
                   <Text style={[
                     styles.modalBtnText, 
-                    selectedYear === year ? { color: '#fff' } : { color: '#333' }
+                    selectedYear === year ? { color: Colors.white } : { color: Colors.text }
                   ]}>{year}</Text>
                 </TouchableOpacity>
               ))}
@@ -800,7 +937,7 @@ export default function SalesReportScreen({ navigation }) {
                       marginBottom: 10, 
                       borderRadius: 8,
                       alignItems: 'center',
-                      backgroundColor: selectedMonth === month ? Colors.primary : '#f0f0f0'
+                      backgroundColor: selectedMonth === month ? Colors.primary : Colors.borderLight
                     }
                   ]}
                   onPress={() => {
@@ -808,7 +945,7 @@ export default function SalesReportScreen({ navigation }) {
                     setShowMonthPicker(false);
                   }}
                 >
-                  <Text style={{ color: selectedMonth === month ? '#fff' : '#333' }}>
+                  <Text style={{ color: selectedMonth === month ? Colors.white : Colors.text }}>
                     {new Date(2024, month, 1).toLocaleDateString('id-ID', { month: 'short' })}
                   </Text>
                 </TouchableOpacity>
@@ -836,6 +973,7 @@ export default function SalesReportScreen({ navigation }) {
                   date: 'Tanggal',
                   invoice: 'No. Invoice',
                   product: 'Nama Produk',
+                  qty: 'Quantity (Qty)',
                   capitalPrice: 'Harga Modal',
                   price: 'Harga',
                   profit: 'Profit',
@@ -845,7 +983,7 @@ export default function SalesReportScreen({ navigation }) {
                 return (
                   <TouchableOpacity 
                     key={key} 
-                    style={{flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#eee'}}
+                    style={{flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.borderLight}}
                     onPress={() => toggleColumn(key)}
                   >
                     <Ionicons 
@@ -853,7 +991,7 @@ export default function SalesReportScreen({ navigation }) {
                       size={24} 
                       color={Colors.primary} 
                     />
-                    <Text style={{marginLeft: 12, fontSize: 16, color: '#333'}}>{labels[key]}</Text>
+                    <Text style={{marginLeft: 12, fontSize: 16, color: Colors.text}}>{labels[key]}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -869,7 +1007,7 @@ export default function SalesReportScreen({ navigation }) {
                 style={[styles.modalBtn, styles.confirmBtn]} 
                 onPress={saveColumns}
               >
-                <Text style={[styles.modalBtnText, {color: '#fff'}]}>Simpan</Text>
+                <Text style={[styles.modalBtnText, {color: Colors.white}]}>Simpan</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -882,7 +1020,7 @@ export default function SalesReportScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -890,10 +1028,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: Colors.border,
     zIndex: 10,
     elevation: 4,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.card,
   },
   title: {
     fontSize: 18,
@@ -906,14 +1044,14 @@ const styles = StyleSheet.create({
   exportButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#4CAF50',
+    backgroundColor: Colors.primary,
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 6,
     marginRight: 8,
   },
   exportButtonText: {
-    color: '#fff',
+    color: Colors.white,
     fontSize: 12,
     fontWeight: 'bold',
     marginLeft: 4,
@@ -934,33 +1072,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   selectButtonTextActive: {
-    color: '#fff',
+    color: Colors.white,
   },
   filterContainer: {
     flexDirection: 'row',
     padding: 10,
     paddingHorizontal: 16,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: Colors.lightBg,
   },
   filterBtn: {
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: Colors.border,
     marginRight: 8,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.card,
   },
   activeFilterBtn: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
   },
   filterText: {
-    color: '#666',
+    color: Colors.muted,
     fontSize: 12,
   },
   activeFilterText: {
-    color: '#fff',
+    color: Colors.white,
     fontWeight: 'bold',
   },
   loadingContainer: {
@@ -976,28 +1114,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingVertical: 12,
     paddingHorizontal: 8,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: Colors.borderLight,
     borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
+    borderBottomColor: Colors.border,
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,
   },
   headerCell: {
     fontWeight: 'bold',
     fontSize: 12,
-    color: '#333',
+    color: Colors.darkText,
   },
   row: {
     flexDirection: 'row',
     paddingVertical: 12,
     paddingHorizontal: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: Colors.borderLight,
     alignItems: 'center',
   },
   cell: {
     fontSize: 12,
-    color: '#333',
+    color: Colors.text,
   },
   deleteButton: {
     padding: 4,
@@ -1007,12 +1145,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.card,
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: '#ccc',
+    borderTopColor: Colors.border,
     elevation: 10,
-    shadowColor: '#000',
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -1025,12 +1163,12 @@ const styles = StyleSheet.create({
   summaryLabel: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#333',
+    color: Colors.darkText,
   },
   summaryValue: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#333',
+    color: Colors.darkText,
   },
   modalContainer: {
     flex: 1,
@@ -1039,7 +1177,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: Colors.card,
     borderRadius: 12,
     padding: 20,
   },
@@ -1047,6 +1185,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 16,
+    color: Colors.darkText,
     textAlign: 'center',
   },
   modalButtons: {
@@ -1062,7 +1201,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
   },
   cancelBtn: {
-    backgroundColor: '#eee',
+    backgroundColor: Colors.borderLight,
   },
   confirmBtn: {
     backgroundColor: Colors.primary,
@@ -1070,6 +1209,40 @@ const styles = StyleSheet.create({
   modalBtnText: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#333',
+    color: Colors.text,
+  },
+  transactionGroup: {
+    backgroundColor: Colors.card,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    paddingVertical: 4,
+  },
+  parentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+  },
+  childRowsContainer: {
+    paddingVertical: 4,
+  },
+  childRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+  },
+  childProductName: {
+    fontSize: 11,
+    color: '#475569',
+    fontWeight: '500',
+  },
+  childProductBarcode: {
+    fontSize: 9,
+    color: Colors.placeholder,
+    marginLeft: 12,
+    marginTop: 1,
   },
 });

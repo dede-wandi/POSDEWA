@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions, ScrollView, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../../theme';
+import { Colors, Shadows, FontSize, FontWeight, Radii, Spacing } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
 import { getSupabaseClient } from '../../services/supabase';
 
@@ -58,7 +58,7 @@ export default function AccountScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header dihapus sesuai permintaan agar tampilan lebih bersih dan konsisten */}
       
       <ScrollView
@@ -164,6 +164,17 @@ export default function AccountScreen({ navigation }) {
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.muted} />
             </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.actionButton} 
+              onPress={() => navigation.navigate('MenuSettings')}
+            >
+              <View style={styles.actionContent}>
+                <Ionicons name="grid-outline" size={18} color={Colors.text} style={{ marginRight: 12 }} />
+                <Text style={styles.actionTextNormal}>Pengaturan Menu</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={Colors.muted} />
+            </TouchableOpacity>
             
             <TouchableOpacity style={styles.actionButton} onPress={handleSignOut}>
               <View style={styles.actionContent}>
@@ -204,20 +215,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.lg,
     backgroundColor: Colors.card,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: FontSize.h3,
+    fontWeight: FontWeight.bold,
     color: Colors.text,
   },
   content: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.xl,
   },
   scrollView: {
     flex: 1,
@@ -226,14 +237,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    borderRadius: Radii.md,
+    padding: Spacing.lg,
+    marginBottom: Spacing.xl,
+    ...Shadows.card,
     borderWidth: 1,
     borderColor: Colors.border,
   },
@@ -244,59 +251,50 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    marginRight: Spacing.lg,
   },
   avatarText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#ffffff',
+    fontSize: FontSize.h3,
+    fontWeight: FontWeight.bold,
+    color: Colors.white,
   },
   profileInfo: {
     flex: 1,
   },
   profileName: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: FontSize.subtitle,
+    fontWeight: FontWeight.bold,
     color: Colors.text,
     marginBottom: 2,
     textTransform: 'capitalize',
   },
   profileEmail: {
-    fontSize: 13,
+    fontSize: FontSize.caption,
     color: Colors.muted,
   },
   businessName: {
-    fontSize: 12,
+    fontSize: FontSize.caption,
     color: Colors.primary,
     marginTop: 2,
-    fontWeight: '500',
+    fontWeight: FontWeight.medium,
   },
   detailsSection: {
-    marginBottom: 20,
+    marginBottom: Spacing.xl,
   },
   sectionTitle: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: FontSize.caption,
+    fontWeight: FontWeight.bold,
     color: Colors.muted,
-    marginBottom: 8,
+    marginBottom: Spacing.sm,
     marginLeft: 4,
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
   detailCard: {
     backgroundColor: Colors.card,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    borderRadius: Radii.md,
+    padding: Spacing.lg,
+    ...Shadows.card,
     borderWidth: 1,
     borderColor: Colors.border,
   },
@@ -307,14 +305,14 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   detailLabel: {
-    fontSize: 13,
+    fontSize: FontSize.caption,
     color: Colors.muted,
     flex: 1,
-    fontWeight: '500',
+    fontWeight: FontWeight.medium,
   },
   detailValue: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: FontSize.caption,
+    fontWeight: FontWeight.semibold,
     color: Colors.text,
     flex: 2,
     textAlign: 'right',
@@ -325,34 +323,30 @@ const styles = StyleSheet.create({
     marginVertical: 2,
   },
   statusBadge: {
-    backgroundColor: '#e8f5e8',
+    backgroundColor: Colors.primaryLight,
     paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: Radii.pill,
     borderWidth: 1,
-    borderColor: '#c3e6c3',
+    borderColor: Colors.primary,
   },
   statusText: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.bold,
     color: Colors.success,
   },
   actionsSection: {
-    marginBottom: 20,
+    marginBottom: Spacing.xl,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: Colors.card,
-    borderRadius: 12,
+    borderRadius: Radii.md,
     padding: 14,
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    ...Shadows.card,
     borderWidth: 1,
     borderColor: Colors.border,
   },
@@ -362,32 +356,32 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   actionText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: FontSize.body,
+    fontWeight: FontWeight.semibold,
     color: Colors.danger,
   },
   actionTextNormal: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: FontSize.body,
+    fontWeight: FontWeight.semibold,
     color: Colors.text,
   },
   appInfoSection: {
     alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: Spacing.xl,
   },
   appInfoTitle: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: FontSize.title,
+    fontWeight: FontWeight.extrabold,
     color: Colors.primary,
     marginBottom: 2,
   },
   appInfoSubtitle: {
-    fontSize: 12,
+    fontSize: FontSize.caption,
     color: Colors.muted,
     marginBottom: 4,
   },
   appInfoVersion: {
-    fontSize: 11,
+    fontSize: FontSize.sm,
     color: Colors.muted,
   },
   notLoggedIn: {
@@ -397,14 +391,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   notLoggedInTitle: {
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: FontSize.h3,
+    fontWeight: FontWeight.bold,
     color: Colors.text,
     marginBottom: 8,
     textAlign: 'center',
   },
   notLoggedInSubtitle: {
-    fontSize: 16,
+    fontSize: FontSize.subtitle,
     color: Colors.muted,
     textAlign: 'center',
     lineHeight: 24,

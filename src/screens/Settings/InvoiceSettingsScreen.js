@@ -19,6 +19,7 @@ import { getInvoiceSettings, updateInvoiceSettings, resetInvoiceSettings } from 
 import { detectPairedPrinters, connectBluetoothPrinter, checkPrinterConnection, testBluetoothPrint, testWebPrint } from '../../utils/invoicePrint';
 import * as Print from 'expo-print';
 import { getItemAsync, setItemAsync, deleteItemAsync } from '../../utils/storage';
+import { Colors, Spacing, Radii, Shadows, Typography } from '../../theme';
 
 export default function InvoiceSettingsScreen({ navigation }) {
   const { user } = useAuth();
@@ -272,7 +273,7 @@ export default function InvoiceSettingsScreen({ navigation }) {
                 value={settings.business_name}
                 onChangeText={(text) => updateSetting('business_name', text)}
                 placeholder="Masukkan nama bisnis"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.placeholder}
               />
             </View>
 
@@ -283,7 +284,7 @@ export default function InvoiceSettingsScreen({ navigation }) {
                 value={settings.business_address}
                 onChangeText={(text) => updateSetting('business_address', text)}
                 placeholder="Masukkan alamat bisnis"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.placeholder}
                 multiline
                 numberOfLines={3}
               />
@@ -296,7 +297,7 @@ export default function InvoiceSettingsScreen({ navigation }) {
                 value={settings.business_phone}
                 onChangeText={(text) => updateSetting('business_phone', text)}
                 placeholder="Masukkan nomor telepon"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.placeholder}
                 keyboardType="phone-pad"
               />
             </View>
@@ -308,7 +309,7 @@ export default function InvoiceSettingsScreen({ navigation }) {
                 value={settings.business_email}
                 onChangeText={(text) => updateSetting('business_email', text)}
                 placeholder="Masukkan email bisnis"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.placeholder}
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
@@ -326,7 +327,7 @@ export default function InvoiceSettingsScreen({ navigation }) {
                 value={settings.header_text}
                 onChangeText={(text) => updateSetting('header_text', text)}
                 placeholder="Teks yang akan muncul di bagian atas invoice"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.placeholder}
                 multiline
                 numberOfLines={2}
               />
@@ -339,7 +340,7 @@ export default function InvoiceSettingsScreen({ navigation }) {
                 value={settings.footer_text}
                 onChangeText={(text) => updateSetting('footer_text', text)}
                 placeholder="Teks yang akan muncul di bagian bawah invoice"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.placeholder}
                 multiline
                 numberOfLines={2}
               />
@@ -352,7 +353,7 @@ export default function InvoiceSettingsScreen({ navigation }) {
                 value={settings.logo_url}
                 onChangeText={(text) => updateSetting('logo_url', text)}
                 placeholder="https://example.com/logo.png"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.placeholder}
                 keyboardType="url"
                 autoCapitalize="none"
               />
@@ -369,11 +370,11 @@ export default function InvoiceSettingsScreen({ navigation }) {
                   <Text style={styles.selectedPrinterText}>{selectedPrinter.name || 'Belum dipilih'}</Text>
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                  <Text style={{ fontSize: 14, color: isConnected ? '#28a745' : '#FF3B30' }}>
+                  <Text style={{ fontSize: 14, color: isConnected ? Colors.success : Colors.danger }}>
                     {isConnected ? '✅ Terhubung' : '❌ Tidak Terhubung'}
                   </Text>
                   <TouchableOpacity onPress={refreshConnectionStatus} style={{ marginLeft: 10 }}>
-                    <Text style={{ color: '#007AFF' }}>{checkingConn ? 'Memeriksa…' : 'Periksa Koneksi'}</Text>
+                    <Text style={{ color: Colors.secondary }}>{checkingConn ? 'Memeriksa…' : 'Periksa Koneksi'}</Text>
                   </TouchableOpacity>
                 </View>
                 <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -510,7 +511,7 @@ export default function InvoiceSettingsScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -518,27 +519,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 16,
     paddingHorizontal: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.card,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: Colors.border,
   },
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F2F2F7',
+    borderRadius: Radii.pill,
+    backgroundColor: Colors.borderLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   backButtonText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: Colors.darkText,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#000000',
+    color: Colors.darkText,
   },
   placeholder: {
     width: 40,
@@ -551,7 +552,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#666',
+    color: Colors.muted,
   },
   scrollView: {
     flex: 1,
@@ -560,25 +561,23 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   section: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: Colors.card,
+    borderRadius: Radii.lg,
     padding: 20,
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadows.card,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#000',
+    color: Colors.darkText,
     marginBottom: 16,
   },
   selectedPrinterText: {
     fontSize: 14,
-    color: '#333',
+    color: Colors.text,
     marginTop: 6
   },
   inputGroup: {
@@ -587,17 +586,17 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: Colors.darkText,
     marginBottom: 8,
   },
   textInput: {
     borderWidth: 1,
-    borderColor: '#E5E5EA',
-    borderRadius: 8,
+    borderColor: Colors.border,
+    borderRadius: Radii.md,
     padding: 12,
     fontSize: 16,
-    color: '#000',
-    backgroundColor: '#FFFFFF',
+    color: Colors.text,
+    backgroundColor: Colors.card,
   },
   multilineInput: {
     height: 80,
@@ -609,36 +608,36 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F2F2F7',
+    borderBottomColor: Colors.borderLight,
   },
   switchLabel: {
     fontSize: 16,
-    color: '#333',
+    color: Colors.text,
     flex: 1,
   },
   actionSection: {
     marginTop: 20,
   },
   saveButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 12,
+    backgroundColor: Colors.primary,
+    borderRadius: Radii.lg,
     padding: 16,
     alignItems: 'center',
     marginBottom: 12,
   },
   saveButtonText: {
-    color: '#FFFFFF',
+    color: Colors.white,
     fontSize: 16,
     fontWeight: 'bold',
   },
   resetButton: {
-    backgroundColor: '#FF3B30',
-    borderRadius: 12,
+    backgroundColor: Colors.danger,
+    borderRadius: Radii.lg,
     padding: 16,
     alignItems: 'center',
   },
   resetButtonText: {
-    color: '#FFFFFF',
+    color: Colors.white,
     fontSize: 16,
     fontWeight: 'bold',
   },

@@ -446,7 +446,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: Colors.primary,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
   },
   filterToggleText: {
     marginLeft: 6,
@@ -463,7 +463,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   resetButtonText: {
-    color: '#fff',
+    color: Colors.white,
     fontSize: 12,
     fontWeight: '600',
     marginLeft: 6,
@@ -504,11 +504,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: Colors.border,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
   },
   filterChipActive: {
     borderColor: Colors.primary,
-    backgroundColor: '#ffe5ef',
+    backgroundColor: Colors.primaryLight,
   },
   filterChipText: {
     fontSize: 11,
@@ -540,7 +540,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.card,
     borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 2,
@@ -549,7 +549,7 @@ const styles = StyleSheet.create({
   imageWrapper: {
     width: '100%',
     height: cardWidth,
-    backgroundColor: '#f2f2f7',
+    backgroundColor: Colors.lightBg,
   },
   image: {
     width: '100%',
@@ -566,7 +566,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 14,
-    color: '#2e2e2e',
+    color: Colors.darkText,
     marginBottom: 4,
     lineHeight: 18,
   },
@@ -579,13 +579,13 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#E91E63',
+    color: Colors.success,
   },
   qtyControlRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#f2f2f7',
+    backgroundColor: Colors.lightBg,
     borderRadius: 8,
     padding: 4,
     marginBottom: 8,
@@ -614,7 +614,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   addToCartText: {
-    color: '#fff',
+    color: Colors.white,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -625,7 +625,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
@@ -633,7 +633,7 @@ const styles = StyleSheet.create({
   },
   stock: {
     fontSize: 11,
-    color: '#555',
+    color: Colors.muted,
     marginBottom: 4,
   },
   metaRow: {
@@ -648,16 +648,16 @@ const styles = StyleSheet.create({
   },
   ratingText: {
     fontSize: 10,
-    color: '#555',
+    color: Colors.muted,
     marginLeft: 2,
   },
   soldText: {
     fontSize: 10,
-    color: '#999',
+    color: Colors.placeholder,
   },
   shopLocation: {
     fontSize: 10,
-    color: '#999',
+    color: Colors.placeholder,
     marginTop: 2,
   },
   emptyContainer: {

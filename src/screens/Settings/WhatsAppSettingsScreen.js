@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getSupabaseClient } from '../../services/supabase';
 import { useToast } from '../../contexts/ToastContext';
 import { getWaConfig, upsertWaConfig } from '../../services/waNotifSupabase';
+import { Colors, Spacing, Radii, Shadows, Typography } from '../../theme';
 
 export default function WhatsAppSettingsScreen({ navigation }) {
   const { user } = useAuth();
@@ -124,7 +125,7 @@ export default function WhatsAppSettingsScreen({ navigation }) {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color="#007AFF" />
+          <Ionicons name="arrow-back" size={24} color={Colors.darkText} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifikasi WhatsApp</Text>
         <TouchableOpacity 
@@ -132,7 +133,7 @@ export default function WhatsAppSettingsScreen({ navigation }) {
           onPress={saveSettings}
           disabled={loading}
         >
-          <Text style={[styles.saveButtonText, loading && styles.saveButtonTextDisabled]}>
+          <Text style={[styles.saveButtonText, loading ? styles.saveButtonTextDisabled : null]}>
             {loading ? 'Menyimpan...' : 'Simpan'}
           </Text>
         </TouchableOpacity>
@@ -155,7 +156,7 @@ export default function WhatsAppSettingsScreen({ navigation }) {
                 value={settings.wa_target_1}
                 onChangeText={(value) => updateField('wa_target_1', value)}
                 placeholder="Contoh: 6281234567890"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.placeholder}
                 keyboardType="phone-pad"
               />
             </View>
@@ -167,7 +168,7 @@ export default function WhatsAppSettingsScreen({ navigation }) {
                 value={settings.wa_target_2}
                 onChangeText={(value) => updateField('wa_target_2', value)}
                 placeholder="Contoh: 6281234567890"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.placeholder}
                 keyboardType="phone-pad"
               />
             </View>
@@ -179,13 +180,13 @@ export default function WhatsAppSettingsScreen({ navigation }) {
                 value={settings.wa_target_3}
                 onChangeText={(value) => updateField('wa_target_3', value)}
                 placeholder="Contoh: 6281234567890"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.placeholder}
                 keyboardType="phone-pad"
               />
             </View>
             
             <View style={styles.infoBox}>
-              <Ionicons name="information-circle-outline" size={20} color="#666" style={{ marginRight: 8 }} />
+              <Ionicons name="information-circle-outline" size={20} color={Colors.muted} style={{ marginRight: 8 }} />
               <Text style={styles.infoText}>
                 Notifikasi akan dikirim dengan jeda 5-10 detik untuk menghindari pembatasan broadcast.
               </Text>
@@ -233,7 +234,7 @@ export default function WhatsAppSettingsScreen({ navigation }) {
                   value={waCfg.token}
                   onChangeText={(v) => updateCfg('token', v)}
                   placeholder="Masukkan token Fonnte"
-                  placeholderTextColor="#999"
+                  placeholderTextColor={Colors.placeholder}
                   secureTextEntry
                 />
               </View>
@@ -246,7 +247,7 @@ export default function WhatsAppSettingsScreen({ navigation }) {
                     value={waCfg.appkey}
                     onChangeText={(v) => updateCfg('appkey', v)}
                     placeholder="Masukkan App Key Wapanels"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={Colors.placeholder}
                     secureTextEntry
                   />
                 </View>
@@ -257,7 +258,7 @@ export default function WhatsAppSettingsScreen({ navigation }) {
                     value={waCfg.authkey}
                     onChangeText={(v) => updateCfg('authkey', v)}
                     placeholder="Masukkan Auth Key Wapanels"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={Colors.placeholder}
                     secureTextEntry
                   />
                 </View>
@@ -273,7 +274,7 @@ export default function WhatsAppSettingsScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -281,33 +282,33 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.card,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: Colors.border,
   },
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F2F2F7',
+    borderRadius: Radii.pill,
+    backgroundColor: Colors.borderLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000000',
+    color: Colors.darkText,
     flex: 1,
     textAlign: 'center',
   },
   saveButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#007AFF',
+    borderRadius: Radii.pill,
+    backgroundColor: Colors.primary,
   },
   saveButtonText: {
-    color: '#FFFFFF',
+    color: Colors.white,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -326,7 +327,7 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 14,
-    color: '#666',
+    color: Colors.muted,
     marginBottom: 24,
     lineHeight: 20,
   },
@@ -336,31 +337,24 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: Colors.darkText,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: Colors.card,
+    borderRadius: Radii.md,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#1a1a1a',
+    color: Colors.text,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    borderColor: Colors.border,
+    ...Shadows.card,
   },
   providerSelector: {
     flexDirection: 'row',
-    backgroundColor: '#E5E5EA',
-    borderRadius: 12,
+    backgroundColor: Colors.borderLight,
+    borderRadius: Radii.md,
     padding: 3,
     marginBottom: 10,
   },
@@ -368,42 +362,38 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     alignItems: 'center',
-    borderRadius: 10,
+    borderRadius: Radii.sm,
   },
   providerTabActive: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1.5,
-    elevation: 2,
+    backgroundColor: Colors.card,
+    ...Shadows.card,
   },
   providerTabText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#666',
+    color: Colors.muted,
   },
   providerTabTextActive: {
-    color: '#007AFF',
+    color: Colors.primary,
     fontWeight: '600',
   },
   infoBox: {
     flexDirection: 'row',
-    backgroundColor: '#E8E8E8',
+    backgroundColor: Colors.lightBg,
     padding: 12,
-    borderRadius: 8,
+    borderRadius: Radii.sm,
     marginTop: 10,
     alignItems: 'center',
   },
   infoText: {
     flex: 1,
     fontSize: 13,
-    color: '#666',
+    color: Colors.muted,
     lineHeight: 18,
   },
   separatorLine: {
     height: 1,
-    backgroundColor: '#E5E5EA',
+    backgroundColor: Colors.borderLight,
     marginVertical: 20,
   }
 });

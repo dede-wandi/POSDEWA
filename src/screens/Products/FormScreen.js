@@ -531,15 +531,15 @@ const styles = StyleSheet.create({
     color: Colors.muted,
   },
   warningContainer: {
-    backgroundColor: '#fff3cd',
-    borderColor: '#ffeaa7',
+    backgroundColor: Colors.warningLight,
+    borderColor: Colors.warning,
     borderWidth: 1,
     borderRadius: 8,
     padding: 12,
     margin: 16,
   },
   warningText: {
-    color: '#856404',
+    color: Colors.darkText,
     fontSize: 14,
     textAlign: 'center',
   },
@@ -615,11 +615,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: Colors.border,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
   },
   optionChipActive: {
     borderColor: Colors.primary,
-    backgroundColor: '#ffe5ef',
+    backgroundColor: Colors.primaryLight,
   },
   optionChipText: {
     fontSize: 12,
@@ -637,7 +637,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: Colors.primary,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
   },
   addChipText: {
     marginLeft: 4,

@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { formatIDR } from '../../utils/currency';
 import { AuthContext } from '../../context/AuthContext';
 import { getInvoiceSettings } from '../../services/invoiceSettingsSupabase';
 import { useToast } from '../../contexts/ToastContext';
+import { Colors, Spacing, Radii, Shadows, Typography } from '../../theme';
 
 export default function InvoiceScreen({ navigation, route }) {
   const { user } = useContext(AuthContext);
@@ -142,143 +144,145 @@ ${divider}
   };
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>🧾 Invoice</Text>
-        <Text style={styles.headerSubtitle}>
-          {invoiceSettings?.header_text || 'Transaksi Berhasil'}
-        </Text>
-      </View>
-
-      {/* Invoice Info */}
-      <View style={styles.invoiceInfo}>
-        <View style={styles.invoiceRow}>
-          <Text style={styles.invoiceLabel}>No. Invoice:</Text>
-          <Text style={styles.invoiceValue}>{invoiceNumber}</Text>
-        </View>
-        <View style={styles.invoiceRow}>
-          <Text style={styles.invoiceLabel}>Tanggal:</Text>
-          <Text style={styles.invoiceValue}>
-            {currentDate.toLocaleDateString('id-ID', {
-              day: '2-digit',
-              month: '2-digit', 
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit'
-            })}
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scrollView}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>🧾 Invoice</Text>
+          <Text style={styles.headerSubtitle}>
+            {invoiceSettings?.header_text || 'Transaksi Berhasil'}
           </Text>
         </View>
 
-        <View style={styles.invoiceRow}>
-          <Text style={styles.invoiceLabel}>Metode Bayar:</Text>
-          <Text style={styles.invoiceValue}>
-            {paymentMethod === 'cash' ? 'Tunai' : 'Non-Tunai'}
-          </Text>
-        </View>
-        {paymentChannel && (
+        {/* Invoice Info */}
+        <View style={styles.invoiceInfo}>
           <View style={styles.invoiceRow}>
-            <Text style={styles.invoiceLabel}>Channel:</Text>
-            <Text style={styles.invoiceValue}>{paymentChannel.name}</Text>
+            <Text style={styles.invoiceLabel}>No. Invoice:</Text>
+            <Text style={styles.invoiceValue}>{invoiceNumber}</Text>
           </View>
-        )}
-      </View>
+          <View style={styles.invoiceRow}>
+            <Text style={styles.invoiceLabel}>Tanggal:</Text>
+            <Text style={styles.invoiceValue}>
+              {currentDate.toLocaleDateString('id-ID', {
+                day: '2-digit',
+                month: '2-digit', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </Text>
+          </View>
 
-      {/* Items */}
-      <View style={styles.itemsSection}>
-        <Text style={styles.sectionTitle}>📦 Detail Pembelian</Text>
-        <View style={styles.itemsCard}>
-          {/* Header */}
-          <View style={styles.itemHeader}>
-            <Text style={[styles.itemHeaderText, { flex: 2 }]}>Produk</Text>
-            <Text style={[styles.itemHeaderText, { flex: 1, textAlign: 'center' }]}>Qty</Text>
-            <Text style={[styles.itemHeaderText, { flex: 1, textAlign: 'right' }]}>Harga</Text>
-            <Text style={[styles.itemHeaderText, { flex: 1, textAlign: 'right' }]}>Total</Text>
+          <View style={styles.invoiceRow}>
+            <Text style={styles.invoiceLabel}>Metode Bayar:</Text>
+            <Text style={styles.invoiceValue}>
+              {paymentMethod === 'cash' ? 'Tunai' : 'Non-Tunai'}
+            </Text>
           </View>
-          
-          <View style={styles.itemDivider} />
-          
-          {/* Items */}
-          {cart.map((item, index) => (
-            <View key={index} style={styles.itemRow}>
-              <View style={{ flex: 2 }}>
-                <Text style={styles.itemName}>{item.name}</Text>
-                {item.barcode && (
-                  <Text style={styles.itemBarcode}>{item.barcode}</Text>
-                )}
-                {item.tokenCode && (
-                  <Text style={styles.itemToken}>🔑 Token: {item.tokenCode}</Text>
-                )}
-              </View>
-              <Text style={[styles.itemText, { flex: 1, textAlign: 'center' }]}>
-                {item.qty}
-              </Text>
-              <Text style={[styles.itemText, { flex: 1, textAlign: 'right' }]}>
-                {formatIDR(item.price)}
-              </Text>
-              <Text style={[styles.itemText, { flex: 1, textAlign: 'right' }]}>
-                {formatIDR(item.price * item.qty)}
-              </Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* Summary */}
-      <View style={styles.summarySection}>
-        <Text style={styles.sectionTitle}>💰 Ringkasan Pembayaran</Text>
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Subtotal:</Text>
-            <Text style={styles.summaryValue}>{formatIDR(total)}</Text>
-          </View>
-          <View style={styles.summaryDivider} />
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabelTotal}>Total:</Text>
-            <Text style={styles.summaryValueTotal}>{formatIDR(total)}</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Bayar ({paymentMethod === 'cash' ? 'Tunai' : paymentChannel?.name || 'Non-Tunai'}):</Text>
-            <Text style={styles.summaryValue}>{formatIDR(cashAmount)}</Text>
-          </View>
-          {paymentMethod === 'cash' && (
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Kembalian:</Text>
-              <Text style={styles.summaryValue}>{formatIDR(change)}</Text>
+          {paymentChannel && (
+            <View style={styles.invoiceRow}>
+              <Text style={styles.invoiceLabel}>Channel:</Text>
+              <Text style={styles.invoiceValue}>{paymentChannel.name}</Text>
             </View>
           )}
         </View>
-      </View>
 
-      {/* Actions */}
-      <View style={styles.actionsSection}>
-        <TouchableOpacity style={styles.printButton} onPress={handlePrint}>
-          <Text style={styles.printButtonText}>🖨️ Print Invoice</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.newSaleButton} onPress={handleNewSale}>
-          <Text style={styles.newSaleButtonText}>🛒 Transaksi Baru</Text>
-        </TouchableOpacity>
-      </View>
+        {/* Items */}
+        <View style={styles.itemsSection}>
+          <Text style={styles.sectionTitle}>📦 Detail Pembelian</Text>
+          <View style={styles.itemsCard}>
+            {/* Header */}
+            <View style={styles.itemHeader}>
+              <Text style={[styles.itemHeaderText, { flex: 2 }]}>Produk</Text>
+              <Text style={[styles.itemHeaderText, { flex: 1, textAlign: 'center' }]}>Qty</Text>
+              <Text style={[styles.itemHeaderText, { flex: 1, textAlign: 'right' }]}>Harga</Text>
+              <Text style={[styles.itemHeaderText, { flex: 1, textAlign: 'right' }]}>Total</Text>
+            </View>
+            
+            <View style={styles.itemDivider} />
+            
+            {/* Items */}
+            {cart.map((item, index) => (
+              <View key={index} style={styles.itemRow}>
+                <View style={{ flex: 2 }}>
+                  <Text style={styles.itemName}>{item.name}</Text>
+                  {item.barcode && (
+                    <Text style={styles.itemBarcode}>{item.barcode}</Text>
+                  )}
+                  {item.tokenCode && (
+                    <Text style={styles.itemToken}>🔑 Token: {item.tokenCode}</Text>
+                  )}
+                </View>
+                <Text style={[styles.itemText, { flex: 1, textAlign: 'center' }]}>
+                  {item.qty}
+                </Text>
+                <Text style={[styles.itemText, { flex: 1, textAlign: 'right' }]}>
+                  {formatIDR(item.price)}
+                </Text>
+                <Text style={[styles.itemText, { flex: 1, textAlign: 'right' }]}>
+                  {formatIDR(item.price * item.qty)}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
 
-      {/* Footer */}
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          {invoiceSettings?.footer_text || 'Terima kasih atas kunjungan Anda!'}
-        </Text>
-        <Text style={styles.footerSubtext}>Barang yang sudah dibeli tidak dapat dikembalikan</Text>
-      </View>
-    </ScrollView>
+        {/* Summary */}
+        <View style={styles.summarySection}>
+          <Text style={styles.sectionTitle}>💰 Ringkasan Pembayaran</Text>
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Subtotal:</Text>
+              <Text style={styles.summaryValue}>{formatIDR(total)}</Text>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabelTotal}>Total:</Text>
+              <Text style={styles.summaryValueTotal}>{formatIDR(total)}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Bayar ({paymentMethod === 'cash' ? 'Tunai' : paymentChannel?.name || 'Non-Tunai'}):</Text>
+              <Text style={styles.summaryValue}>{formatIDR(cashAmount)}</Text>
+            </View>
+            {paymentMethod === 'cash' && (
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Kembalian:</Text>
+                <Text style={styles.summaryValue}>{formatIDR(change)}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Actions */}
+        <View style={styles.actionsSection}>
+          <TouchableOpacity style={styles.printButton} onPress={handlePrint}>
+            <Text style={styles.printButtonText}>🖨️ Print Invoice</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.newSaleButton} onPress={handleNewSale}>
+            <Text style={styles.newSaleButtonText}>🛒 Transaksi Baru</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            {invoiceSettings?.footer_text || 'Terima kasih atas kunjungan Anda!'}
+          </Text>
+          <Text style={styles.footerSubtext}>Barang yang sudah dibeli tidak dapat dikembalikan</Text>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: Colors.background,
   },
   header: {
-    backgroundColor: '#28a745',
+    backgroundColor: Colors.primary,
     paddingHorizontal: 20,
     paddingVertical: 24,
     alignItems: 'center',
@@ -286,24 +290,22 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: Colors.white,
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#fff',
+    color: Colors.white,
     opacity: 0.9,
   },
   invoiceInfo: {
-    backgroundColor: '#fff',
+    backgroundColor: Colors.card,
     margin: 16,
     padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderRadius: Radii.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadows.card,
   },
   invoiceRow: {
     flexDirection: 'row',
@@ -313,12 +315,12 @@ const styles = StyleSheet.create({
   },
   invoiceLabel: {
     fontSize: 14,
-    color: '#666',
+    color: Colors.muted,
     fontWeight: '500',
   },
   invoiceValue: {
     fontSize: 14,
-    color: '#333',
+    color: Colors.darkText,
     fontWeight: 'bold',
   },
   itemsSection: {
@@ -328,18 +330,16 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
+    color: Colors.darkText,
     marginBottom: 12,
   },
   itemsCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: Colors.card,
+    borderRadius: Radii.lg,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadows.card,
   },
   itemHeader: {
     flexDirection: 'row',
@@ -348,12 +348,12 @@ const styles = StyleSheet.create({
   itemHeaderText: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#666',
+    color: Colors.muted,
     textTransform: 'uppercase',
   },
   itemDivider: {
     height: 1,
-    backgroundColor: '#e9ecef',
+    backgroundColor: Colors.borderLight,
     marginVertical: 8,
   },
   itemRow: {
@@ -361,41 +361,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f8f9fa',
+    borderBottomColor: Colors.borderLight,
   },
   itemName: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#333',
+    color: Colors.darkText,
   },
   itemBarcode: {
     fontSize: 12,
-    color: '#666',
+    color: Colors.muted,
     marginTop: 2,
   },
   itemToken: {
     fontSize: 12,
-    color: '#007AFF',
+    color: Colors.secondary,
     marginTop: 2,
     fontStyle: 'italic',
   },
   itemText: {
     fontSize: 14,
-    color: '#333',
+    color: Colors.text,
   },
   summarySection: {
     marginHorizontal: 16,
     marginBottom: 16,
   },
   summaryCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: Colors.card,
+    borderRadius: Radii.lg,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadows.card,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -405,26 +403,26 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#666',
+    color: Colors.muted,
   },
   summaryValue: {
     fontSize: 14,
-    color: '#333',
+    color: Colors.text,
     fontWeight: '500',
   },
   summaryLabelTotal: {
     fontSize: 16,
-    color: '#333',
+    color: Colors.darkText,
     fontWeight: 'bold',
   },
   summaryValueTotal: {
     fontSize: 18,
-    color: '#28a745',
+    color: Colors.primary,
     fontWeight: 'bold',
   },
   summaryDivider: {
     height: 1,
-    backgroundColor: '#e9ecef',
+    backgroundColor: Colors.borderLight,
     marginVertical: 8,
   },
   actionsSection: {
@@ -432,25 +430,25 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   printButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: Colors.secondary,
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: Radii.lg,
     alignItems: 'center',
     marginBottom: 12,
   },
   printButtonText: {
-    color: '#fff',
+    color: Colors.white,
     fontSize: 16,
     fontWeight: 'bold',
   },
   newSaleButton: {
-    backgroundColor: '#28a745',
+    backgroundColor: Colors.primary,
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: Radii.lg,
     alignItems: 'center',
   },
   newSaleButtonText: {
-    color: '#fff',
+    color: Colors.white,
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -462,12 +460,12 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#333',
+    color: Colors.darkText,
     marginBottom: 4,
   },
   footerSubtext: {
     fontSize: 12,
-    color: '#666',
+    color: Colors.muted,
     textAlign: 'center',
   },
 });

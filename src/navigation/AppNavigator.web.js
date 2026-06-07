@@ -11,7 +11,7 @@ import MallScreen from '../screens/MallScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import AccountScreen from '../screens/AccountScreen';
 import CartScreen from '../screens/PublicProducts/CartScreen';
-import { Colors } from '../theme/colors';
+import { Colors } from '../theme';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
