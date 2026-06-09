@@ -50,6 +50,7 @@ export const sendWhatsAppNotification = async (saleData, items) => {
     // 2.5 Fetch Daily & Monthly Stats
     let dailyTrxCount = 0;
     let dailyProfitTotal = 0;
+    let dailySalesTotal = 0;
     let monthlyProfitTotal = 0;
 
     try {
@@ -64,7 +65,7 @@ export const sendWhatsAppNotification = async (saleData, items) => {
       if (user) {
         const { data: monthSales, error: dbError } = await supabase
           .from('sales')
-          .select('created_at, profit, sale_items(line_profit, price, cost_price, qty)')
+          .select('created_at, total, profit, sale_items(line_profit, price, cost_price, qty)')
           .eq('user_id', user.id)
           .gte('created_at', monthStart.toISOString())
           .lt('created_at', todayEnd.toISOString());
@@ -89,6 +90,7 @@ export const sendWhatsAppNotification = async (saleData, items) => {
             if (saleDate >= todayStart && saleDate <= todayEnd) {
               dailyTrxCount++;
               dailyProfitTotal += saleProfit;
+              dailySalesTotal += (sale.total || 0);
             }
           });
         }
@@ -126,7 +128,10 @@ export const sendWhatsAppNotification = async (saleData, items) => {
         ? item.line_profit 
         : ((price - (item.cost_price || item.costPrice || 0)) * qty);
       
-      message += `${index + 1}. ${name} (${qty}x)\n`;
+      const costPrice = Number(item.cost_price || item.costPrice || 0);
+      const costPriceStr = costPrice.toLocaleString('id-ID');
+      
+      message += `${index + 1}. ${name} (${qty}x) Rp. ${costPriceStr}\n`;
       message += `   Rp ${subtotal.toLocaleString('id-ID')} (Profit: Rp ${itemProfit.toLocaleString('id-ID')})\n`;
     });
 
@@ -135,6 +140,7 @@ export const sendWhatsAppNotification = async (saleData, items) => {
     message += `📊 *Statistik Hari Ini*\n`;
     message += `🛒 Total Transaksi: ${dailyTrxCount} trx\n`;
     message += `💰 Total Profit: Rp ${dailyProfitTotal.toLocaleString('id-ID')}\n`;
+    message += `🛍️ Total Penjualan: Rp ${dailySalesTotal.toLocaleString('id-ID')}\n`;
     message += `📈 Profit Bulan Ini: Rp ${monthlyProfitTotal.toLocaleString('id-ID')}\n`;
     
     // Get sender name (business name or user name)
