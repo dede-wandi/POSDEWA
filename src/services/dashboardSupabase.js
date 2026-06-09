@@ -1,11 +1,9 @@
 import { getSupabaseClient } from './supabase';
 
 export async function getDashboardStats(userId) {
-  console.log('📊 dashboardSupabase: getDashboardStats called with userId:', userId);
   
   const supabase = getSupabaseClient();
   if (!supabase) {
-    console.log('❌ dashboardSupabase: Supabase client not available');
     return { success: false, error: 'Supabase tidak tersedia' };
   }
 
@@ -15,7 +13,6 @@ export async function getDashboardStats(userId) {
     const session = sessionData?.session;
     
     if (!session || !session.user) {
-      console.log('❌ dashboardSupabase: User not authenticated');
       return { success: false, error: 'User tidak ter-autentikasi' };
     }
 
@@ -37,7 +34,6 @@ export async function getDashboardStats(userId) {
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 1); // Start of this month is end of last month
 
-    console.log('📡 dashboardSupabase: Fetching dashboard statistics...');
 
     // Helper to calculate total profit from sales array
     const calculateTotalProfit = (sales) => {
@@ -66,7 +62,6 @@ export async function getDashboardStats(userId) {
       .lt('created_at', todayEnd.toISOString());
 
     if (todayError) {
-      console.log('❌ dashboardSupabase: Error fetching today sales:', todayError);
       return { success: false, error: todayError.message };
     }
 
@@ -79,7 +74,6 @@ export async function getDashboardStats(userId) {
       .lt('created_at', yesterdayEnd.toISOString());
 
     if (yesterdayError) {
-      console.log('❌ dashboardSupabase: Error fetching yesterday sales:', yesterdayError);
       // Don't fail the whole request, just log it
     }
 
@@ -91,7 +85,6 @@ export async function getDashboardStats(userId) {
       .gte('created_at', thisMonthStart.toISOString());
 
     if (monthError) {
-      console.log('❌ dashboardSupabase: Error fetching month sales:', monthError);
       return { success: false, error: monthError.message };
     }
 
@@ -104,7 +97,6 @@ export async function getDashboardStats(userId) {
       .lt('created_at', lastMonthEnd.toISOString());
 
     if (lastMonthError) {
-      console.log('❌ dashboardSupabase: Error fetching last month sales:', lastMonthError);
       // Don't fail, just log
     }
 
@@ -115,7 +107,6 @@ export async function getDashboardStats(userId) {
       .eq('owner_id', session.user.id);
 
     if (productsError) {
-      console.log('❌ dashboardSupabase: Error fetching products count:', productsError);
       return { success: false, error: productsError.message };
     }
 
@@ -128,7 +119,6 @@ export async function getDashboardStats(userId) {
       .order('stock', { ascending: true });
 
     if (lowStockError) {
-      console.log('❌ dashboardSupabase: Error fetching low stock products:', lowStockError);
       return { success: false, error: lowStockError.message };
     }
 
@@ -168,21 +158,17 @@ export async function getDashboardStats(userId) {
       }
     };
 
-    console.log('✅ dashboardSupabase: Dashboard stats retrieved:', stats);
     return { success: true, data: stats };
 
   } catch (error) {
-    console.log('❌ dashboardSupabase: Exception in getDashboardStats:', error);
     return { success: false, error: error.message };
   }
 }
 
 export async function getRecentSales(userId, limit = 5) {
-  console.log('📊 dashboardSupabase: getRecentSales called with userId:', userId, 'limit:', limit);
   
   const supabase = getSupabaseClient();
   if (!supabase) {
-    console.log('❌ dashboardSupabase: Supabase client not available');
     return { success: false, error: 'Supabase tidak tersedia' };
   }
 
@@ -192,11 +178,9 @@ export async function getRecentSales(userId, limit = 5) {
     const session = sessionData?.session;
     
     if (!session || !session.user) {
-      console.log('❌ dashboardSupabase: User not authenticated');
       return { success: false, error: 'User tidak ter-autentikasi' };
     }
 
-    console.log('📡 dashboardSupabase: Fetching recent sales...');
 
     // Today Date (Local -> ISO UTC)
     const now = new Date();
@@ -225,15 +209,12 @@ export async function getRecentSales(userId, limit = 5) {
       .limit(limit);
 
     if (error) {
-      console.log('❌ dashboardSupabase: Error fetching recent sales:', error);
       return { success: false, error: error.message };
     }
 
-    console.log('✅ dashboardSupabase: Recent sales retrieved:', recentSales?.length || 0, 'items');
     return { success: true, data: recentSales || [] };
 
   } catch (error) {
-    console.log('❌ dashboardSupabase: Exception in getRecentSales:', error);
     return { success: false, error: error.message };
   }
 }

@@ -35,7 +35,6 @@ export default function BarcodeScanScreen({ navigation, route }) {
           }
         });
       } catch (e) {
-        console.error('Web scan error', e);
       }
     })();
 

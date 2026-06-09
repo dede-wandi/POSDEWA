@@ -129,31 +129,26 @@ export default function StockManagementScreen({ navigation }) {
 
   const loadProducts = async () => {
     try {
-      console.log('📦 StockManagementScreen: Loading products...');
       const products = await listProducts(user?.id);
       // Sort by stock (low stock first)
       const sortedProducts = products.sort((a, b) => a.stock - b.stock);
       setProducts(sortedProducts);
     } catch (error) {
-      console.log('❌ StockManagementScreen: Exception loading products:', error);
       showToast('Terjadi kesalahan saat memuat produk', 'error');
     }
   };
 
   const loadStockHistory = async () => {
     try {
-      console.log('📦 StockManagementScreen: Loading stock history...');
       const result = await getStockHistory(null, 100);
       if (result.success) {
         setStockHistory(result.data);
         const filtered = applyDateFilter(result.data);
         setFilteredStockHistory(filtered);
       } else {
-        console.log('❌ StockManagementScreen: Error loading stock history:', result.error);
         showToast('Gagal memuat riwayat stock: ' + result.error, 'error');
       }
     } catch (error) {
-      console.log('❌ StockManagementScreen: Exception loading stock history:', error);
       showToast('Terjadi kesalahan saat memuat riwayat stock', 'error');
     }
   };
@@ -209,7 +204,6 @@ export default function StockManagementScreen({ navigation }) {
         showToast('Gagal menambah stock: ' + result.error, 'error');
       }
     } catch (error) {
-      console.log('❌ StockManagementScreen: Exception adding stock:', error);
       showToast('Terjadi kesalahan saat menambah stock', 'error');
     } finally {
       setAddingStock(false);
@@ -277,7 +271,6 @@ export default function StockManagementScreen({ navigation }) {
         showToast(result.error || 'Gagal menyesuaikan stock', 'error');
       }
     } catch (error) {
-      console.error('Error adjusting stock:', error);
       showToast('Terjadi kesalahan saat menyesuaikan stock', 'error');
     }
   };
@@ -328,7 +321,6 @@ export default function StockManagementScreen({ navigation }) {
         showToast(result.error || 'Gagal menambahkan stock', 'error');
       }
     } catch (error) {
-      console.error('Error adding stock:', error);
       showToast('Terjadi kesalahan saat menambahkan stock', 'error');
     } finally {
       setAddingStock(false);

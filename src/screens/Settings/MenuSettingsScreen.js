@@ -50,12 +50,10 @@ export default function MenuSettingsScreen({ navigation }) {
           });
           setUrls(initialUrls);
         } else {
-          console.error('Failed to load menu configurations:', result.error);
           showToast(result.error || 'Gagal memuat konfigurasi menu', 'error');
         }
       }
     } catch (error) {
-      console.error('Error in loadSettings:', error);
       showToast('Gagal memuat konfigurasi menu', 'error');
     } finally {
       setLoading(false);
@@ -70,12 +68,10 @@ export default function MenuSettingsScreen({ navigation }) {
         if (result.success) {
           showToast('Konfigurasi menu berhasil disimpan', 'success');
         } else {
-          console.error('Failed to save menu configurations:', result.error);
           showToast(result.error || 'Gagal menyimpan konfigurasi menu', 'error');
         }
       }
     } catch (error) {
-      console.error('Error in handleSave:', error);
       showToast('Gagal menyimpan konfigurasi menu', 'error');
     } finally {
       setSaving(false);
@@ -111,7 +107,6 @@ export default function MenuSettingsScreen({ navigation }) {
                 }
               }
             } catch (error) {
-              console.error('Error resetting menu configurations:', error);
               showToast('Gagal mereset konfigurasi menu', 'error');
             } finally {
               setSaving(false);

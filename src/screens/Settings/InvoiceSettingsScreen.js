@@ -77,12 +77,10 @@ export default function InvoiceSettingsScreen({ navigation }) {
             show_footer_text: result.data.show_footer_text !== false
           });
         } else {
-          console.error('Failed to load invoice settings:', result.error);
           showToast(result.error || 'Gagal memuat pengaturan invoice', 'error');
         }
       }
     } catch (error) {
-      console.error('Error loading invoice settings:', error);
       showToast('Gagal memuat pengaturan invoice', 'error');
     } finally {
       setLoading(false);
@@ -111,12 +109,10 @@ export default function InvoiceSettingsScreen({ navigation }) {
         if (result.success) {
           showToast('Pengaturan invoice berhasil disimpan', 'success');
         } else {
-          console.error('Failed to save invoice settings:', result.error);
           showToast(result.error || 'Gagal menyimpan pengaturan invoice', 'error');
         }
       }
     } catch (error) {
-      console.error('Error saving invoice settings:', error);
       showToast('Gagal menyimpan pengaturan invoice', 'error');
     } finally {
       setSaving(false);
@@ -141,7 +137,6 @@ export default function InvoiceSettingsScreen({ navigation }) {
                 showToast('Pengaturan berhasil direset', 'success');
               }
             } catch (error) {
-              console.error('Error resetting invoice settings:', error);
               showToast('Gagal mereset pengaturan', 'error');
             } finally {
               setSaving(false);

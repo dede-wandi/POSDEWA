@@ -46,11 +46,9 @@ export default function SalesScreen({ navigation, route }) {
       if (!user?.id) return;
       setRefreshing(true);
       const products = await getProducts(user.id);
-      console.log('📦 SalesScreen: Loaded products:', products?.length);
       setAllProducts(products || []);
       setResults(products || []);
     } catch (error) {
-      console.error('Error loading products:', error);
       showToast('Gagal memuat produk', 'error');
     } finally {
       setRefreshing(false);
@@ -64,7 +62,6 @@ export default function SalesScreen({ navigation, route }) {
       setCategories(cats || []);
       setBrands(brs || []);
     } catch (e) {
-      console.error('Error loading filters:', e);
     }
   };
 
@@ -98,7 +95,6 @@ export default function SalesScreen({ navigation, route }) {
       const searchResults = await findByBarcodeOrName(user?.id, query.trim());
       setResults(applyFilters(searchResults || []));
     } catch (error) {
-      console.error('Search error:', error);
       showToast('Gagal mencari produk', 'error');
       setResults(applyFilters([]));
     }
@@ -125,7 +121,6 @@ export default function SalesScreen({ navigation, route }) {
             setResults([]);
           }
         } catch (error) {
-          console.error('Barcode search error:', error);
         }
       }
     };
@@ -140,7 +135,6 @@ export default function SalesScreen({ navigation, route }) {
   // Handle reset cart from PaymentScreen
   useEffect(() => {
     if (route.params?.resetCart) {
-      console.log('🛒 SalesScreen: Resetting cart requested from navigation');
       setCart([]);
       navigation.setParams({ resetCart: undefined });
     }
@@ -149,7 +143,6 @@ export default function SalesScreen({ navigation, route }) {
   // Handle updated cart from ProductListScreen
   useEffect(() => {
     if (route.params?.updatedCart) {
-      console.log('📦 SalesScreen: Received updated cart from ProductListScreen:', route.params.updatedCart);
       
       // Convert ProductListScreen cart format to SalesScreen cart format
       const convertedCart = route.params.updatedCart.map(item => ({
@@ -189,7 +182,6 @@ export default function SalesScreen({ navigation, route }) {
           await handleSearch();
         }
       } catch (error) {
-        console.error('Scan handling error:', error);
         showToast('Terjadi kesalahan saat memproses barcode', 'error');
       } finally {
         // Kosongkan param agar tidak berulang

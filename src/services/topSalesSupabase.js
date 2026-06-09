@@ -38,7 +38,6 @@ export const getTopProducts = async (userId, limit = 20) => {
       .slice(0, limit)
       .map((item, index) => ({ ...item, rank: index + 1 }));
   } catch (error) {
-    console.error('Error getting top products:', error);
     return [];
   }
 };
@@ -78,7 +77,6 @@ export const getTopCategories = async (userId, limit = 20) => {
       .map((item, index) => ({ ...item, rank: index + 1 }));
 
   } catch (error) {
-    console.error('Error getting top categories:', error);
     return [];
   }
 };
@@ -118,7 +116,6 @@ export const getTopBrands = async (userId, limit = 20) => {
       .map((item, index) => ({ ...item, rank: index + 1 }));
 
   } catch (error) {
-    console.error('Error getting top brands:', error);
     return [];
   }
 };
@@ -155,7 +152,6 @@ export const getTopDates = async (userId, limit = 20) => {
       .map((item, index) => ({ ...item, rank: index + 1 }));
 
   } catch (error) {
-    console.error('Error getting top dates:', error);
     return [];
   }
 };

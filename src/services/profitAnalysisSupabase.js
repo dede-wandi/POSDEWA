@@ -2,34 +2,65 @@ import { getSupabaseClient } from './supabase';
 
 // Helper to calculate profit from sale items to match SalesAnalytics
 const calculateSaleProfit = (sale) => {
-  if (sale.sale_items && sale.sale_items.length > 0) {
-    return sale.sale_items.reduce((sum, item) => {
-        let p = typeof item.line_profit === 'number'
-           ? item.line_profit
-           : ((Number(item.price) - Number(item.cost_price || 0)) * Number(item.qty || 0));
-        return sum + p;
+  const items = sale.sale_items || sale.items || [];
+  if (items.length > 0) {
+    return items.reduce((sum, item) => {
+      const profit = (typeof item.line_profit === 'number' && item.line_profit !== 0)
+        ? item.line_profit
+        : ((Number(item.price) - Number(item.cost_price || 0)) * Number(item.qty || 1));
+      return sum + profit;
     }, 0);
   }
-  return sale.profit || 0;
+  return Number(sale.profit) || 0;
+};
+
+// Paginated loader to bypass Supabase's 1000-row selection cap
+const fetchAllSalesForProfit = async (userId, startDate, endDate) => {
+  const supabase = getSupabaseClient();
+  let allSales = [];
+  let page = 0;
+  const pageSize = 1000;
+  let keepFetching = true;
+
+  while (keepFetching) {
+    let query = supabase
+      .from('sales')
+      .select('created_at, profit, sale_items(qty, price, cost_price, line_profit)')
+      .eq('user_id', userId);
+      
+    if (startDate) {
+      query = query.gte('created_at', startDate);
+    }
+    if (endDate) {
+      query = query.lt('created_at', endDate);
+    }
+    
+    const { data, error } = await query
+      .order('created_at', { ascending: false })
+      .range(page * pageSize, (page + 1) * pageSize - 1);
+
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
+      keepFetching = false;
+    } else {
+      allSales = [...allSales, ...data];
+      if (data.length < pageSize) {
+        keepFetching = false;
+      } else {
+        page++;
+      }
+    }
+  }
+  return allSales;
 };
 
 export const getProfitAnalysis = async (userId, year) => {
   try {
-    const supabase = getSupabaseClient();
-    
-    // Use Date objects to handle timezone correctly (matching SalesAnalytics)
-    // Create dates in local time then convert to ISO for DB query
     const startDateObj = new Date(year, 0, 1);
     const endDateObj = new Date(year + 1, 0, 1);
     
-    const { data: sales, error } = await supabase
-      .from('sales')
-      .select('created_at, profit, sale_items(qty, price, cost_price, line_profit)')
-      .eq('user_id', userId)
-      .gte('created_at', startDateObj.toISOString())
-      .lt('created_at', endDateObj.toISOString());
-
-    if (error) throw error;
+    const sales = await fetchAllSalesForProfit(userId, startDateObj.toISOString(), endDateObj.toISOString());
 
     const monthlyData = new Array(12).fill(0);
     
@@ -42,22 +73,14 @@ export const getProfitAnalysis = async (userId, year) => {
     return monthlyData;
 
   } catch (error) {
-    console.error('Error getting profit analysis:', error);
+    console.error('Error in getProfitAnalysis:', error);
     return new Array(12).fill(0);
   }
 };
 
 export const getYearlyProfitAnalysis = async (userId) => {
   try {
-    const supabase = getSupabaseClient();
-    
-    // Get all sales
-    const { data: sales, error } = await supabase
-      .from('sales')
-      .select('created_at, profit, sale_items(qty, price, cost_price, line_profit)')
-      .eq('user_id', userId);
-
-    if (error) throw error;
+    const sales = await fetchAllSalesForProfit(userId, null, null);
 
     const yearlyData = {};
     
@@ -67,7 +90,6 @@ export const getYearlyProfitAnalysis = async (userId) => {
       yearlyData[year] += calculateSaleProfit(sale);
     });
 
-    // Convert to sorted array
     const sortedYears = Object.keys(yearlyData).sort();
     const values = sortedYears.map(year => yearlyData[year]);
     
@@ -77,19 +99,16 @@ export const getYearlyProfitAnalysis = async (userId) => {
     };
 
   } catch (error) {
-    console.error('Error getting yearly profit analysis:', error);
+    console.error('Error in getYearlyProfitAnalysis:', error);
     return { labels: [], data: [] };
   }
 };
 
 export const getProfitAnalysisByRange = async (userId, startDate, endDate) => {
   try {
-    const supabase = getSupabaseClient();
-    
     let queryStartDate = startDate;
     let queryEndDate = endDate;
 
-    // Parse YYYY-MM-DD strings as Local Time to match SalesAnalytics
     if (/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
         const [y, m, d] = startDate.split('-').map(Number);
         queryStartDate = new Date(y, m - 1, d).toISOString();
@@ -102,31 +121,19 @@ export const getProfitAnalysisByRange = async (userId, startDate, endDate) => {
         queryEndDate = nextDay.toISOString();
     }
     
-    // Get sales within range
-    const { data: sales, error } = await supabase
-      .from('sales')
-      .select('created_at, profit, sale_items(qty, price, cost_price, line_profit)')
-      .eq('user_id', userId)
-      .gte('created_at', queryStartDate)
-      .lt('created_at', queryEndDate)
-      .order('created_at', { ascending: true });
+    const sales = await fetchAllSalesForProfit(userId, queryStartDate, queryEndDate);
 
-    if (error) throw error;
-
-    // Helper to format YYYY-MM
     const getMonthKey = (date) => {
       const d = new Date(date);
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     };
 
-    // Helper to format Label (e.g., "Jan 24")
     const getLabel = (date) => {
         const d = new Date(date);
         const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
         return `${months[d.getMonth()]} ${d.getFullYear().toString().substr(-2)}`;
     };
 
-    // 1. Aggregate data by month
     const aggregatedData = {};
     sales.forEach(sale => {
       const key = getMonthKey(sale.created_at);
@@ -134,33 +141,28 @@ export const getProfitAnalysisByRange = async (userId, startDate, endDate) => {
       aggregatedData[key] += calculateSaleProfit(sale);
     });
 
-    // 2. Generate all months in range to ensure continuity
     const labels = [];
     const data = [];
     
-    // Parse dates as local time to avoid timezone shifts
     const [sYear, sMonth, sDay] = startDate.split('-').map(Number);
     const [eYear, eMonth, eDay] = endDate.split('-').map(Number);
     
     const current = new Date(sYear, sMonth - 1, sDay);
     const end = new Date(eYear, eMonth - 1, eDay);
     
-    // Set to start of month to avoid skipping issues
     current.setDate(1); 
     
     while (current <= end) {
       const key = getMonthKey(current);
       labels.push(getLabel(current));
       data.push(aggregatedData[key] || 0);
-      
-      // Next month
       current.setMonth(current.getMonth() + 1);
     }
 
     return { labels, data };
 
   } catch (error) {
-    console.error('Error getting range profit analysis:', error);
+    console.error('Error in getProfitAnalysisByRange:', error);
     return { labels: [], data: [] };
   }
 };

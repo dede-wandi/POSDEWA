@@ -43,10 +43,8 @@ export default function PaymentScreen({ navigation, route }) {
           setSelectedChannel(cashChannel);
         }
       } else {
-        console.error('Error loading payment channels:', result.error);
       }
     } catch (error) {
-      console.error('Exception loading payment channels:', error);
     } finally {
       setLoadingChannels(false);
     }
@@ -109,11 +107,6 @@ export default function PaymentScreen({ navigation, route }) {
     setIsProcessing(true);
 
     try {
-      console.log('💰 PaymentScreen: Processing payment');
-      console.log('💰 PaymentScreen: Cart items:', cart);
-      console.log('💰 PaymentScreen: Total:', total, 'Profit:', profit);
-      console.log('💰 PaymentScreen: Payment method:', selectedPaymentMethod);
-      console.log('💰 PaymentScreen: Selected channel:', selectedChannel);
 
       // 1. Create sale record
       const saleData = {
@@ -136,18 +129,15 @@ export default function PaymentScreen({ navigation, route }) {
         }))
       };
 
-      console.log('💾 PaymentScreen: Creating sale with data:', saleData);
       const saleResult = await createSale(saleData);
       
       if (!saleResult.success) {
         throw new Error(saleResult.error || 'Gagal menyimpan transaksi');
       }
 
-      console.log('✅ PaymentScreen: Sale created successfully:', saleResult.data);
 
       // 2. Process payment through finance system
       if (selectedChannel) {
-        console.log('💳 PaymentScreen: Processing payment through finance system');
         const paymentResult = await processPayment(
           selectedChannel.id,
           total,
@@ -155,16 +145,13 @@ export default function PaymentScreen({ navigation, route }) {
         );
 
         if (!paymentResult.success) {
-          console.log('⚠️ PaymentScreen: Payment processing failed:', paymentResult.error);
           // Don't fail the transaction, just warn
           showToast('Transaksi berhasil, tetapi ada masalah dengan pencatatan keuangan', 'warning');
         } else {
-          console.log('✅ PaymentScreen: Payment processed successfully');
         }
       }
 
       // 3. Adjust stock
-      console.log('📦 PaymentScreen: Adjusting stock for cart items');
       const cartForStock = cart.map(item => ({
         productId: item.id, // Fixed: use 'id' instead of 'productId'
         qty: item.qty
@@ -172,28 +159,23 @@ export default function PaymentScreen({ navigation, route }) {
       const stockResult = await adjustStockOnSale(user?.id, cartForStock);
       
       if (!stockResult.success) {
-        console.log('⚠️ PaymentScreen: Stock adjustment failed:', stockResult.error);
         // Don't fail the transaction, just warn
         showToast('Transaksi berhasil, tetapi ada masalah dengan pengurangan stok', 'warning');
       } else {
-        console.log('✅ PaymentScreen: Stock adjusted successfully');
       }
 
       // 4. Send WhatsApp Notification (Background process)
       sendWhatsAppNotification(saleData, saleData.items).then(res => {
-        console.log('📡 WhatsApp Notification Result:', res);
         if (res && (res.message_status === 'Success' || res.status === true)) {
           showToast('Notifikasi WhatsApp terkirim!', 'success');
         } else if (res) {
           showToast('WA gagal/lewati: ' + (res.message || JSON.stringify(res)), 'warning');
         }
       }).catch(err => {
-        console.error('⚠️ Failed to send WhatsApp notification:', err);
         showToast('Gagal mengirim WA: ' + err.message, 'error');
       });
 
       // 5. Show success and navigate to invoice
-      console.log('🧾 PaymentScreen: Navigating to Invoice screen');
       
       // Ensure all navigation parameters are valid
       const navigationParams = {
@@ -206,12 +188,10 @@ export default function PaymentScreen({ navigation, route }) {
         paymentChannel: selectedChannel || null
       };
       
-      console.log('🧾 PaymentScreen: Navigation params:', navigationParams);
       
       navigation.navigate('Invoice', navigationParams);
 
     } catch (error) {
-      console.error('❌ PaymentScreen: Payment processing error:', error);
       showToast(error.message || 'Gagal memproses pembayaran', 'error');
     } finally {
       setIsProcessing(false);

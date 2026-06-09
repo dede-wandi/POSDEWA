@@ -68,7 +68,6 @@ export default function TopListScreen({ navigation, route }) {
         setTopInsights([]);
       }
     } catch (error) {
-      console.error('Error loading top list:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -225,11 +224,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 12,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   rankContainer: {
     marginRight: 16,

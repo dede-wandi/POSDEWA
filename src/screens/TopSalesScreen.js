@@ -76,7 +76,6 @@ export default function TopSalesScreen({ navigation }) {
       setTopInsights(sortedInsights);
 
     } catch (error) {
-      console.error('Error loading top sales:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);

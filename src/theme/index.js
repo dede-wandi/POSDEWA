@@ -73,14 +73,8 @@ export const Radii = {
 
 // ── Shadows ─────────────────────────────────────────────────
 export const Shadows = {
-  // Subtle – list rows, inner cards
-  card: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.07,
-    shadowRadius: 3,
-    elevation: 2,
-  },
+  // Subtle – list rows, inner cards (Flat card - no shadow)
+  card: {},
   // Medium – floating panels, modals
   medium: {
     shadowColor: '#000',
@@ -132,12 +126,14 @@ export const FontWeight = {
 export const TextStyles = {
   // Screen / page
   pageTitle: {
+    fontFamily: 'Poppins',
     fontSize: FontSize.title,
     fontWeight: FontWeight.bold,
     color: Colors.textPrimary,
     letterSpacing: -0.3,
   },
   sectionTitle: {
+    fontFamily: 'Poppins',
     fontSize: FontSize.subtitle,
     fontWeight: FontWeight.semibold,
     color: Colors.textPrimary,
@@ -146,21 +142,25 @@ export const TextStyles = {
 
   // Cards
   cardTitle: {
+    fontFamily: 'Poppins',
     fontSize: FontSize.body,
     fontWeight: FontWeight.bold,
     color: Colors.textPrimary,
   },
   cardSubtitle: {
+    fontFamily: 'Poppins',
     fontSize: FontSize.caption,
     fontWeight: FontWeight.regular,
     color: Colors.muted,
   },
   cardValue: {
+    fontFamily: 'Poppins',
     fontSize: FontSize.bodyLg,
     fontWeight: FontWeight.bold,
     color: Colors.text,
   },
   cardValueLg: {
+    fontFamily: 'Poppins',
     fontSize: FontSize.h3,
     fontWeight: FontWeight.extrabold,
     color: Colors.textPrimary,
@@ -168,26 +168,31 @@ export const TextStyles = {
 
   // Labels & body
   label: {
+    fontFamily: 'Poppins',
     fontSize: FontSize.body,
     fontWeight: FontWeight.medium,
     color: Colors.textSecondary,
   },
   labelSm: {
+    fontFamily: 'Poppins',
     fontSize: FontSize.caption,
     fontWeight: FontWeight.medium,
     color: Colors.muted,
   },
   body: {
+    fontFamily: 'Poppins',
     fontSize: FontSize.body,
     fontWeight: FontWeight.regular,
     color: Colors.text,
   },
   bodySm: {
+    fontFamily: 'Poppins',
     fontSize: FontSize.caption,
     fontWeight: FontWeight.regular,
     color: Colors.muted,
   },
   caption: {
+    fontFamily: 'Poppins',
     fontSize: FontSize.sm,
     fontWeight: FontWeight.regular,
     color: Colors.muted,
@@ -195,16 +200,19 @@ export const TextStyles = {
 
   // Price / amount
   price: {
+    fontFamily: 'Poppins',
     fontSize: FontSize.body,
     fontWeight: FontWeight.extrabold,
     color: Colors.primary,
   },
   priceLg: {
+    fontFamily: 'Poppins',
     fontSize: FontSize.h3,
     fontWeight: FontWeight.extrabold,
     color: Colors.primary,
   },
   profit: {
+    fontFamily: 'Poppins',
     fontSize: FontSize.caption,
     fontWeight: FontWeight.semibold,
     color: Colors.success,
@@ -212,12 +220,14 @@ export const TextStyles = {
 
   // Buttons
   buttonText: {
+    fontFamily: 'Poppins',
     fontSize: FontSize.subtitle,
     fontWeight: FontWeight.bold,
     color: Colors.white,
     textAlign: 'center',
   },
   buttonTextSm: {
+    fontFamily: 'Poppins',
     fontSize: FontSize.body,
     fontWeight: FontWeight.semibold,
     color: Colors.white,
@@ -226,11 +236,13 @@ export const TextStyles = {
 
   // Misc
   badge: {
+    fontFamily: 'Poppins',
     fontSize: FontSize.xs,
     fontWeight: FontWeight.bold,
     color: Colors.white,
   },
   muted: {
+    fontFamily: 'Poppins',
     fontSize: FontSize.caption,
     color: Colors.muted,
   },
@@ -239,9 +251,9 @@ export const TextStyles = {
 // ── Backwards-compat alias ───────────────────────────────────
 // Screens that imported Typography will still work.
 export const Typography = {
-  heading: { fontSize: FontSize.h1, fontWeight: FontWeight.bold },
-  subheading: { fontSize: FontSize.h3, fontWeight: FontWeight.semibold },
-  label: { fontSize: FontSize.body, fontWeight: FontWeight.medium },
-  body: { fontSize: FontSize.body },
-  small: { fontSize: FontSize.caption },
+  heading: { fontFamily: 'Poppins', fontSize: FontSize.h1, fontWeight: FontWeight.bold },
+  subheading: { fontFamily: 'Poppins', fontSize: FontSize.h3, fontWeight: FontWeight.semibold },
+  label: { fontFamily: 'Poppins', fontSize: FontSize.body, fontWeight: FontWeight.medium },
+  body: { fontFamily: 'Poppins', fontSize: FontSize.body },
+  small: { fontFamily: 'Poppins', fontSize: FontSize.caption },
 };

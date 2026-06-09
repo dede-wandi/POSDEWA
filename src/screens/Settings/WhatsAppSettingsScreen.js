@@ -36,7 +36,6 @@ export default function WhatsAppSettingsScreen({ navigation }) {
       const { data: { user: currentUser }, error } = await supabase.auth.getUser();
       
       if (error) {
-        console.error('Error loading user settings:', error);
         return;
       }
 
@@ -58,7 +57,6 @@ export default function WhatsAppSettingsScreen({ navigation }) {
         });
       }
     } catch (error) {
-      console.error('Exception loading settings:', error);
     }
   };
 
@@ -81,7 +79,6 @@ export default function WhatsAppSettingsScreen({ navigation }) {
       });
 
       if (error) {
-        console.error('Error saving settings:', error);
         showToast('Gagal menyimpan pengaturan: ' + error.message, 'error');
         return;
       }
@@ -97,7 +94,6 @@ export default function WhatsAppSettingsScreen({ navigation }) {
       showToast('Pengaturan berhasil disimpan', 'success');
       navigation.goBack();
     } catch (error) {
-      console.error('Exception saving settings:', error);
       showToast('Terjadi kesalahan saat menyimpan pengaturan', 'error');
     } finally {
       setLoading(false);

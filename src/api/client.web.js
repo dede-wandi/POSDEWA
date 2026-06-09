@@ -1,5 +1,4 @@
 import axios from 'axios';
-console.log('[web] Using axios client.web.js');
 import { API_BASE_URL } from '../config/endpoints';
 import { getItemAsync } from '../utils/storage';
 

@@ -1,5 +1,4 @@
 import React, { createContext, useEffect, useMemo, useState } from 'react';
-console.log('[web] Using AuthContext.web');
 import { loginByPin as loginApi, logout as logoutApi, getMyAccount } from '../api/auth';
 import { getItemAsync, setItemAsync, deleteItemAsync } from '../utils/storage';
 

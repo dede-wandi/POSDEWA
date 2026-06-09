@@ -9,8 +9,6 @@ export default class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, info) {
-    console.error('[ErrorBoundary] Caught error:', error?.message, error?.stack);
-    console.error('[ErrorBoundary] Component stack:', info?.componentStack);
     this.setState({ error, info });
   }
 
@@ -18,7 +16,6 @@ export default class ErrorBoundary extends React.Component {
     try {
       DevSettings.reload();
     } catch (e) {
-      console.warn('Reload failed:', e);
     }
   };
 

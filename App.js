@@ -28,14 +28,12 @@ import AccountScreen from './src/screens/Auth/AccountScreen';
 import ProfileEditScreen from './src/screens/Auth/ProfileEditScreen';
 import InvoiceSettingsScreen from './src/screens/Settings/InvoiceSettingsScreen';
 import WhatsAppSettingsScreen from './src/screens/Settings/WhatsAppSettingsScreen';
-import CustomInvoiceListScreen from './src/screens/Settings/CustomInvoiceListScreen';
-import CustomInvoiceFormScreen from './src/screens/Settings/CustomInvoiceFormScreen';
 import PaymentChannelsScreen from './src/screens/Settings/PaymentChannelsScreen';
 import MenuSettingsScreen from './src/screens/Settings/MenuSettingsScreen';
 import TopSalesMenuScreen from './src/screens/TopSales/TopSalesMenuScreen';
 import TopListScreen from './src/screens/TopSales/TopListScreen';
-import ProfitAnalysisScreen from './src/screens/TopSales/ProfitAnalysisScreen';
-import TransactionAnalysisScreen from './src/screens/TopSales/TransactionAnalysisScreen';
+import SalesAnalyticsDashboardScreen from './src/screens/TopSales/SalesAnalyticsDashboardScreen';
+import AnnualProfitReportScreen from './src/screens/AnnualProfitReportScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import MoreMenuScreen from './src/screens/MoreMenuScreen';
 import AIAssistantScreen from './src/screens/AIAssistantScreen';
@@ -288,22 +286,6 @@ function MainStack() {
         }}
       />
       <Stack.Screen 
-        name="CustomInvoiceList" 
-        component={CustomInvoiceListScreen}
-        options={{
-          presentation: 'modal',
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen 
-        name="CustomInvoiceForm" 
-        component={CustomInvoiceFormScreen}
-        options={{
-          presentation: 'modal',
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen 
         name="PaymentChannels" 
         component={PaymentChannelsScreen}
         options={{
@@ -328,16 +310,16 @@ function MainStack() {
         }}
       />
       <Stack.Screen 
-        name="ProfitAnalysis" 
-        component={ProfitAnalysisScreen}
+        name="SalesAnalyticsDashboard" 
+        component={SalesAnalyticsDashboardScreen}
         options={{
           presentation: 'card',
           headerShown: false,
         }}
       />
       <Stack.Screen 
-        name="TransactionAnalysis" 
-        component={TransactionAnalysisScreen}
+        name="AnnualProfitReport" 
+        component={AnnualProfitReportScreen}
         options={{
           presentation: 'card',
           headerShown: false,
@@ -424,6 +406,8 @@ function AppNavigator() {
         Finance: 'keuangan',
         SalesAnalytics: 'analitik',
         History: 'riwayat',
+        AnnualProfitReport: 'laporan-profit-tahunan',
+        SalesAnalyticsDashboard: 'analisis-dashboard',
         TransactionHistory: 'riwayat-transaksi',
         InvoiceSettings: 'pengaturan-invoice',
         WhatsAppSettings: 'pengaturan-whatsapp',

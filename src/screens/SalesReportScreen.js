@@ -19,7 +19,7 @@ import * as Sharing from 'expo-sharing';
 import * as XLSX from 'xlsx';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { getSalesHistory, deleteSaleItem, deleteSale } from '../services/salesSupabase';
+import { getSalesHistoryByRange, deleteSaleItem, deleteSale } from '../services/salesSupabase';
 import { Colors } from '../theme';
 
 export default function SalesReportScreen({ navigation }) {
@@ -63,168 +63,127 @@ export default function SalesReportScreen({ navigation }) {
   const [tempVisibleColumns, setTempVisibleColumns] = useState({...visibleColumns});
 
   useEffect(() => {
-    loadData();
-  }, []);
+    loadDataForCurrentFilter();
+  }, [filterType, customRange, selectedYear, selectedMonth]);
 
+  // Setiap kali data berhasil diload, hitung ulang totals & flatten items
   useEffect(() => {
     processData();
-  }, [sales, filterType, customRange, selectedYear, selectedMonth]);
+  }, [sales]);
 
-  const loadData = async () => {
+
+  // Hitung range tanggal berdasarkan filter yang dipilih
+  const getDateRangeForFilter = () => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    if (filterType === 'today') {
+      return {
+        start: new Date(today),
+        end: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+      };
+    } else if (filterType === 'yesterday') {
+      const y = new Date(today);
+      y.setDate(today.getDate() - 1);
+      return { start: y, end: new Date(today) };
+    } else if (filterType === 'thisMonth') {
+      return {
+        start: new Date(now.getFullYear(), now.getMonth(), 1),
+        end: new Date(now.getFullYear(), now.getMonth() + 1, 1)
+      };
+    } else if (filterType === 'month') {
+      return {
+        start: new Date(selectedYear, selectedMonth, 1),
+        end: new Date(selectedYear, selectedMonth + 1, 1)
+      };
+    } else if (filterType === 'year') {
+      return {
+        start: new Date(selectedYear, 0, 1),
+        end: new Date(selectedYear + 1, 0, 1)
+      };
+    } else if (filterType === 'custom' && customRange.startDate) {
+      const [sy, sm, sd] = customRange.startDate.split('-').map(Number);
+      const start = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
+      let end;
+      if (customRange.endDate) {
+        const [ey, em, ed] = customRange.endDate.split('-').map(Number);
+        end = new Date(ey, em - 1, ed);
+        end.setDate(end.getDate() + 1);
+      } else {
+        end = new Date(sy, sm - 1, sd);
+        end.setDate(end.getDate() + 1);
+      }
+      return { start, end };
+    }
+    return { start: null, end: null };
+  };
+
+  // Load data langsung dari Supabase dengan filter tanggal
+  const loadDataForCurrentFilter = async () => {
+    if (filterType === 'custom' && !customRange.startDate) {
+      // Belum pilih tanggal, kosongkan saja
+      setSales([]);
+      setFlattenedItems([]);
+      setFilteredSalesList([]);
+      setFilteredTotals({ total: 0, profit: 0 });
+      return;
+    }
+
     setLoading(true);
     try {
-      const salesData = await getSalesHistory(user?.id);
-      setSales(salesData || []);
+      const { start, end } = getDateRangeForFilter();
+      const data = await getSalesHistoryByRange(user?.id, start, end);
+      setSales(data || []);
     } catch (error) {
-      console.error('Error loading sales report:', error);
+      showToast('Gagal memuat data laporan', 'error');
     } finally {
       setLoading(false);
     }
   };
 
+  const loadData = loadDataForCurrentFilter; // Alias untuk kompabilitas
+
+  // Helper to calculate profit — consistent with HistoryScreen logic
+  // Handles legacy data where line_profit may be 0 or null
+  const calculateSaleProfit = (sale) => {
+    const items = sale.items || sale.sale_items || [];
+    if (items.length > 0) {
+      return items.reduce((sum, item) => {
+        // Prefer stored line_profit if valid, otherwise recalculate from price & cost_price
+        const profit = (typeof item.line_profit === 'number' && item.line_profit !== 0)
+          ? item.line_profit
+          : ((Number(item.price) - Number(item.cost_price || 0)) * Number(item.qty || 1));
+        return sum + profit;
+      }, 0);
+    }
+    // No items — fallback to header profit
+    return Number(sale.profit) || 0;
+  };
+
   const processData = () => {
-    console.log('🔄 Processing data with filter:', filterType, customRange);
-    
-    let filteredSales = [...sales];
-    const now = new Date();
-    // Reset time to start of day for accurate comparison
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    // Data sudah difilter oleh server (getSalesHistoryByRange),
+    // cukup hitung total dan flatten items saja
+    const filteredSales = [...sales];
 
-    // Helper to calculate profit matching HistoryScreen logic
-    const calculateSaleProfit = (sale) => {
-      const items = sale.items || sale.sale_items || [];
-      if (items.length > 0) {
-        const itemsProfit = items.reduce((sum, item) => {
-          let profit = typeof item.line_profit === 'number'
-             ? item.line_profit
-             : ((Number(item.price) - Number(item.cost_price || 0)) * Number(item.qty || 0));
-          return sum + profit;
-        }, 0);
-
-        return itemsProfit;
-      }
-      // No items - try header profit or 0
-      return sale.profit || 0;
-    };
-
-    if (filterType === 'today') {
-      filteredSales = filteredSales.filter(s => {
-        const d = new Date(s.created_at);
-        return d >= today;
-      });
-    } else if (filterType === 'yesterday') {
-      const yesterday = new Date(today);
-      yesterday.setDate(today.getDate() - 1);
-      
-      const startYesterday = new Date(yesterday);
-      startYesterday.setHours(0, 0, 0, 0);
-      
-      const endYesterday = new Date(yesterday);
-      endYesterday.setHours(23, 59, 59, 999);
-      
-      filteredSales = filteredSales.filter(s => {
-        const d = new Date(s.created_at);
-        return d >= startYesterday && d <= endYesterday;
-      });
-    } else if (filterType === 'thisMonth') {
-      const startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      startMonth.setHours(0, 0, 0, 0);
-      
-      // End of month is start of next month
-      const endMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-      endMonth.setHours(0, 0, 0, 0);
-
-      console.log(`📅 Filtering This Month: ${startMonth.toLocaleString()} - ${endMonth.toLocaleString()}`);
-
-      filteredSales = filteredSales.filter(s => {
-        const d = new Date(s.created_at);
-        return d >= startMonth && d < endMonth;
-      });
-    } else if (filterType === 'month') {
-      const startMonth = new Date(selectedYear, selectedMonth, 1);
-      startMonth.setHours(0, 0, 0, 0);
-      
-      const endMonth = new Date(selectedYear, selectedMonth + 1, 1);
-      endMonth.setHours(0, 0, 0, 0);
-      
-      console.log(`📅 Filtering Month: ${startMonth.toLocaleString()} - ${endMonth.toLocaleString()}`);
-
-      filteredSales = filteredSales.filter(s => {
-        const d = new Date(s.created_at);
-        return d >= startMonth && d < endMonth;
-      });
-    } else if (filterType === 'year') {
-      const startYear = new Date(selectedYear, 0, 1);
-      startYear.setHours(0, 0, 0, 0);
-      
-      const endYear = new Date(selectedYear + 1, 0, 1);
-      endYear.setHours(0, 0, 0, 0);
-      
-      console.log(`📅 Filtering Year: ${startYear.getFullYear()}`);
-      
-      filteredSales = filteredSales.filter(s => {
-        const d = new Date(s.created_at);
-        return d >= startYear && d < endYear;
-      });
-      
-      // Calculate monthly summary
+    // Jika filter year, hitung ringkasan per bulan
+    if (filterType === 'year') {
       const months = Array(12).fill(0).map((_, i) => ({
         monthIndex: i,
         monthName: new Date(selectedYear, i, 1).toLocaleDateString('id-ID', { month: 'long' }),
         totalSales: 0,
         totalProfit: 0
       }));
-      
+
       filteredSales.forEach(sale => {
-        const d = new Date(sale.created_at);
-        const m = d.getMonth();
-        
-        // Calculate profit with fallback
-        const saleProfit = calculateSaleProfit(sale);
-
+        const m = new Date(sale.created_at).getMonth();
         months[m].totalSales += (sale.total || 0);
-        months[m].totalProfit += saleProfit;
+        months[m].totalProfit += calculateSaleProfit(sale);
       });
-      
-      setMonthlyData(months);
-    } else if (filterType === 'custom') {
-      if (customRange.startDate) {
-        // Parse dates strictly as local YYYY-MM-DD
-        const [sy, sm, sd] = customRange.startDate.split('-').map(Number);
-        const start = new Date(sy, sm - 1, sd, 0, 0, 0, 0); // Start of day 00:00:00
-        
-        let end;
-        if (customRange.endDate) {
-          const [ey, em, ed] = customRange.endDate.split('-').map(Number);
-          // Use next day 00:00:00 as upper bound (exclusive) to match Analytics
-          end = new Date(ey, em - 1, ed);
-          end.setDate(end.getDate() + 1);
-          end.setHours(0, 0, 0, 0);
-        } else {
-          // Single day selection: next day 00:00:00
-          end = new Date(sy, sm - 1, sd);
-          end.setDate(end.getDate() + 1);
-          end.setHours(0, 0, 0, 0);
-        }
-        
-        console.log(`📅 Filtering Custom: ${start.toLocaleString()} - ${end.toLocaleString()}`);
 
-        filteredSales = filteredSales.filter(s => {
-          const d = new Date(s.created_at);
-          // Check if valid date
-          if (isNaN(d.getTime())) return false;
-          // Use >= start and < end for strict consistency
-          return d >= start && d < end;
-        });
-      } else {
-        // If custom is selected but no date provided yet, show empty list
-        filteredSales = [];
-      }
+      setMonthlyData(months);
     }
 
-    console.log(`✅ Filtered ${filteredSales.length} sales from ${sales.length} total`);
-
-    // Calculate Totals with Fallback
+    // Hitung total keseluruhan
     let calcTotal = 0;
     let calcProfit = 0;
     filteredSales.forEach(sale => {
@@ -233,17 +192,16 @@ export default function SalesReportScreen({ navigation }) {
     });
     setFilteredTotals({ total: calcTotal, profit: calcProfit });
 
-    // Flatten to items
+    // Flatten ke item-item, dengan fallback profit untuk data lama
     let items = [];
     filteredSales.forEach(sale => {
       const saleItems = sale.items || sale.sale_items || [];
       if (saleItems.length > 0) {
         saleItems.forEach(item => {
-          let displayedProfit = item.line_profit || 0;
-          
-          // Correction logic for display
-          // Removed legacy correction logic to sync with HistoryScreen
-          
+          const displayedProfit = (typeof item.line_profit === 'number' && item.line_profit !== 0)
+            ? item.line_profit
+            : ((Number(item.price) - Number(item.cost_price || 0)) * Number(item.qty || 1));
+
           items.push({
             ...item,
             line_profit: displayedProfit,
@@ -254,13 +212,13 @@ export default function SalesReportScreen({ navigation }) {
       }
     });
 
-    // Sort by date descending
     items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     filteredSales.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     setFlattenedItems(items);
     setFilteredSalesList(filteredSales);
   };
+
 
   const exportToExcel = async () => {
     if (flattenedItems.length === 0) {
@@ -325,7 +283,6 @@ export default function SalesReportScreen({ navigation }) {
       });
 
     } catch (error) {
-      console.error('Export Error:', error);
       showToast('Gagal mengekspor data: ' + error.message, 'error');
     } finally {
       setLoading(false);
@@ -333,7 +290,6 @@ export default function SalesReportScreen({ navigation }) {
   };
 
   const handleDeleteItem = async (item) => {
-    console.log('🗑️ Request to delete item:', item.id, item.product_name);
     
     if (!item.id) {
       showToast('ID item tidak valid', 'error');
@@ -349,11 +305,9 @@ export default function SalesReportScreen({ navigation }) {
           text: 'Hapus', 
           style: 'destructive',
           onPress: async () => {
-            console.log('🗑️ User confirmed delete');
             setLoading(true);
             try {
               const result = await deleteSaleItem(item.id);
-              console.log('🗑️ Delete result:', result);
               
               if (result.success) {
                 // Show toast immediately
@@ -400,7 +354,6 @@ export default function SalesReportScreen({ navigation }) {
                 }
               }
             } catch (error) {
-              console.error('❌ Error in handleDeleteItem:', error);
               showToast('Terjadi kesalahan saat menghapus: ' + error.message, 'error');
             } finally {
               setLoading(false);
@@ -492,9 +445,10 @@ export default function SalesReportScreen({ navigation }) {
     return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`; // Simple format
   };
 
-  const totalSales = flattenedItems.reduce((sum, item) => sum + (item.line_total || 0), 0);
-  const totalProfit = flattenedItems.reduce((sum, item) => sum + (item.line_profit || 0), 0);
-  // We now use filteredTotals for the footer to support legacy data fallback
+  // Use filteredTotals for footer — these are correctly calculated via calculateSaleProfit()
+  // which handles all fallback cases (line_profit → (price-cost_price)*qty → sale.profit)
+  const totalSales = filteredTotals.total;
+  const totalProfit = filteredTotals.profit;
   
   const resetFilters = () => {
     setFilterType('today');
@@ -602,7 +556,7 @@ export default function SalesReportScreen({ navigation }) {
 
           {visibleColumns.profit && (
             <Text style={[styles.cell, { width: 75, textAlign: 'right', fontSize: 11, fontWeight: '700', color: Colors.primary }]}>
-              {formatCurrency(sale.profit)}
+              {formatCurrency(calculateSaleProfit(sale))}
             </Text>
           )}
 

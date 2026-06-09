@@ -25,7 +25,6 @@ export default function AccountScreen({ navigation }) {
       const { data: { user: currentUser }, error } = await supabase.auth.getUser();
       
       if (error) {
-        console.error('Error loading user profile:', error);
         return;
       }
 
@@ -33,7 +32,6 @@ export default function AccountScreen({ navigation }) {
         setUserProfile(currentUser);
       }
     } catch (error) {
-      console.error('Exception loading user profile:', error);
     }
   };
 
@@ -42,7 +40,6 @@ export default function AccountScreen({ navigation }) {
   };
 
   const onRefresh = async () => {
-    console.log('🔄 AccountScreen: Manual refresh triggered');
     setRefreshing(true);
     await loadUserProfile();
     setTimeout(() => {

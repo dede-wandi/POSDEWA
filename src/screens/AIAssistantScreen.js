@@ -68,7 +68,6 @@ export default function AIAssistantScreen({ navigation }) {
       
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
-      console.error('AI Error:', error);
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         type: 'bot',

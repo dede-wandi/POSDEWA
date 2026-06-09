@@ -19,20 +19,16 @@ export default function ProductListScreen({ navigation, route }) {
   const [isGrid, setIsGrid] = useState(Boolean(route?.params?.initialLayout));
 
   const loadProducts = async () => {
-    console.log('🔄 ProductListScreen: Loading products for user:', user?.id, 'query:', query);
     try {
       const searchQuery = query.trim();
       const result = await findByBarcodeOrName(user?.id, searchQuery);
-      console.log('✅ ProductListScreen: Products loaded:', result?.length || 0, 'items');
       setProducts(result || []);
     } catch (error) {
-      console.error('❌ ProductListScreen: Error loading products:', error);
       setProducts([]);
     }
   };
 
   const onRefresh = async () => {
-    console.log('🔄 ProductListScreen: Manual refresh triggered');
     setRefreshing(true);
     await loadProducts();
     setRefreshing(false);
@@ -85,7 +81,6 @@ export default function ProductListScreen({ navigation, route }) {
     // Update local cart state
     setLocalCart(newCart);
     
-    console.log('✅ Product added to cart:', product.name, 'New cart size:', newCart.length);
     showToast(`${product.name} masuk keranjang`, 'success');
   };
 

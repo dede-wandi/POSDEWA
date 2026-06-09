@@ -55,7 +55,6 @@ export default function PublicDetailScreen({ navigation, route }) {
         message: `Cek produk ini: ${product.title} - Rp ${Number(product.price).toLocaleString('id-ID')}`,
       });
     } catch (error) {
-      console.log(error.message);
     }
   };
 

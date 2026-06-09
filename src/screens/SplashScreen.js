@@ -25,7 +25,6 @@ export default function SplashScreen({ onFinish }) {
           const { data: { user } } = await supabase.auth.getUser();
           
           if (user) {
-            console.log('✅ SplashScreen: User found', user.email);
             const businessName = user.user_metadata?.business_name;
             if (businessName) {
               setAppName(businessName);
@@ -42,7 +41,6 @@ export default function SplashScreen({ onFinish }) {
             // Jika getUser gagal, coba getSession (terkadang session ada di storage tapi getUser perlu refresh)
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user) {
-               console.log('✅ SplashScreen: Session found', session.user.email);
                const user = session.user;
                const businessName = user.user_metadata?.business_name;
                if (businessName) {
@@ -60,7 +58,6 @@ export default function SplashScreen({ onFinish }) {
           }
         }
       } catch (e) {
-        console.log('❌ SplashScreen: Error loading user', e);
       }
     };
     loadUserName();

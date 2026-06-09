@@ -110,9 +110,9 @@ export const DEFAULT_MENUS_METADATA = [
     defaultBorder: '#C8E6C9',
   },
   {
-    key: 'produk_publik',
-    label: 'Produk Publik',
-    defaultIcon: 'globe',
+    key: 'annual_profit',
+    label: 'Laporan Profit',
+    defaultIcon: 'trending-up',
     defaultColor: '#8B5CF6',
     defaultBg: '#F5F3FF',
     defaultBorder: '#EDE9FE',
@@ -166,7 +166,7 @@ export const getDashboardShortcuts = () => {
   return [
     new NavigationShortcut('kasir', 'Kasir', 'cart', '#3B82F6', '#EFF6FF', '#DBEAFE', 'Penjualan', {}, 'HOT'),
     new NavigationShortcut('produk', 'Produk', 'cube', TOKO_GREEN, '#E8F5E9', '#C8E6C9', 'Produk', { screen: 'DaftarProduk' }),
-    new NavigationShortcut('produk_publik', 'Produk Publik', 'globe', '#8B5CF6', '#F5F3FF', '#EDE9FE', 'Produk', { screen: 'PublicProductsAdmin' }, 'NEW'),
+    new NavigationShortcut('annual_profit', 'Laporan Profit', 'trending-up', '#8B5CF6', '#F5F3FF', '#EDE9FE', 'AnnualProfitReport', {}, 'NEW'),
     new NavigationShortcut('riwayat', 'Riwayat', 'time', '#F59E0B', '#FFFBEB', '#FEF3C7', 'History'),
     new NavigationShortcut('barcode', 'Barcode', 'scan', '#475569', '#F8FAFC', '#E2E8F0', 'Scan'),
     new NavigationShortcut('stok', 'Stok', 'layers', '#EF4444', '#FEF2F2', '#FEE2E2', 'StockManagement'),
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
   imageContainer: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: '#F8FAFC',
     alignItems: 'center',
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   defaultCircle: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,

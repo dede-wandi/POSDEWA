@@ -57,14 +57,11 @@ export default function HistoryScreen({ navigation }) {
   }, [sales, searchQuery, filterPeriod, customDateRange]);
 
   const loadSalesHistory = async () => {
-    console.log('🔄 HistoryScreen: Loading sales history for user:', user?.id);
     setLoading(true);
     try {
       const result = await getSalesHistory(user?.id);
-      console.log('✅ HistoryScreen: Sales history loaded:', result?.length || 0, 'items');
       setSales(result || []);
     } catch (error) {
-      console.error('❌ HistoryScreen: Error loading sales history:', error);
       showToast('Gagal memuat riwayat penjualan', 'error');
     } finally {
       setLoading(false);
@@ -181,7 +178,6 @@ export default function HistoryScreen({ navigation }) {
 
   const showSaleDetail = async (saleId) => {
     try {
-      console.log('🔍 HistoryScreen: Loading sale detail for ID:', saleId);
       const saleDetail = await getSaleById(saleId);
       if (saleDetail) {
         setSelectedSale(saleDetail);
@@ -190,7 +186,6 @@ export default function HistoryScreen({ navigation }) {
         showToast('Detail penjualan tidak ditemukan', 'error');
       }
     } catch (error) {
-      console.error('❌ HistoryScreen: Error loading sale detail:', error);
       showToast('Gagal memuat detail penjualan', 'error');
     }
   };
@@ -198,7 +193,6 @@ export default function HistoryScreen({ navigation }) {
   // Print invoice function
   const printInvoice = async (sale) => {
     try {
-      console.log('🖨️ HistoryScreen: Printing invoice for sale:', sale.id);
       
       // First, ask for receipt size
       Alert.alert(
@@ -221,7 +215,6 @@ export default function HistoryScreen({ navigation }) {
         { cancelable: true }
       );
     } catch (error) {
-      console.error('❌ HistoryScreen: Error in printInvoice:', error);
       showToast('Terjadi kesalahan saat mencetak invoice', 'error');
     }
   };
@@ -474,14 +467,6 @@ export default function HistoryScreen({ navigation }) {
               );
             })()}
           </View>
-          {item.payment_method && (
-            <View style={styles.paymentMethodContainer}>
-              <Text style={styles.paymentMethod}>
-                {item.payment_method}
-                {item.payment_channel ? ` - ${item.payment_channel.name}` : ''}
-              </Text>
-            </View>
-          )}
         </View>
       </View>
     </TouchableOpacity>

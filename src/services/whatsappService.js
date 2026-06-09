@@ -3,7 +3,6 @@ import { getSupabaseClient } from './supabase';
 import { getWaConfig } from './waNotifSupabase';
 
 export const sendWhatsAppNotification = async (saleData, items) => {
-  console.log('🚀 Starting WhatsApp notification service...');
 
   try {
     // 1. Get Target Numbers from Database
@@ -23,32 +22,27 @@ export const sendWhatsAppNotification = async (saleData, items) => {
       }
     }
 
-    console.log('🎯 Notification Targets:', target);
     
     // 1.1 Get Provider Config
     let waConfig = null;
     try {
       waConfig = await getWaConfig({ ownerId: user?.id });
     } catch (e) {
-      console.warn('⚠️ WA config not found or error loading:', e);
     }
 
     const provider = waConfig?.provider || 'fonnte';
 
     // 2. Validate Input
     if (!saleData || !items) {
-      console.error('❌ WhatsApp Service: Missing saleData or items');
       return { status: false, message: 'Data transaksi atau item kosong' };
     }
     
     if (provider === 'wapanels') {
       if (!waConfig?.appkey || !waConfig?.authkey) {
-        console.warn('⚠️ Wapanels appkey or authkey not set. Skip sending notification.');
         return { status: false, message: 'Konfigurasi Wapanels belum lengkap (App Key / Auth Key kosong)' };
       }
     } else {
       if (!waConfig?.token) {
-        console.warn('⚠️ Fonnte token not set. Skip sending notification.');
         return { status: false, message: 'Token Fonnte belum dikonfigurasi' };
       }
     }
@@ -100,7 +94,6 @@ export const sendWhatsAppNotification = async (saleData, items) => {
         }
       }
     } catch (err) {
-      console.error('⚠️ Failed to fetch stats for WhatsApp:', err);
     }
 
     // 3. Construct Message
@@ -171,11 +164,9 @@ export const sendWhatsAppNotification = async (saleData, items) => {
       const authkey = waConfig.authkey;
       const targetNumbers = target.split(',').map(num => num.trim()).filter(Boolean).map(sanitizePhoneNumber);
       
-      console.log('📤 Sending to Wapanels...', { targetNumbers, messageLength: message.length });
       
       const results = [];
       for (const num of targetNumbers) {
-        console.log(`📤 Sending to Wapanels receiver: ${num}`);
         const formData = new FormData();
         formData.append('appkey', appkey);
         formData.append('authkey', authkey);
@@ -189,9 +180,7 @@ export const sendWhatsAppNotification = async (saleData, items) => {
             redirect: 'follow'
           });
 
-          console.log(`📡 Response status for ${num}:`, response.status);
           const textResult = await response.text();
-          console.log(`📦 Raw response for ${num}:`, textResult);
 
           try {
             const jsonResult = JSON.parse(textResult);
@@ -200,7 +189,6 @@ export const sendWhatsAppNotification = async (saleData, items) => {
             results.push({ success: false, raw: textResult });
           }
         } catch (err) {
-          console.error(`❌ Fetch error sending to Wapanels receiver ${num}:`, err);
           results.push({ success: false, error: err.message });
         }
       }
@@ -212,7 +200,6 @@ export const sendWhatsAppNotification = async (saleData, items) => {
       const targetNumbers = target.split(',').map(num => num.trim()).filter(Boolean).map(sanitizePhoneNumber);
       const sanitizedTarget = targetNumbers.join(',');
       
-      console.log('📤 Sending to Fonnte...', { target: sanitizedTarget, messageLength: message.length });
       
       const formData = new FormData();
       formData.append('target', sanitizedTarget);
@@ -229,28 +216,22 @@ export const sendWhatsAppNotification = async (saleData, items) => {
         redirect: 'follow'
       });
 
-      console.log('📡 Response status:', response.status);
       
       // 6. Handle Response
       const textResult = await response.text();
-      console.log('📦 Raw response:', textResult);
 
       try {
         const jsonResult = JSON.parse(textResult);
         if (jsonResult.status) {
-          console.log('✅ WhatsApp sent successfully!');
         } else {
-          console.warn('⚠️ WhatsApp API returned error:', jsonResult);
         }
         return jsonResult;
       } catch (e) {
-        console.warn('⚠️ Could not parse response as JSON');
         return { success: false, raw: textResult };
       }
     }
 
   } catch (error) {
-    console.error('❌ Error inside sendWhatsAppNotification:', error);
     return null;
   }
 };

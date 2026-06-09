@@ -233,7 +233,6 @@ export default function FinanceScreen({ navigation }) {
           onPress: async () => {
             setLoading(true);
             try {
-              console.log('🗑️ FinanceScreen: Deleting transaction:', trx.id);
               const res = await deletePersonalTransaction(trx.id);
               setLoading(false);
               
@@ -241,13 +240,11 @@ export default function FinanceScreen({ navigation }) {
                 showToast('Transaksi dihapus', 'success');
                 onRefresh();
               } else {
-                console.log('❌ FinanceScreen: Delete failed:', res.error);
                 // Use Alert for critical errors to ensure visibility
                 Alert.alert('Gagal Menghapus', res.error || 'Terjadi kesalahan saat menghapus');
               }
             } catch (e) {
               setLoading(false);
-              console.log('❌ FinanceScreen: Delete exception:', e);
               Alert.alert('Error', e.message);
             }
           }

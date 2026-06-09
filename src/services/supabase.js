@@ -13,11 +13,8 @@ export function getSupabaseClient() {
   const url = extra?.supabaseUrl;
   const key = extra?.supabaseAnonKey;
   
-  console.log('🔧 Supabase: Initializing client with URL:', url ? 'exists' : 'missing');
-  console.log('🔧 Supabase: Initializing client with key:', key ? 'exists' : 'missing');
   
   if (!url || !key) {
-    console.log('❌ Supabase: Missing URL or key');
     return null;
   }
   
@@ -30,7 +27,6 @@ export function getSupabaseClient() {
     },
   });
   
-  console.log('✅ Supabase: Client initialized successfully');
   return supabaseClient;
 }
 

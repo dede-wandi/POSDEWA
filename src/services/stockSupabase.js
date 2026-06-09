@@ -1,11 +1,9 @@
 import { getSupabaseClient } from './supabase';
 
 export async function addStock(productId, quantity, reason = '', notes = '') {
-  console.log('📦 stockSupabase: addStock called with productId:', productId, 'quantity:', quantity);
   
   const supabase = getSupabaseClient();
   if (!supabase) {
-    console.log('❌ stockSupabase: Supabase client not available');
     return { success: false, error: 'Supabase tidak tersedia' };
   }
 
@@ -15,7 +13,6 @@ export async function addStock(productId, quantity, reason = '', notes = '') {
     const session = sessionData?.session;
     
     if (!session || !session.user) {
-      console.log('❌ stockSupabase: User not authenticated');
       return { success: false, error: 'User tidak ter-autentikasi' };
     }
 
@@ -28,19 +25,16 @@ export async function addStock(productId, quantity, reason = '', notes = '') {
       .single();
 
     if (productError) {
-      console.log('❌ stockSupabase: Error fetching product:', productError);
       return { success: false, error: productError.message };
     }
 
     if (!product) {
-      console.log('❌ stockSupabase: Product not found or not owned by user');
       return { success: false, error: 'Produk tidak ditemukan' };
     }
 
     const previousStock = product.stock;
     const newStock = previousStock + quantity;
 
-    console.log('📡 stockSupabase: Updating product stock from', previousStock, 'to', newStock);
 
     // Update product stock
     const { error: updateError } = await supabase
@@ -50,7 +44,6 @@ export async function addStock(productId, quantity, reason = '', notes = '') {
       .eq('owner_id', session.user.id);
 
     if (updateError) {
-      console.log('❌ stockSupabase: Error updating product stock:', updateError);
       return { success: false, error: updateError.message };
     }
 
@@ -69,11 +62,9 @@ export async function addStock(productId, quantity, reason = '', notes = '') {
       });
 
     if (historyError) {
-      console.log('❌ stockSupabase: Error adding stock history:', historyError);
       // Don't return error here, stock update was successful
     }
 
-    console.log('✅ stockSupabase: Stock added successfully');
     return { 
       success: true, 
       data: { 
@@ -85,17 +76,14 @@ export async function addStock(productId, quantity, reason = '', notes = '') {
     };
 
   } catch (error) {
-    console.log('❌ stockSupabase: Exception in addStock:', error);
     return { success: false, error: error.message };
   }
 }
 
 export async function getStockHistory(productId = null, limit = 50) {
-  console.log('📦 stockSupabase: getStockHistory called with productId:', productId, 'limit:', limit);
   
   const supabase = getSupabaseClient();
   if (!supabase) {
-    console.log('❌ stockSupabase: Supabase client not available');
     return { success: false, error: 'Supabase tidak tersedia' };
   }
 
@@ -105,11 +93,9 @@ export async function getStockHistory(productId = null, limit = 50) {
     const session = sessionData?.session;
     
     if (!session || !session.user) {
-      console.log('❌ stockSupabase: User not authenticated');
       return { success: false, error: 'User tidak ter-autentikasi' };
     }
 
-    console.log('📡 stockSupabase: Fetching stock history...');
 
     let query = supabase
       .from('stock_history')
@@ -140,25 +126,20 @@ export async function getStockHistory(productId = null, limit = 50) {
     const { data: stockHistory, error } = await query;
 
     if (error) {
-      console.log('❌ stockSupabase: Error fetching stock history:', error);
       return { success: false, error: error.message };
     }
 
-    console.log('✅ stockSupabase: Stock history retrieved:', stockHistory?.length || 0, 'items');
     return { success: true, data: stockHistory || [] };
 
   } catch (error) {
-    console.log('❌ stockSupabase: Exception in getStockHistory:', error);
     return { success: false, error: error.message };
   }
 }
 
 export async function adjustStock(productId, newStock, reason = '', notes = '') {
-  console.log('📦 stockSupabase: adjustStock called with productId:', productId, 'newStock:', newStock);
   
   const supabase = getSupabaseClient();
   if (!supabase) {
-    console.log('❌ stockSupabase: Supabase client not available');
     return { success: false, error: 'Supabase tidak tersedia' };
   }
 
@@ -168,7 +149,6 @@ export async function adjustStock(productId, newStock, reason = '', notes = '') 
     const session = sessionData?.session;
     
     if (!session || !session.user) {
-      console.log('❌ stockSupabase: User not authenticated');
       return { success: false, error: 'User tidak ter-autentikasi' };
     }
 
@@ -181,12 +161,10 @@ export async function adjustStock(productId, newStock, reason = '', notes = '') 
       .single();
 
     if (productError) {
-      console.log('❌ stockSupabase: Error fetching product:', productError);
       return { success: false, error: productError.message };
     }
 
     if (!product) {
-      console.log('❌ stockSupabase: Product not found or not owned by user');
       return { success: false, error: 'Produk tidak ditemukan' };
     }
 
@@ -194,7 +172,6 @@ export async function adjustStock(productId, newStock, reason = '', notes = '') 
     const quantity = Math.abs(newStock - previousStock);
     const type = newStock > previousStock ? 'addition' : newStock < previousStock ? 'reduction' : 'adjustment';
 
-    console.log('📡 stockSupabase: Adjusting product stock from', previousStock, 'to', newStock);
 
     // Update product stock
     const { error: updateError } = await supabase
@@ -204,14 +181,12 @@ export async function adjustStock(productId, newStock, reason = '', notes = '') 
       .eq('owner_id', session.user.id);
 
     if (updateError) {
-      console.log('❌ stockSupabase: Error updating product stock:', updateError);
       return { success: false, error: updateError.message };
     }
 
     // Stock history will be automatically logged by database trigger
     // No need to manually insert into stock_history table
 
-    console.log('✅ stockSupabase: Stock adjusted successfully');
     return { 
       success: true, 
       data: { 
@@ -224,7 +199,6 @@ export async function adjustStock(productId, newStock, reason = '', notes = '') 
     };
 
   } catch (error) {
-    console.log('❌ stockSupabase: Exception in adjustStock:', error);
     return { success: false, error: error.message };
   }
 }

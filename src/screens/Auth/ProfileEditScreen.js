@@ -28,7 +28,6 @@ export default function ProfileEditScreen({ navigation }) {
     try {
       const supabase = getSupabaseClient();
       if (!supabase) {
-        console.error('Supabase client not available');
         return;
       }
 
@@ -36,7 +35,6 @@ export default function ProfileEditScreen({ navigation }) {
       const { data: { user: currentUser }, error } = await supabase.auth.getUser();
       
       if (error) {
-        console.error('Error loading user:', error);
         return;
       }
 
@@ -51,7 +49,6 @@ export default function ProfileEditScreen({ navigation }) {
         });
       }
     } catch (error) {
-      console.error('Exception loading profile:', error);
     }
   };
 
@@ -82,7 +79,6 @@ export default function ProfileEditScreen({ navigation }) {
       });
 
       if (error) {
-        console.error('Error saving profile:', error);
         showToast('Gagal menyimpan profil: ' + error.message, 'error');
         return;
       }
@@ -90,7 +86,6 @@ export default function ProfileEditScreen({ navigation }) {
       showToast('Profil berhasil diperbarui', 'success');
       navigation.goBack();
     } catch (error) {
-      console.error('Exception saving profile:', error);
       showToast('Terjadi kesalahan saat menyimpan profil', 'error');
     } finally {
       setLoading(false);

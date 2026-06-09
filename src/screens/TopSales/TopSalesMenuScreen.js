@@ -43,16 +43,16 @@ export default function TopSalesMenuScreen({ navigation }) {
       subtitle: 'Grafik profit bulanan & tahunan',
       icon: 'stats-chart',
       color: '#E91E63',
-      route: 'ProfitAnalysis',
-      params: {}
+      route: 'SalesAnalyticsDashboard',
+      params: { initialTab: 'profit' }
     },
     {
       title: 'Analisis Transaksi',
       subtitle: 'Grafik transaksi harian, bulanan & tahunan',
       icon: 'bar-chart',
       color: '#2196F3',
-      route: 'TransactionAnalysis',
-      params: {}
+      route: 'SalesAnalyticsDashboard',
+      params: { initialTab: 'transaction' }
     }
   ];
 
@@ -118,11 +118,8 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   iconContainer: {
     width: 50,

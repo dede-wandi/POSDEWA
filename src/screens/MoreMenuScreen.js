@@ -40,13 +40,7 @@ export default function MoreMenuScreen({ navigation }) {
       bgColor: '#FFF3E0',
       onPress: () => navigation.navigate('History'),
     },
-    {
-      label: 'Analisis Transaksi',
-      icon: 'bar-chart',
-      iconColor: '#2196F3',
-      bgColor: '#E3F2FD',
-      onPress: () => navigation.navigate('TransactionAnalysis'),
-    },
+
     {
       label: 'Insight Performa Produk',
       icon: 'stats-chart',
@@ -75,13 +69,7 @@ export default function MoreMenuScreen({ navigation }) {
       bgColor: '#ECEFF1',
       onPress: () => navigation.navigate('InvoiceSettings'),
     },
-    {
-      label: 'Custom Invoice',
-      icon: 'receipt',
-      iconColor: '#00BCD4',
-      bgColor: '#E0F7FA',
-      onPress: () => navigation.navigate('CustomInvoiceList'),
-    },
+
     {
       label: 'Channel Pembayaran',
       icon: 'wallet',

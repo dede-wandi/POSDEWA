@@ -6,11 +6,9 @@ import { getSupabaseClient } from './supabase';
  */
 export const getMenuConfigs = async (userId) => {
   try {
-    console.log('📋 Getting menu configs for user:', userId);
     
     const supabase = getSupabaseClient();
     if (!supabase) {
-      console.log('❌ Supabase client not available');
       return { success: false, error: 'Supabase tidak tersedia' };
     }
     
@@ -31,10 +29,8 @@ export const getMenuConfigs = async (userId) => {
       });
     }
 
-    console.log('✅ Menu configurations retrieved successfully');
     return { success: true, data: configMap };
   } catch (error) {
-    console.error('❌ Error getting menu configs:', error);
     return { success: false, error: error.message };
   }
 };
@@ -45,11 +41,9 @@ export const getMenuConfigs = async (userId) => {
  */
 export const saveMenuConfigs = async (userId, configMap) => {
   try {
-    console.log('📋 Saving menu configs for user:', userId);
     
     const supabase = getSupabaseClient();
     if (!supabase) {
-      console.log('❌ Supabase client not available');
       return { success: false, error: 'Supabase tidak tersedia' };
     }
 
@@ -71,10 +65,8 @@ export const saveMenuConfigs = async (userId, configMap) => {
 
     if (error) throw error;
 
-    console.log('✅ Menu configurations saved successfully');
     return { success: true, data };
   } catch (error) {
-    console.error('❌ Error saving menu configs:', error);
     return { success: false, error: error.message };
   }
 };

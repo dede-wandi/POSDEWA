@@ -76,19 +76,15 @@ export default function SalesAnalyticsScreen({ navigation, route }) {
   const loadAnalytics = async (period, customRange = null) => {
     try {
       setLoading(true);
-      console.log('📊 SalesAnalyticsScreen: Loading analytics for period:', period);
       
       const result = await getSalesAnalytics(user?.id, period, customRange);
       if (result.success) {
         setAnalytics(result.data);
-        console.log('✅ SalesAnalyticsScreen: Analytics loaded:', result.data);
       } else {
-        console.error('❌ SalesAnalyticsScreen: Error loading analytics:', result.error);
         showToast('Gagal memuat data analytics: ' + result.error, 'error');
       }
 
     } catch (error) {
-      console.error('❌ SalesAnalyticsScreen: Exception loading analytics:', error);
       showToast('Terjadi kesalahan saat memuat data analytics', 'error');
     } finally {
       setLoading(false);
@@ -102,7 +98,6 @@ export default function SalesAnalyticsScreen({ navigation, route }) {
         setPerformanceData(perfResult.data);
       }
     } catch (error) {
-        console.error('❌ SalesAnalyticsScreen: Error loading performance:', error);
     }
   };
 
@@ -695,14 +690,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 24,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
   },
   mainStatTitle: {
     fontSize: 16,
@@ -735,14 +724,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginHorizontal: 6,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
   },
   statItemHeader: {
     flexDirection: 'row',
@@ -778,14 +761,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
   },
   insightItem: {
     flexDirection: 'row',

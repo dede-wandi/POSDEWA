@@ -4,7 +4,6 @@ import { getSupabaseClient } from './supabase';
 
 // Get all personal accounts
 export async function getPersonalAccounts() {
-  console.log('💰 financeSupabase: getPersonalAccounts called');
   
   const supabase = getSupabaseClient();
   if (!supabase) return { success: false, error: 'Supabase tidak tersedia' };
@@ -22,13 +21,11 @@ export async function getPersonalAccounts() {
       .order('created_at', { ascending: true });
 
     if (error) {
-      console.log('❌ financeSupabase: Error fetching personal accounts:', error);
       return { success: false, error: error.message };
     }
 
     return { success: true, data: data || [] };
   } catch (error) {
-    console.log('❌ financeSupabase: Exception in getPersonalAccounts:', error);
     return { success: false, error: error.message };
   }
 }
@@ -138,7 +135,6 @@ export async function getPersonalTransactions(accountId = null, limit = 50, star
     const { data, error } = await query;
 
     if (error) {
-      console.log('❌ financeSupabase: Error fetching personal transactions:', error);
       return { success: false, error: error.message };
     }
 
@@ -150,7 +146,6 @@ export async function getPersonalTransactions(accountId = null, limit = 50, star
 
 // Record personal transaction
 export async function recordPersonalTransaction(data) {
-  console.log('💰 financeSupabase: recordPersonalTransaction called with:', data);
   const { account_id, type, amount, category, description, transaction_date } = data;
   
   const supabase = getSupabaseClient();
@@ -213,14 +208,12 @@ export async function recordPersonalTransaction(data) {
     return { success: true, data: trx };
 
   } catch (error) {
-    console.log('❌ financeSupabase: Exception in recordPersonalTransaction:', error);
     return { success: false, error: error.message };
   }
 }
 
 // Update personal transaction
 export async function updatePersonalTransaction(transactionId, updates) {
-  console.log('💰 financeSupabase: updatePersonalTransaction called with:', transactionId, updates);
   
   const supabase = getSupabaseClient();
   if (!supabase) return { success: false, error: 'Supabase tidak tersedia' };
@@ -298,14 +291,12 @@ export async function updatePersonalTransaction(transactionId, updates) {
     return { success: true, data: updatedTrx };
 
   } catch (error) {
-    console.log('❌ financeSupabase: Exception in updatePersonalTransaction:', error);
     return { success: false, error: error.message };
   }
 }
 
 // Delete personal transaction
 export async function deletePersonalTransaction(transactionId) {
-  console.log('💰 financeSupabase: deletePersonalTransaction called with:', transactionId);
   
   const supabase = getSupabaseClient();
   if (!supabase) return { success: false, error: 'Supabase tidak tersedia' };
@@ -324,7 +315,6 @@ export async function deletePersonalTransaction(transactionId) {
       .single();
 
     if (trxError || !trx) {
-      console.log('❌ financeSupabase: Transaction not found or error:', trxError);
       return { success: false, error: 'Transaksi tidak ditemukan' };
     }
 
@@ -340,7 +330,6 @@ export async function deletePersonalTransaction(transactionId) {
       if (accError || !account) {
         // If account not found, we cannot revert balance.
         // For data integrity regarding "pastikan saldo kembali", we should probably stop.
-        console.log('❌ financeSupabase: Account not found for transaction:', trx.account_id);
         return { success: false, error: 'Akun terkait tidak ditemukan. Saldo tidak dapat dikembalikan.' };
       }
 
@@ -364,7 +353,6 @@ export async function deletePersonalTransaction(transactionId) {
         .eq('id', trx.account_id);
 
       if (updateBalanceError) {
-        console.log('❌ financeSupabase: Error updating balance:', updateBalanceError);
         return { success: false, error: 'Gagal mengupdate saldo: ' + updateBalanceError.message };
       }
     }
@@ -377,14 +365,12 @@ export async function deletePersonalTransaction(transactionId) {
       .eq('owner_id', session.user.id);
 
     if (deleteError) {
-      console.log('❌ financeSupabase: Error deleting transaction:', deleteError);
       return { success: false, error: 'Gagal menghapus transaksi: ' + deleteError.message };
     }
 
     return { success: true };
 
   } catch (error) {
-    console.log('❌ financeSupabase: Exception in deletePersonalTransaction:', error);
     return { success: false, error: error.message };
   }
 }
@@ -393,11 +379,9 @@ export async function deletePersonalTransaction(transactionId) {
 
 // Get all payment channels for current user
 export async function getPaymentChannels() {
-  console.log('💰 financeSupabase: getPaymentChannels called');
   
   const supabase = getSupabaseClient();
   if (!supabase) {
-    console.log('❌ financeSupabase: Supabase client not available');
     return { success: false, error: 'Supabase tidak tersedia' };
   }
 
@@ -406,7 +390,6 @@ export async function getPaymentChannels() {
     const session = sessionData?.session;
     
     if (!session || !session.user) {
-      console.log('❌ financeSupabase: User not authenticated');
       return { success: false, error: 'User tidak ter-autentikasi' };
     }
 
@@ -418,26 +401,21 @@ export async function getPaymentChannels() {
       .order('created_at', { ascending: true });
 
     if (error) {
-      console.log('❌ financeSupabase: Error fetching payment channels:', error);
       return { success: false, error: error.message };
     }
 
-    console.log('✅ financeSupabase: Payment channels fetched successfully:', data?.length);
     return { success: true, data: data || [] };
 
   } catch (error) {
-    console.log('❌ financeSupabase: Exception in getPaymentChannels:', error);
     return { success: false, error: error.message };
   }
 }
 
 // Create new payment channel
 export async function createPaymentChannel(channelData) {
-  console.log('💰 financeSupabase: createPaymentChannel called with:', channelData);
   
   const supabase = getSupabaseClient();
   if (!supabase) {
-    console.log('❌ financeSupabase: Supabase client not available');
     return { success: false, error: 'Supabase tidak tersedia' };
   }
 
@@ -446,7 +424,6 @@ export async function createPaymentChannel(channelData) {
     const session = sessionData?.session;
     
     if (!session || !session.user) {
-      console.log('❌ financeSupabase: User not authenticated');
       return { success: false, error: 'User tidak ter-autentikasi' };
     }
 
@@ -464,7 +441,6 @@ export async function createPaymentChannel(channelData) {
       .single();
 
     if (error) {
-      console.log('❌ financeSupabase: Error creating payment channel:', error);
       return { success: false, error: error.message };
     }
 
@@ -481,22 +457,18 @@ export async function createPaymentChannel(channelData) {
       });
     }
 
-    console.log('✅ financeSupabase: Payment channel created successfully:', data.id);
     return { success: true, data };
 
   } catch (error) {
-    console.log('❌ financeSupabase: Exception in createPaymentChannel:', error);
     return { success: false, error: error.message };
   }
 }
 
 // Update payment channel
 export async function updatePaymentChannel(channelId, updateData) {
-  console.log('💰 financeSupabase: updatePaymentChannel called with:', channelId, updateData);
   
   const supabase = getSupabaseClient();
   if (!supabase) {
-    console.log('❌ financeSupabase: Supabase client not available');
     return { success: false, error: 'Supabase tidak tersedia' };
   }
 
@@ -505,7 +477,6 @@ export async function updatePaymentChannel(channelId, updateData) {
     const session = sessionData?.session;
     
     if (!session || !session.user) {
-      console.log('❌ financeSupabase: User not authenticated');
       return { success: false, error: 'User tidak ter-autentikasi' };
     }
 
@@ -524,26 +495,21 @@ export async function updatePaymentChannel(channelId, updateData) {
       .single();
 
     if (error) {
-      console.log('❌ financeSupabase: Error updating payment channel:', error);
       return { success: false, error: error.message };
     }
 
-    console.log('✅ financeSupabase: Payment channel updated successfully:', channelId);
     return { success: true, data };
 
   } catch (error) {
-    console.log('❌ financeSupabase: Exception in updatePaymentChannel:', error);
     return { success: false, error: error.message };
   }
 }
 
 // Delete payment channel
 export async function deletePaymentChannel(channelId) {
-  console.log('💰 financeSupabase: deletePaymentChannel called with:', channelId);
   
   const supabase = getSupabaseClient();
   if (!supabase) {
-    console.log('❌ financeSupabase: Supabase client not available');
     return { success: false, error: 'Supabase tidak tersedia' };
   }
 
@@ -552,7 +518,6 @@ export async function deletePaymentChannel(channelId) {
     const session = sessionData?.session;
     
     if (!session || !session.user) {
-      console.log('❌ financeSupabase: User not authenticated');
       return { success: false, error: 'User tidak ter-autentikasi' };
     }
 
@@ -576,22 +541,18 @@ export async function deletePaymentChannel(channelId) {
       .eq('owner_id', session.user.id);
 
     if (error) {
-      console.log('❌ financeSupabase: Error deleting payment channel:', error);
       return { success: false, error: error.message };
     }
 
-    console.log('✅ financeSupabase: Payment channel deleted successfully:', channelId);
     return { success: true };
 
   } catch (error) {
-    console.log('❌ financeSupabase: Exception in deletePaymentChannel:', error);
     return { success: false, error: error.message };
   }
 }
 
 // Record a manual transaction (Income/Expense)
 export async function recordTransaction(data) {
-  console.log('💰 financeSupabase: recordTransaction called with:', data);
   const { channel_id, type, amount, category, description, transaction_date } = data;
   
   const supabase = getSupabaseClient();
@@ -654,18 +615,15 @@ export async function recordTransaction(data) {
     return { success: true, data: trx };
 
   } catch (error) {
-    console.log('❌ financeSupabase: Exception in recordTransaction:', error);
     return { success: false, error: error.message };
   }
 }
 
 // Create finance transaction
 export async function createFinanceTransaction(transactionData) {
-  console.log('💰 financeSupabase: createFinanceTransaction called with:', transactionData);
   
   const supabase = getSupabaseClient();
   if (!supabase) {
-    console.log('❌ financeSupabase: Supabase client not available');
     return { success: false, error: 'Supabase tidak tersedia' };
   }
 
@@ -674,7 +632,6 @@ export async function createFinanceTransaction(transactionData) {
     const session = sessionData?.session;
     
     if (!session || !session.user) {
-      console.log('❌ financeSupabase: User not authenticated');
       return { success: false, error: 'User tidak ter-autentikasi' };
     }
 
@@ -688,26 +645,21 @@ export async function createFinanceTransaction(transactionData) {
       .single();
 
     if (error) {
-      console.log('❌ financeSupabase: Error creating finance transaction:', error);
       return { success: false, error: error.message };
     }
 
-    console.log('✅ financeSupabase: Finance transaction created successfully:', data.id);
     return { success: true, data };
 
   } catch (error) {
-    console.log('❌ financeSupabase: Exception in createFinanceTransaction:', error);
     return { success: false, error: error.message };
   }
 }
 
 // Get finance transactions for a channel (or all if channelId is null)
 export async function getFinanceTransactions(channelId = null, limit = 50) {
-  console.log('💰 financeSupabase: getFinanceTransactions called for channel:', channelId || 'ALL');
   
   const supabase = getSupabaseClient();
   if (!supabase) {
-    console.log('❌ financeSupabase: Supabase client not available');
     return { success: false, error: 'Supabase tidak tersedia' };
   }
 
@@ -716,7 +668,6 @@ export async function getFinanceTransactions(channelId = null, limit = 50) {
     const session = sessionData?.session;
     
     if (!session || !session.user) {
-      console.log('❌ financeSupabase: User not authenticated');
       return { success: false, error: 'User tidak ter-autentikasi' };
     }
 
@@ -740,26 +691,21 @@ export async function getFinanceTransactions(channelId = null, limit = 50) {
     const { data, error } = await query;
 
     if (error) {
-      console.log('❌ financeSupabase: Error fetching finance transactions:', error);
       return { success: false, error: error.message };
     }
 
-    console.log('✅ financeSupabase: Finance transactions fetched successfully:', data?.length);
     return { success: true, data: data || [] };
 
   } catch (error) {
-    console.log('❌ financeSupabase: Exception in getFinanceTransactions:', error);
     return { success: false, error: error.message };
   }
 }
 
 // Process payment for sale
 export async function processPayment(channelId, amount, saleId) {
-  console.log('💰 financeSupabase: processPayment called with:', { channelId, amount, saleId });
   
   const supabase = getSupabaseClient();
   if (!supabase) {
-    console.log('❌ financeSupabase: Supabase client not available');
     return { success: false, error: 'Supabase tidak tersedia' };
   }
 
@@ -768,7 +714,6 @@ export async function processPayment(channelId, amount, saleId) {
     const session = sessionData?.session;
     
     if (!session || !session.user) {
-      console.log('❌ financeSupabase: User not authenticated');
       return { success: false, error: 'User tidak ter-autentikasi' };
     }
 
@@ -781,7 +726,6 @@ export async function processPayment(channelId, amount, saleId) {
       .single();
 
     if (channelError) {
-      console.log('❌ financeSupabase: Error fetching channel:', channelError);
       return { success: false, error: channelError.message };
     }
 
@@ -809,22 +753,18 @@ export async function processPayment(channelId, amount, saleId) {
       return transactionResult;
     }
 
-    console.log('✅ financeSupabase: Payment processed successfully');
     return { success: true, data: { newBalance, transaction: transactionResult.data } };
 
   } catch (error) {
-    console.log('❌ financeSupabase: Exception in processPayment:', error);
     return { success: false, error: error.message };
   }
 }
 
 // Adjust channel balance
 export async function adjustChannelBalance(channelId, newBalance, reason) {
-  console.log('💰 financeSupabase: adjustChannelBalance called for channel:', channelId);
   
   const supabase = getSupabaseClient();
   if (!supabase) {
-    console.log('❌ financeSupabase: Supabase client not available');
     return { success: false, error: 'Supabase tidak tersedia' };
   }
 
@@ -833,7 +773,6 @@ export async function adjustChannelBalance(channelId, newBalance, reason) {
     const session = sessionData?.session;
     
     if (!session || !session.user) {
-      console.log('❌ financeSupabase: User not authenticated');
       return { success: false, error: 'User tidak ter-autentikasi' };
     }
 
@@ -846,7 +785,6 @@ export async function adjustChannelBalance(channelId, newBalance, reason) {
       .single();
 
     if (channelError || !channelData) {
-      console.log('❌ financeSupabase: Error fetching channel data:', channelError);
       return { success: false, error: 'Channel tidak ditemukan' };
     }
 
@@ -864,7 +802,6 @@ export async function adjustChannelBalance(channelId, newBalance, reason) {
       .eq('owner_id', session.user.id);
 
     if (updateError) {
-      console.log('❌ financeSupabase: Error updating channel balance:', updateError);
       return { success: false, error: updateError.message };
     }
 
@@ -882,26 +819,21 @@ export async function adjustChannelBalance(channelId, newBalance, reason) {
       .insert([transactionData]);
 
     if (transactionError) {
-      console.log('⚠️ financeSupabase: Error creating adjustment transaction:', transactionError);
       // Don't return error here as the balance was already updated
     }
 
-    console.log('✅ financeSupabase: Channel balance adjusted successfully');
     return { success: true };
 
   } catch (error) {
-    console.log('❌ financeSupabase: Exception in adjustChannelBalance:', error);
     return { success: false, error: error.message };
   }
 }
 
 // Get transaction report data with payment channel analysis
 export async function getTransactionReport(userId, dateRange = null) {
-  console.log('📊 financeSupabase: getTransactionReport called with dateRange:', dateRange);
   
   const supabase = getSupabaseClient();
   if (!supabase) {
-    console.log('❌ financeSupabase: Supabase client not available');
     return { 
       success: false, 
       error: 'Supabase tidak tersedia',
@@ -936,7 +868,6 @@ export async function getTransactionReport(userId, dateRange = null) {
     const { data: transactionData, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
-      console.log('❌ financeSupabase: Error fetching transaction report:', error);
       return { 
         success: false, 
         error: error.message,
@@ -949,7 +880,6 @@ export async function getTransactionReport(userId, dateRange = null) {
 
     // Handle case where no transactions are found
     if (!transactionData || transactionData.length === 0) {
-      console.log('📊 financeSupabase: No transactions found');
       return {
         success: true,
         channelData: [],
@@ -996,7 +926,6 @@ export async function getTransactionReport(userId, dateRange = null) {
     // Find top channel
     const topChannel = channelData.length > 0 ? channelData[0] : null;
 
-    console.log('✅ financeSupabase: Transaction report generated successfully');
     return {
       success: true,
       channelData,
@@ -1006,7 +935,6 @@ export async function getTransactionReport(userId, dateRange = null) {
     };
 
   } catch (error) {
-    console.log('❌ financeSupabase: Exception in getTransactionReport:', error);
     return { 
       success: false, 
       error: error.message,

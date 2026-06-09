@@ -2,7 +2,6 @@ import { getSupabaseClient } from './supabase';
 
 // Get sales history for a user
 export const getSalesHistory = async (userId) => {
-  console.log('📋 salesSupabase: Getting sales history for user:', userId);
   
   try {
     const supabase = getSupabaseClient();
@@ -37,31 +36,90 @@ export const getSalesHistory = async (userId) => {
         )
       `)
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(500); // Limit untuk dashboard/history recent
 
     if (error) {
-      console.error('❌ salesSupabase: Error getting sales history:', error);
       throw error;
     }
 
-    // Transform the data to include items array for each sale
     const transformedData = data.map(sale => ({
       ...sale,
       items: sale.sale_items || [],
       payment_channel: sale.payment_channels
     }));
 
-    console.log('✅ salesSupabase: Sales history retrieved, count:', transformedData.length);
     return transformedData;
   } catch (error) {
-    console.error('❌ salesSupabase: Error in getSalesHistory:', error);
     throw error;
   }
 };
 
+// Get sales history filtered by date range — untuk Report agar tidak kena limit default Supabase
+export const getSalesHistoryByRange = async (userId, startDate, endDate) => {
+  try {
+    const supabase = getSupabaseClient();
+
+    let query = supabase
+      .from('sales')
+      .select(`
+        id,
+        no_invoice,
+        total,
+        profit,
+        payment_method,
+        payment_channel_id,
+        cash_amount,
+        change_amount,
+        customer_name,
+        notes,
+        created_at,
+        sale_items (
+          id,
+          product_name,
+          barcode,
+          price,
+          qty,
+          line_total,
+          cost_price,
+          line_profit
+        ),
+        payment_channels (
+          id,
+          name,
+          type
+        )
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (startDate) {
+      query = query.gte('created_at', startDate instanceof Date ? startDate.toISOString() : startDate);
+    }
+    if (endDate) {
+      query = query.lt('created_at', endDate instanceof Date ? endDate.toISOString() : endDate);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    const transformedData = (data || []).map(sale => ({
+      ...sale,
+      items: sale.sale_items || [],
+      payment_channel: sale.payment_channels
+    }));
+
+    return transformedData;
+  } catch (error) {
+    throw error;
+  }
+};
+
+
+
 // Check for orphan items (items with no parent sale)
 export const checkOrphanItems = async () => {
-  console.log('🔍 Checking for orphan items...');
   try {
     const supabase = getSupabaseClient();
     
@@ -83,17 +141,14 @@ export const checkOrphanItems = async () => {
     
     const orphans = items.filter(item => !validSaleIds.has(item.sale_id));
     
-    console.log(`🔍 Found ${orphans.length} orphan items out of ${items.length} total items.`);
     return { success: true, orphans };
     
   } catch (error) {
-    console.error('❌ Error checking orphans:', error);
     return { success: false, error: error.message };
   }
 };
 
 export const deleteOrphanItems = async (orphanIds) => {
-    console.log(`🗑️ Deleting ${orphanIds.length} orphan items...`);
     try {
         const supabase = getSupabaseClient();
         const { error } = await supabase
@@ -110,7 +165,6 @@ export const deleteOrphanItems = async (orphanIds) => {
 
 // Get sale by ID with items
 export const getSaleById = async (saleId) => {
-  console.log('🔄 salesSupabase: Getting sale by ID:', saleId);
   
   try {
     const supabase = getSupabaseClient();
@@ -148,7 +202,6 @@ export const getSaleById = async (saleId) => {
       .single();
 
     if (error) {
-      console.error('❌ salesSupabase: Error getting sale by ID:', error);
       throw error;
     }
 
@@ -159,16 +212,13 @@ export const getSaleById = async (saleId) => {
       payment_channel: data.payment_channels
     };
 
-    console.log('✅ salesSupabase: Sale retrieved:', transformedData.id);
     return transformedData;
   } catch (error) {
-    console.error('❌ salesSupabase: Error in getSaleById:', error);
     throw error;
   }
 };
 
 export const deleteSale = async (saleId) => {
-  console.log('🗑️ salesSupabase: Deleting sale (invoice):', saleId);
   try {
     const supabase = getSupabaseClient();
     
@@ -179,7 +229,6 @@ export const deleteSale = async (saleId) => {
       .eq('sale_id', saleId);
 
     if (itemsError) {
-      console.warn('⚠️ salesSupabase: Failed to delete items first (might be empty or RLS restricted):', itemsError);
       // Continue anyway to try deleting the parent
     }
 
@@ -191,17 +240,14 @@ export const deleteSale = async (saleId) => {
       
     if (error) throw error;
     
-    console.log('✅ salesSupabase: Sale deleted successfully');
     return { success: true };
   } catch (error) {
-    console.error('❌ salesSupabase: Error deleting sale:', error);
     return { success: false, error: error.message };
   }
 };
 
 // Delete sale item by ID
 export const deleteSaleItem = async (itemId) => {
-  console.log('🗑️ salesSupabase: Deleting sale item:', itemId);
   
   try {
     const supabase = getSupabaseClient();
@@ -232,7 +278,6 @@ export const deleteSaleItem = async (itemId) => {
 
     // Check if anything was actually deleted
     if (!deletedData || deletedData.length === 0) {
-      console.warn('⚠️ salesSupabase: Item deletion returned no data. Possible RLS issue. Attempting fallback...');
       
       // Check count of items in this sale
       const { count } = await supabase
@@ -242,14 +287,11 @@ export const deleteSaleItem = async (itemId) => {
         
       // Fallback: If this is the only item in the sale, try deleting the sale record directly
       if (count === 1) {
-        console.log('🔄 Fallback: Deleting parent sale record directly as it is the last item...');
         const result = await deleteSale(sale_id);
         
         if (result.success) {
-          console.log('✅ Fallback successful: Parent sale deleted');
           return { success: true };
         } else {
-          console.error('❌ Fallback failed:', result.error);
         }
       }
       
@@ -296,20 +338,16 @@ export const deleteSaleItem = async (itemId) => {
     if (!countError && count === 0) {
       // Delete the empty sale record
       await supabase.from('sales').delete().eq('id', sale_id);
-      console.log('🗑️ salesSupabase: Deleted empty sale record:', sale_id);
     }
 
-    console.log('✅ salesSupabase: Sale item deleted successfully');
     return { success: true };
   } catch (error) {
-    console.error('❌ salesSupabase: Error deleting sale item:', error);
     return { success: false, error: error.message };
   }
 };
 
 // Get sales analytics for different periods
 export const getSalesAnalytics = async (userId, period = 'today', customRange = null) => {
-  console.log('📊 salesSupabase: Getting sales analytics for user:', userId, 'period:', period);
   
   try {
     const supabase = getSupabaseClient();
@@ -366,8 +404,6 @@ export const getSalesAnalytics = async (userId, period = 'today', customRange = 
           endDate.setDate(endDate.getDate() + 1);
           endDate.setHours(0, 0, 0, 0);
           
-          console.log(`📅 salesSupabase: Custom range parsed as Local: ${startDate.toLocaleString()} - ${endDate.toLocaleString()}`);
-          console.log(`📅 salesSupabase: Custom range ISO: ${startDate.toISOString()} - ${endDate.toISOString()}`);
         } else {
           startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
           endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
@@ -387,7 +423,6 @@ export const getSalesAnalytics = async (userId, period = 'today', customRange = 
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('❌ salesSupabase: Error getting sales analytics:', error);
       return { success: false, error: error.message };
     }
 
@@ -436,17 +471,14 @@ export const getSalesAnalytics = async (userId, period = 'today', customRange = 
       endDate: endDate.toISOString()
     };
 
-    console.log('✅ salesSupabase: Sales analytics calculated:', analytics);
     return { success: true, data: analytics };
   } catch (error) {
-    console.error('❌ salesSupabase: Error in getSalesAnalytics:', error);
     return { success: false, error: error.message };
   }
 };
 
 // Get sales performance (custom range, default last 10 days)
 export const getSalesPerformance = async (userId, customStartDate = null, customEndDate = null) => {
-  console.log('📊 salesSupabase: Getting sales performance for user:', userId);
   
   try {
     const supabase = getSupabaseClient();
@@ -501,7 +533,6 @@ export const getSalesPerformance = async (userId, customStartDate = null, custom
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('❌ salesSupabase: Error getting sales performance:', error);
       return { success: false, error: error.message };
     }
 
@@ -595,16 +626,13 @@ export const getSalesPerformance = async (userId, customStartDate = null, custom
         };
     });
     
-    console.log('✅ salesSupabase: Sales performance calculated, days:', resultWithTrend.length);
     return { success: true, data: resultWithTrend };
   } catch (error) {
-    console.error('❌ salesSupabase: Error in getSalesPerformance:', error);
     return { success: false, error: error.message };
   }
 };
 
 export const getProductSalesMetrics = async (userId, productBarcode, dateRange = null, productName = null) => {
-  console.log('📊 salesSupabase: Getting product sales metrics for user:', userId, 'barcode:', productBarcode, 'productName:', productName);
   try {
     const supabase = getSupabaseClient();
     if (!supabase) {
@@ -717,7 +745,54 @@ export const getProductSalesMetrics = async (userId, productBarcode, dateRange =
       maxSalesDay
     };
   } catch (error) {
-    console.error('❌ salesSupabase: Error in getProductSalesMetrics:', error);
     return { success: false, error: error.message };
   }
 };
+
+// Get all sales for annual/monthly profit report (handles pagination to bypass 1000 row limit)
+export const getAllSalesForSummary = async (userId) => {
+  try {
+    const supabase = getSupabaseClient();
+    let allSales = [];
+    let page = 0;
+    const pageSize = 1000;
+    let keepFetching = true;
+
+    while (keepFetching) {
+      const { data, error } = await supabase
+        .from('sales')
+        .select(`
+          created_at,
+          total,
+          profit,
+          sale_items (
+            qty,
+            price,
+            cost_price,
+            line_profit
+          )
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        keepFetching = false;
+      } else {
+        allSales = [...allSales, ...data];
+        if (data.length < pageSize) {
+          keepFetching = false;
+        } else {
+          page++;
+        }
+      }
+    }
+    return allSales;
+  } catch (error) {
+    console.error('Error in getAllSalesForSummary:', error);
+    throw error;
+  }
+};
+

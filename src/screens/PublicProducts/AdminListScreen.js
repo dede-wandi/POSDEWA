@@ -505,11 +505,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 2,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   cardHeader: {
     flexDirection: 'row',

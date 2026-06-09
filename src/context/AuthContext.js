@@ -13,23 +13,18 @@ export function AuthProvider({ children }) {
   const supabase = getSupabaseClient();
 
   useEffect(() => {
-    console.log('🔄 AuthContext: Initializing auth');
     
     // Get initial session
     const getInitialSession = async () => {
       try {
-        console.log('🔄 AuthContext: Getting initial session...');
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.log('❌ AuthContext: Error getting session', error);
         } else {
-          console.log('✅ AuthContext: Initial session', { hasSession: !!session, user: session?.user?.email });
           setSession(session);
           setUser(session?.user ?? null);
         }
       } catch (error) {
-        console.log('❌ AuthContext: Exception getting session', error);
       } finally {
         setLoading(false);
       }
@@ -37,26 +32,22 @@ export function AuthProvider({ children }) {
 
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔄 AuthContext: Auth state changed', { event, hasSession: !!session, user: session?.user?.email });
       
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
       
-      console.log('✅ AuthContext: State updated', { hasUser: !!session?.user, userEmail: session?.user?.email });
     });
 
     getInitialSession();
 
     return () => {
-      console.log('🧹 AuthContext: Cleaning up');
       subscription?.unsubscribe();
     };
   }, []);
 
   const signIn = async (email, password) => {
     try {
-      console.log('🔐 AuthContext: Signing in', { email });
       setLoading(true);
       
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -65,12 +56,10 @@ export function AuthProvider({ children }) {
       });
 
       if (error) {
-        console.log('❌ AuthContext: Sign in error', error);
         setLoading(false);
         throw error;
       }
 
-      console.log('✅ AuthContext: Sign in success', { user: data.user?.email, hasSession: !!data.session });
       
       // Manually update state immediately after successful login
       setSession(data.session);
@@ -81,21 +70,17 @@ export function AuthProvider({ children }) {
       setTimeout(async () => {
         try {
           const { data: refreshData } = await supabase.auth.getSession();
-          console.log('🔄 AuthContext: Post-login session check', { hasSession: !!refreshData.session });
           if (refreshData.session) {
             setSession(refreshData.session);
             setUser(refreshData.session.user);
           }
         } catch (err) {
-          console.log('❌ AuthContext: Post-login session check error', err);
         }
       }, 100);
       
-      console.log('✅ AuthContext: Manual state update after login', { hasUser: !!data.user, userEmail: data.user?.email });
       
       return { data, error: null };
     } catch (error) {
-      console.log('❌ AuthContext: Sign in exception', error);
       setLoading(false);
       return { data: null, error };
     }
@@ -103,11 +88,9 @@ export function AuthProvider({ children }) {
 
   const signOut = async () => {
     try {
-      console.log('🚪 AuthContext: Signing out');
       const { error } = await supabase.auth.signOut();
       
       if (error) {
-        console.log('❌ AuthContext: Sign out error', error);
         throw error;
       }
       
@@ -116,9 +99,7 @@ export function AuthProvider({ children }) {
       setUser(null);
       setLoading(false);
       
-      console.log('✅ AuthContext: Sign out success and state cleared');
     } catch (error) {
-      console.log('❌ AuthContext: Sign out exception', error);
       throw error;
     }
   };
@@ -150,7 +131,6 @@ export function AuthProvider({ children }) {
     getBusinessName,
   };
 
-  console.log('🔄 AuthContext: Rendering with state', { hasUser: !!user, userEmail: user?.email, loading });
 
   return (
     <AuthContext.Provider value={value}>

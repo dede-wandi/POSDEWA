@@ -40,7 +40,6 @@ export default function CartScreen({ navigation }) {
     const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
 
     Linking.openURL(url).catch((err) => {
-      console.log('Error opening whatsapp:', err);
       showToast('Gagal Membuka WhatsApp: Pastikan aplikasi WhatsApp terinstal.', 'error');
     });
   };

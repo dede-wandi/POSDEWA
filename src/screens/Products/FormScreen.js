@@ -37,7 +37,6 @@ export default function FormScreen({ navigation, route }) {
       const brs = await getBrands(user.id);
       setBrands(brs || []);
     } catch (e) {
-      console.log('Error loading master data', e);
     }
   };
 
@@ -155,7 +154,6 @@ export default function FormScreen({ navigation, route }) {
       showToast('Produk tersimpan', 'success');
       navigation.goBack();
     } catch (e) {
-      console.log('❌ FormScreen: Save error:', e);
       showToast(e.message || 'Gagal menyimpan produk', 'error');
     }
   };

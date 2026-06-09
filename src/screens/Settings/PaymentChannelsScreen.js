@@ -32,7 +32,6 @@ export default function PaymentChannelsScreen({ navigation }) {
         showToast(result.error || 'Gagal memuat data', 'error');
       }
     } catch (error) {
-      console.error(error);
       showToast('Gagal memuat data channel pembayaran', 'error');
     } finally {
       setLoading(false);
@@ -105,7 +104,6 @@ export default function PaymentChannelsScreen({ navigation }) {
         }
       }
     } catch (error) {
-      console.error(error);
       showToast('Terjadi kesalahan saat menyimpan data', 'error');
     } finally {
       setIsSubmitting(false);
@@ -131,7 +129,6 @@ export default function PaymentChannelsScreen({ navigation }) {
                 showToast(result.error || 'Gagal menghapus channel', 'error');
               }
             } catch (error) {
-              console.error(error);
               showToast('Terjadi kesalahan saat menghapus data', 'error');
             }
           }

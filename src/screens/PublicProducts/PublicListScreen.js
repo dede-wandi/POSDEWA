@@ -540,11 +540,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.card,
     borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 2,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   imageWrapper: {
     width: '100%',

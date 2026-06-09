@@ -33,7 +33,6 @@ export async function getWaConfig({ ownerId }) {
 
   if (error) {
     if (error.message.includes('column') || error.message.includes('does not exist')) {
-      console.warn('⚠️ Missing new columns in wa_notif_config, falling back to legacy schema', error.message);
       const { data: legacyData, error: legacyError } = await supabase
         .from('wa_notif_config')
         .select('id, token')
@@ -72,7 +71,6 @@ export async function upsertWaConfig({ ownerId, token, provider, appkey, authkey
       .eq('owner_id', ownerId);
     if (error) {
       if (error.message.includes('column') || error.message.includes('does not exist')) {
-        console.warn('⚠️ Missing new columns on update, falling back to legacy payload');
         const legacyPayload = {
           owner_id: ownerId,
           token: token || ''
@@ -96,7 +94,6 @@ export async function upsertWaConfig({ ownerId, token, provider, appkey, authkey
       .maybeSingle();
     if (error) {
       if (error.message.includes('column') || error.message.includes('does not exist')) {
-        console.warn('⚠️ Missing new columns on insert, falling back to legacy payload');
         const legacyPayload = {
           owner_id: ownerId,
           token: token || ''

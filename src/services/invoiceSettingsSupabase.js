@@ -3,11 +3,9 @@ import { getSupabaseClient } from './supabase';
 // Get invoice settings for current user
 export const getInvoiceSettings = async (userId) => {
   try {
-    console.log('📋 Getting invoice settings for user:', userId);
     
     const supabase = getSupabaseClient();
     if (!supabase) {
-      console.log('❌ Supabase client not available');
       return { success: false, error: 'Supabase tidak tersedia' };
     }
     
@@ -20,16 +18,13 @@ export const getInvoiceSettings = async (userId) => {
     if (error) {
       if (error.code === 'PGRST116') {
         // No settings found, create default
-        console.log('📋 No invoice settings found, creating default...');
         return await createDefaultInvoiceSettings(userId);
       }
       throw error;
     }
 
-    console.log('✅ Invoice settings retrieved successfully');
     return { success: true, data };
   } catch (error) {
-    console.error('❌ Error getting invoice settings:', error);
     return { success: false, error: error.message };
   }
 };
@@ -37,11 +32,9 @@ export const getInvoiceSettings = async (userId) => {
 // Create default invoice settings
 export const createDefaultInvoiceSettings = async (userId) => {
   try {
-    console.log('📋 Creating default invoice settings for user:', userId);
     
     const supabase = getSupabaseClient();
     if (!supabase) {
-      console.log('❌ Supabase client not available');
       return { success: false, error: 'Supabase tidak tersedia' };
     }
     
@@ -67,10 +60,8 @@ export const createDefaultInvoiceSettings = async (userId) => {
 
     if (error) throw error;
 
-    console.log('✅ Default invoice settings created successfully');
     return { success: true, data };
   } catch (error) {
-    console.error('❌ Error creating default invoice settings:', error);
     return { success: false, error: error.message };
   }
 };
@@ -78,11 +69,9 @@ export const createDefaultInvoiceSettings = async (userId) => {
 // Update invoice settings
 export const updateInvoiceSettings = async (userId, settings) => {
   try {
-    console.log('📋 Updating invoice settings for user:', userId);
     
     const supabase = getSupabaseClient();
     if (!supabase) {
-      console.log('❌ Supabase client not available');
       return { success: false, error: 'Supabase tidak tersedia' };
     }
     
@@ -95,10 +84,8 @@ export const updateInvoiceSettings = async (userId, settings) => {
 
     if (error) throw error;
 
-    console.log('✅ Invoice settings updated successfully');
     return { success: true, data };
   } catch (error) {
-    console.error('❌ Error updating invoice settings:', error);
     return { success: false, error: error.message };
   }
 };
@@ -106,11 +93,9 @@ export const updateInvoiceSettings = async (userId, settings) => {
 // Delete invoice settings (reset to default)
 export const resetInvoiceSettings = async (userId) => {
   try {
-    console.log('📋 Resetting invoice settings for user:', userId);
     
     const supabase = getSupabaseClient();
     if (!supabase) {
-      console.log('❌ Supabase client not available');
       return { success: false, error: 'Supabase tidak tersedia' };
     }
     
@@ -125,7 +110,6 @@ export const resetInvoiceSettings = async (userId) => {
     // Create new default settings
     return await createDefaultInvoiceSettings(userId);
   } catch (error) {
-    console.error('❌ Error resetting invoice settings:', error);
     return { success: false, error: error.message };
   }
 };

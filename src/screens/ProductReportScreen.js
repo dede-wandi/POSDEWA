@@ -58,7 +58,6 @@ export default function ProductReportScreen({ navigation, route }) {
 
   const loadData = async () => {
     try {
-      console.log('📊 ProductReportScreen: Loading data for product:', productId);
       
       // Load product details
       const productResult = await getProductById(user?.id, productId);
@@ -74,7 +73,6 @@ export default function ProductReportScreen({ navigation, route }) {
         calculateStats(history);
         applyDateFilter(history, selectedPeriod);
       } else {
-        console.log('❌ ProductReportScreen: Error loading history:', historyResult.error);
         showToast('Gagal memuat riwayat stock: ' + historyResult.error, 'error');
       }
 
@@ -88,7 +86,6 @@ export default function ProductReportScreen({ navigation, route }) {
         }
       }
     } catch (error) {
-      console.log('❌ ProductReportScreen: Exception loading data:', error);
       showToast('Terjadi kesalahan saat memuat data', 'error');
     } finally {
       setLoading(false);
@@ -670,11 +667,8 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     borderRadius: 12,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
   },
   sectionTitle: {
     fontSize: 16,
@@ -690,11 +684,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderRadius: 12,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
   },
   productName: {
     fontSize: 20,

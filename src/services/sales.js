@@ -1,11 +1,9 @@
 import { getSupabaseClient } from './supabase';
 
 export async function createSale(saleData) {
-  console.log('💾 sales: createSale called with data:', saleData);
   
   const supabase = getSupabaseClient();
   if (!supabase) {
-    console.log('❌ sales: Supabase client not available');
     return { success: false, error: 'Supabase tidak tersedia' };
   }
 
@@ -15,11 +13,9 @@ export async function createSale(saleData) {
     const session = sessionData?.session;
     
     if (!session || !session.user) {
-      console.log('❌ sales: User not authenticated');
       return { success: false, error: 'User tidak ter-autentikasi' };
     }
 
-    console.log('📡 sales: Creating sale transaction...');
     
     // Start transaction by creating sale record
     const { data: saleRecord, error: saleError } = await supabase
@@ -39,11 +35,9 @@ export async function createSale(saleData) {
       .single();
 
     if (saleError) {
-      console.log('❌ sales: Error creating sale record:', saleError);
       return { success: false, error: saleError.message };
     }
 
-    console.log('✅ sales: Sale record created:', saleRecord);
 
     // Create sale items
     if (saleData.items && saleData.items.length > 0) {
@@ -59,7 +53,6 @@ export async function createSale(saleData) {
         token_code: item.token_code || null
       }));
 
-      console.log('📡 sales: Creating sale items:', saleItems);
       
       const { data: itemsData, error: itemsError } = await supabase
         .from('sale_items')
@@ -67,16 +60,13 @@ export async function createSale(saleData) {
         .select();
 
       if (itemsError) {
-        console.log('❌ sales: Error creating sale items:', itemsError);
         // Try to rollback sale record
         await supabase.from('sales').delete().eq('id', saleRecord.id);
         return { success: false, error: itemsError.message };
       }
 
-      console.log('✅ sales: Sale items created:', itemsData);
     }
 
-    console.log('✅ sales: Sale transaction completed successfully');
     return { 
       success: true, 
       data: {
@@ -86,17 +76,14 @@ export async function createSale(saleData) {
     };
 
   } catch (error) {
-    console.log('❌ sales: Exception in createSale:', error);
     return { success: false, error: error.message };
   }
 }
 
 export async function getSales(userId, limit = 50) {
-  console.log('🔄 sales: getSales called for user:', userId);
   
   const supabase = getSupabaseClient();
   if (!supabase) {
-    console.log('❌ sales: Supabase client not available');
     return { success: false, error: 'Supabase tidak tersedia', data: [] };
   }
 
@@ -106,11 +93,9 @@ export async function getSales(userId, limit = 50) {
     const session = sessionData?.session;
     
     if (!session || !session.user) {
-      console.log('❌ sales: User not authenticated');
       return { success: false, error: 'User tidak ter-autentikasi', data: [] };
     }
 
-    console.log('📡 sales: Fetching sales records...');
     
     const { data, error } = await supabase
       .from('sales')
@@ -123,25 +108,20 @@ export async function getSales(userId, limit = 50) {
       .limit(limit);
 
     if (error) {
-      console.log('❌ sales: Error fetching sales:', error);
       return { success: false, error: error.message, data: [] };
     }
 
-    console.log('✅ sales: Sales fetched:', data?.length || 0, 'records');
     return { success: true, data: data || [] };
 
   } catch (error) {
-    console.log('❌ sales: Exception in getSales:', error);
     return { success: false, error: error.message, data: [] };
   }
 }
 
 export async function getSaleById(userId, saleId) {
-  console.log('🔄 sales: getSaleById called for user:', userId, 'sale:', saleId);
   
   const supabase = getSupabaseClient();
   if (!supabase) {
-    console.log('❌ sales: Supabase client not available');
     return { success: false, error: 'Supabase tidak tersedia', data: null };
   }
 
@@ -151,11 +131,9 @@ export async function getSaleById(userId, saleId) {
     const session = sessionData?.session;
     
     if (!session || !session.user) {
-      console.log('❌ sales: User not authenticated');
       return { success: false, error: 'User tidak ter-autentikasi', data: null };
     }
 
-    console.log('📡 sales: Fetching sale by ID...');
     
     const { data, error } = await supabase
       .from('sales')
@@ -168,25 +146,20 @@ export async function getSaleById(userId, saleId) {
       .single();
 
     if (error) {
-      console.log('❌ sales: Error fetching sale:', error);
       return { success: false, error: error.message, data: null };
     }
 
-    console.log('✅ sales: Sale fetched:', data);
     return { success: true, data };
 
   } catch (error) {
-    console.log('❌ sales: Exception in getSaleById:', error);
     return { success: false, error: error.message, data: null };
   }
 }
 
 export async function getSalesReport(userId, startDate, endDate) {
-  console.log('📊 sales: getSalesReport called for user:', userId, 'period:', startDate, 'to', endDate);
   
   const supabase = getSupabaseClient();
   if (!supabase) {
-    console.log('❌ sales: Supabase client not available');
     return { success: false, error: 'Supabase tidak tersedia', data: null };
   }
 
@@ -196,11 +169,9 @@ export async function getSalesReport(userId, startDate, endDate) {
     const session = sessionData?.session;
     
     if (!session || !session.user) {
-      console.log('❌ sales: User not authenticated');
       return { success: false, error: 'User tidak ter-autentikasi', data: null };
     }
 
-    console.log('📡 sales: Fetching sales report...');
     
     let query = supabase
       .from('sales')
@@ -222,7 +193,6 @@ export async function getSalesReport(userId, startDate, endDate) {
     const { data, error } = await query;
 
     if (error) {
-      console.log('❌ sales: Error fetching sales report:', error);
       return { success: false, error: error.message, data: null };
     }
 
@@ -243,11 +213,9 @@ export async function getSalesReport(userId, startDate, endDate) {
       }
     };
 
-    console.log('✅ sales: Sales report generated:', report.summary);
     return { success: true, data: report };
 
   } catch (error) {
-    console.log('❌ sales: Exception in getSalesReport:', error);
     return { success: false, error: error.message, data: null };
   }
 }

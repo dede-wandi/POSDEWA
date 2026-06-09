@@ -36,28 +36,22 @@ export default function AuthScreen() {
   }, [mode]);
 
   const submit = async () => {
-    console.log('🔐 AuthScreen: Submit started', { mode, email });
     
     if (!email.trim() || !password.trim()) {
-      console.log('❌ AuthScreen: Empty fields');
       showToast('Email dan password harus diisi', 'error');
       return;
     }
     
     try {
       setBusy(true);
-      console.log('🔄 AuthScreen: Attempting', mode);
       
       if (mode === 'login') {
-        console.log('🔑 AuthScreen: Calling signIn function');
         const { data, error } = await signIn(email, password);
         
         if (error) {
-          console.log('❌ AuthScreen: Login error', error);
           showToast(error.message || 'Login gagal', 'error');
           setBusy(false);
         } else {
-          console.log('✅ AuthScreen: Login success', data.user?.email);
           // Navigation akan otomatis terjadi karena AuthContext akan update user state
           // Don't set busy to false here, let the auth state change handle it
         }
@@ -67,7 +61,6 @@ export default function AuthScreen() {
         setBusy(false);
       }
     } catch (e) {
-      console.log('❌ AuthScreen: Error occurred', e);
       showToast(e?.message || String(e), 'error');
       setBusy(false); // Ensure busy is set to false on error
     }

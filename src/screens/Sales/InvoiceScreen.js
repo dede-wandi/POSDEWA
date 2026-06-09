@@ -128,9 +128,6 @@ ${divider}
   };
 
   const simulatePrint = (content) => {
-    console.log('=== PRINT INVOICE ===');
-    console.log(content);
-    console.log('=== END PRINT ===');
     
     Alert.alert(
       '✅ Print Berhasil',

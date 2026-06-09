@@ -1,11 +1,9 @@
 import { getSupabaseClient } from './supabase';
 
 export async function listProducts(userId) {
-  console.log('🔄 productsSupabase: listProducts called with userId:', userId);
   
   const supabase = getSupabaseClient();
   if (!supabase) {
-    console.log('❌ productsSupabase: Supabase client not available');
     return [];
   }
 
@@ -18,28 +16,20 @@ export async function listProducts(userId) {
     session = sessionResult.data?.session;
     sessionError = sessionResult.error;
     
-    console.log('🔐 productsSupabase: Current session:', session ? 'exists' : 'null');
-    console.log('🔐 productsSupabase: Session user:', session?.user?.id);
-    console.log('🔐 productsSupabase: Session error:', sessionError);
     
     // If no session, try to refresh
     if (!session) {
-      console.log('🔄 productsSupabase: No session found, attempting refresh...');
       const refreshResult = await supabase.auth.refreshSession();
       session = refreshResult.data?.session;
-      console.log('🔄 productsSupabase: After refresh - session:', session ? 'exists' : 'null');
     }
   } catch (error) {
-    console.log('❌ productsSupabase: Error getting session:', error);
   }
   
   if (!session || !session.user) {
-    console.log('❌ productsSupabase: User not authenticated for listProducts');
     return [];
   }
 
   try {
-    console.log('📡 productsSupabase: Querying products table...');
     
     const { data, error, count } = await supabase
       .from('products')
@@ -47,17 +37,13 @@ export async function listProducts(userId) {
       .eq('owner_id', session.user.id) // Use session user ID
       .order('created_at', { ascending: false });
 
-    console.log('📡 productsSupabase: Query result:', { data, dataCount: count, error });
 
     if (error) {
-      console.log('❌ productsSupabase: Query error:', error);
       throw error;
     }
 
-    console.log('✅ productsSupabase: Products loaded:', data?.length || 0);
     return data || [];
   } catch (e) {
-    console.log('❌ productsSupabase: listProducts exception:', e);
     return [];
   }
 }
@@ -98,17 +84,14 @@ export async function searchProducts(userId, q) {
 
 // Alias untuk kompatibilitas dengan kode yang sudah ada
 export async function findProducts(userId, query) {
-  console.log('🔄 productsSupabase: findProducts called with userId:', userId, 'query:', query);
   const result = await searchProducts(userId, query);
   return result;
 }
 
 export async function getProduct(userId, id) {
-  console.log('🔄 productsSupabase: getProduct called with userId:', userId, 'id:', id);
   
   const supabase = getSupabaseClient();
   if (!supabase) {
-    console.log('❌ productsSupabase: Supabase client not available');
     return { data: null, error: 'Supabase tidak tersedia' };
   }
 
@@ -119,16 +102,13 @@ export async function getProduct(userId, id) {
     session = sessionResult.data?.session;
     
     if (!session || !session.user) {
-      console.log('❌ productsSupabase: User not authenticated for getProduct');
       return { data: null, error: 'User tidak ter-autentikasi' };
     }
   } catch (error) {
-    console.log('❌ productsSupabase: Error getting session:', error);
     return { data: null, error: 'Error getting session' };
   }
 
   try {
-    console.log('📡 productsSupabase: Querying product by id:', id);
     const { data, error } = await supabase
       .from('products')
       .select('*')
@@ -136,10 +116,8 @@ export async function getProduct(userId, id) {
       .eq('id', id)
       .single();
 
-    console.log('📡 productsSupabase: getProduct result:', { data, error });
     return { data, error };
   } catch (error) {
-    console.log('❌ productsSupabase: Exception in getProduct:', error);
     return { data: null, error: error.message };
   }
 }
@@ -188,11 +166,9 @@ export async function findByBarcodeExact(userId, barcode) {
 }
 
 export async function createProduct(payload) {
-  console.log('🔄 productsSupabase: createProduct payload:', payload);
   
   const supabase = getSupabaseClient();
   if (!supabase) {
-    console.log('❌ productsSupabase: Supabase client not available');
     return { success: false, error: 'Supabase tidak tersedia' };
   }
 
@@ -205,23 +181,16 @@ export async function createProduct(payload) {
     session = sessionResult.data?.session;
     sessionError = sessionResult.error;
     
-    console.log('🔐 productsSupabase: Current session:', session ? 'exists' : 'null');
-    console.log('🔐 productsSupabase: Session user:', session?.user?.id);
-    console.log('🔐 productsSupabase: Session error:', sessionError);
     
     // If no session, try to refresh
     if (!session) {
-      console.log('🔄 productsSupabase: No session found, attempting refresh...');
       const refreshResult = await supabase.auth.refreshSession();
       session = refreshResult.data?.session;
-      console.log('🔄 productsSupabase: After refresh - session:', session ? 'exists' : 'null');
     }
   } catch (error) {
-    console.log('❌ productsSupabase: Error getting session:', error);
   }
   
   if (!session || !session.user) {
-    console.log('❌ productsSupabase: User not authenticated');
     return { success: false, error: 'User tidak ter-autentikasi. Silakan login ulang.' };
   }
 
@@ -240,7 +209,6 @@ export async function createProduct(payload) {
       updated_at: new Date().toISOString(),
     };
 
-    console.log('📤 productsSupabase: Inserting product data:', productData);
 
     const { data, error } = await supabase
       .from('products')
@@ -249,19 +217,11 @@ export async function createProduct(payload) {
       .single();
 
     if (error) {
-      console.log('❌ productsSupabase: Insert error:', {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code
-      });
       return { success: false, error: error.message };
     }
 
-    console.log('✅ productsSupabase: Product created successfully:', data);
     return { success: true, data };
   } catch (error) {
-    console.log('❌ productsSupabase: Exception:', error);
     return { success: false, error: error.message };
   }
 }
@@ -364,11 +324,9 @@ export async function createBrand(userId, name) {
   }
 }
 export async function updateProduct(userId, id, payload) {
-  console.log('🔄 productsSupabase: updateProduct called with userId:', userId, 'id:', id, 'payload:', payload);
   
   const supabase = getSupabaseClient();
   if (!supabase) {
-    console.log('❌ productsSupabase: Supabase client not available');
     return { data: null, error: 'Supabase tidak tersedia' };
   }
 
@@ -379,11 +337,9 @@ export async function updateProduct(userId, id, payload) {
     session = sessionResult.data?.session;
     
     if (!session || !session.user) {
-      console.log('❌ productsSupabase: User not authenticated for updateProduct');
       return { data: null, error: 'User tidak ter-autentikasi' };
     }
   } catch (error) {
-    console.log('❌ productsSupabase: Error getting session:', error);
     return { data: null, error: 'Error getting session' };
   }
 
@@ -401,7 +357,6 @@ export async function updateProduct(userId, id, payload) {
     if (payload.category_id !== undefined) patch.category_id = payload.category_id;
     if (payload.brand_id !== undefined) patch.brand_id = payload.brand_id;
 
-    console.log('📤 productsSupabase: Updating product with patch:', patch);
 
     const { data, error } = await supabase
       .from('products')
@@ -411,10 +366,8 @@ export async function updateProduct(userId, id, payload) {
       .select()
       .single();
 
-    console.log('📡 productsSupabase: updateProduct result:', { data, error });
     return { data, error };
   } catch (error) {
-    console.log('❌ productsSupabase: Exception in updateProduct:', error);
     return { data: null, error: error.message };
   }
 }
@@ -453,7 +406,6 @@ export async function deleteProduct(userId, id) {
     // Jika error foreign key violation (23503), berarti database menahan penghapusan
     // karena setting ON DELETE masih RESTRICT atau CASCADE (tapi user mau history disimpan)
     if (error.code === '23503') {
-      console.log('⚠️ Delete failed due to FK constraint. User needs to update DB schema.');
       return { 
         error: 'Gagal hapus: Data terkunci oleh riwayat stok. Harap jalankan script "fix_product_delete.sql" di Supabase agar produk bisa dihapus tanpa menghilangkan history.' 
       };
@@ -470,11 +422,9 @@ export async function deleteProduct(userId, id) {
 }
 
 export async function adjustStockOnSale(userId, cartItems) {
-  console.log('📦 productsSupabase: adjustStockOnSale called with userId:', userId, 'items:', cartItems);
   
   const supabase = getSupabaseClient();
   if (!supabase) {
-    console.log('❌ productsSupabase: Supabase client not available');
     return { success: false, error: 'Supabase tidak tersedia' };
   }
 
@@ -484,15 +434,12 @@ export async function adjustStockOnSale(userId, cartItems) {
     const session = sessionData?.session;
     
     if (!session || !session.user) {
-      console.log('❌ productsSupabase: User not authenticated');
       return { success: false, error: 'User tidak ter-autentikasi' };
     }
 
-    console.log('📡 productsSupabase: Processing stock adjustments...');
     
     // Process each cart item
     for (const item of cartItems) {
-      console.log('📦 productsSupabase: Adjusting stock for product:', item.productId, 'qty:', item.qty);
       
       // Get current product stock
       const { data: product, error: getError } = await supabase
@@ -503,7 +450,6 @@ export async function adjustStockOnSale(userId, cartItems) {
         .single();
 
       if (getError) {
-        console.log('❌ productsSupabase: Error getting product:', item.productId, getError);
         continue;
       }
 
@@ -519,17 +465,13 @@ export async function adjustStockOnSale(userId, cartItems) {
         .eq('owner_id', session.user.id);
 
       if (updateError) {
-        console.log('❌ productsSupabase: Error updating stock for product:', item.productId, updateError);
       } else {
-        console.log('✅ productsSupabase: Stock updated for product:', item.productId, 'from', currentStock, 'to', newStock);
       }
     }
 
-    console.log('✅ productsSupabase: Stock adjustment completed');
     return { success: true };
 
   } catch (error) {
-    console.log('❌ productsSupabase: Exception in adjustStockOnSale:', error);
     return { success: false, error: error.message };
   }
 }

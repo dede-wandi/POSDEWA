@@ -28,12 +28,10 @@ export async function getSession() {
     if (!supabase) return null;
     const { data, error } = await supabase.auth.getSession();
     if (error) {
-      console.error('Get session error:', error);
       return null;
     }
     return data?.session || null;
   } catch (error) {
-    console.error('Get session exception:', error);
     return null;
   }
 }
@@ -52,12 +50,10 @@ export function onAuthStateChange(callback) {
         try {
           data?.subscription?.unsubscribe();
         } catch (error) {
-          console.error('Unsubscribe error:', error);
         }
       }
     };
   } catch (error) {
-    console.error('Auth state change error:', error);
     return { unsubscribe: () => {} };
   }
 }

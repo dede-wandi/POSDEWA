@@ -32,25 +32,21 @@ export default function ListScreen({ navigation, route }) {
         const brs = await getBrands(user.id);
         setBrands(brs || []);
       } catch (e) {
-        console.error('Error loading master data:', e);
       }
     }
   };
 
   const load = async () => {
-    console.log('🔄 ListScreen: Loading products for user:', user?.id);
     try {
       const all = await getProducts(user?.id);
       setProducts(all || []);
       await loadMasterData();
     } catch (error) {
-      console.error('❌ ListScreen: Error loading products:', error);
       setProducts([]);
     }
   };
 
   const onRefresh = async () => {
-    console.log('🔄 ListScreen: Manual refresh triggered');
     setRefreshing(true);
     await load();
     setRefreshing(false);
@@ -64,15 +60,10 @@ export default function ListScreen({ navigation, route }) {
   useEffect(() => {
     let active = true;
     (async () => {
-      console.log('🔍 ListScreen: Searching with query:', query, 'for user:', user?.id);
-      console.log('🔍 ListScreen: User object in search:', user);
       try {
         const result = query.trim() ? await findProducts(user?.id, query) : await getProducts(user?.id);
-        console.log('🔍 ListScreen: Search result:', result?.length || 0, 'items');
-        console.log('🔍 ListScreen: Search result data:', result);
         if (active) setProducts(result || []);
       } catch (error) {
-        console.error('❌ ListScreen: Error in search:', error);
         if (active) setProducts([]);
       }
     })();
@@ -93,7 +84,6 @@ export default function ListScreen({ navigation, route }) {
         const result = await findProducts(user?.id, code);
         if (active) setProducts(result || []);
       } catch (error) {
-        console.error('❌ ListScreen: Immediate search error after scan:', error);
         if (active) setProducts([]);
       } finally {
         // Bersihkan param agar tidak diproses berulang
@@ -136,7 +126,6 @@ export default function ListScreen({ navigation, route }) {
               showToast(`Produk "${productName}" telah dihapus`, 'success');
               load(); 
             } catch (error) {
-              console.error('Delete error:', error);
               Alert.alert('Gagal', `Gagal menghapus produk: ${error.message}`);
             }
           } 
@@ -467,6 +456,68 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     paddingBottom: 80,
   },
+  listContainer: {
+    padding: Spacing.lg,
+    paddingBottom: 80,
+  },
+  productCard: {
+    backgroundColor: Colors.card,
+    borderRadius: Radii.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  productCategoryText: {
+    fontSize: FontSize.xs,
+    color: Colors.muted,
+    marginBottom: 4,
+  },
+  infoText: {
+    fontSize: FontSize.xs,
+    color: Colors.muted,
+  },
+  productCardGrid: {
+    backgroundColor: Colors.card,
+    borderRadius: Radii.md,
+    padding: Spacing.md,
+    margin: 4,
+    flex: 0.5,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  productImageGrid: {
+    width: '100%',
+    height: 100,
+    borderRadius: Radii.sm,
+    backgroundColor: Colors.lightBg,
+    marginBottom: Spacing.sm,
+  },
+  productInfoGrid: {
+    flex: 1,
+  },
+  productNameGrid: {
+    fontSize: FontSize.body,
+    fontWeight: FontWeight.bold,
+    color: Colors.textPrimary,
+    marginBottom: 4,
+  },
+  productPriceGrid: {
+    fontSize: FontSize.body,
+    fontWeight: FontWeight.extrabold,
+    color: Colors.primary,
+    marginBottom: 2,
+  },
+  productCategoryGrid: {
+    fontSize: FontSize.xs,
+    color: Colors.muted,
+    marginBottom: 2,
+  },
+  productStockGrid: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.bold,
+    color: Colors.textSecondary,
+  },
   card: {
     backgroundColor: Colors.card,
     borderRadius: Radii.md,
@@ -474,7 +525,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
     borderWidth: 1,
     borderColor: Colors.border,
-    ...Shadows.card,
   },
   cardRow: {
     flexDirection: 'row',

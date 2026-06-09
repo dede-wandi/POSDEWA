@@ -66,14 +66,12 @@ export default function DashboardScreen({ navigation }) {
 
   const loadDashboardData = async () => {
     try {
-      console.log('📊 DashboardScreen: Loading dashboard data...');
-      
+
       // Load dashboard stats
       const statsResult = await getDashboardStats(user?.id);
       if (statsResult.success) {
         setStats(statsResult.data);
       } else {
-        console.log('❌ DashboardScreen: Error loading stats:', statsResult.error);
         showToast('Gagal memuat statistik: ' + statsResult.error, 'error');
       }
 
@@ -82,7 +80,6 @@ export default function DashboardScreen({ navigation }) {
       if (salesResult.success) {
         setRecentSales(salesResult.data);
       } else {
-        console.log('❌ DashboardScreen: Error loading recent sales:', salesResult.error);
       }
 
       // Load menu configurations
@@ -95,7 +92,6 @@ export default function DashboardScreen({ navigation }) {
       }
 
     } catch (error) {
-      console.log('❌ DashboardScreen: Exception loading dashboard data:', error);
       showToast('Terjadi kesalahan saat memuat data', 'error');
     } finally {
       setLoading(false);
@@ -141,7 +137,7 @@ export default function DashboardScreen({ navigation }) {
       activeOpacity={0.7}
     >
       <View style={styles.statCardHeader}>
-        <View style={[styles.iconBadge, { backgroundColor: `${color}15` }]}> 
+        <View style={[styles.iconBadge, { backgroundColor: `${color}15` }]}>
           <Ionicons name={icon} size={18} color={color} />
         </View>
         <Text style={styles.statCardTitle}>{title}</Text>
@@ -150,26 +146,26 @@ export default function DashboardScreen({ navigation }) {
       {subtitle && <Text style={styles.statCardSubtitle}>{subtitle}</Text>}
       {comparison && (
         <View style={styles.comparisonContainer}>
-           <Text style={styles.comparisonLabel}>
-             {comparison.label}: {comparison.value}
-           </Text>
-           <View style={[styles.comparisonBadge, { backgroundColor: comparison.isUp ? '#E8F5E9' : '#FFEBEE' }]}>
-             <Ionicons 
-                name={comparison.isUp ? "arrow-up" : "arrow-down"} 
-                size={10} 
-                color={comparison.isUp ? '#03AC0E' : '#F44336'} 
-             />
-             <Text style={[styles.comparisonText, { color: comparison.isUp ? '#03AC0E' : '#F44336' }]}>
-                {comparison.diff}
-             </Text>
-           </View>
+          <Text style={styles.comparisonLabel}>
+            {comparison.label}: {comparison.value}
+          </Text>
+          <View style={[styles.comparisonBadge, { backgroundColor: comparison.isUp ? '#E8F5E9' : '#FFEBEE' }]}>
+            <Ionicons
+              name={comparison.isUp ? "arrow-up" : "arrow-down"}
+              size={10}
+              color={comparison.isUp ? '#03AC0E' : '#F44336'}
+            />
+            <Text style={[styles.comparisonText, { color: comparison.isUp ? '#03AC0E' : '#F44336' }]}>
+              {comparison.diff}
+            </Text>
+          </View>
         </View>
       )}
     </TouchableOpacity>
   );
 
   const SaleItem = ({ sale }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.saleItem}
       onPress={() => navigation.navigate('History')}
       activeOpacity={0.7}
@@ -201,32 +197,32 @@ export default function DashboardScreen({ navigation }) {
 
       <View style={styles.saleItemsList}>
         {(() => {
-           const items = sale.sale_items || [];
-           if (items.length === 0) return <Text style={styles.saleItemCount}>Tidak ada item</Text>;
+          const items = sale.sale_items || [];
+          if (items.length === 0) return <Text style={styles.saleItemCount}>Tidak ada item</Text>;
 
-           if (items.length === 1) {
-              return (
-                 <Text style={styles.saleItemCount} numberOfLines={1}>
-                    1 Item: {items[0].qty}x {items[0].product_name} ({formatCurrency(items[0].price)})
-                 </Text>
-              );
-           }
+          if (items.length === 1) {
+            return (
+              <Text style={styles.saleItemCount} numberOfLines={1}>
+                1 Item: {items[0].qty}x {items[0].product_name} ({formatCurrency(items[0].price)})
+              </Text>
+            );
+          }
 
-           return (
-              <View>
-                 <Text style={styles.saleItemCountHeader}>{items.length} Item Terjual:</Text>
-                 {items.slice(0, 2).map((prod, idx) => (
-                    <Text key={idx} style={styles.saleItemCount} numberOfLines={1}>
-                       • {prod.qty}x {prod.product_name} ({formatCurrency(prod.price)})
-                    </Text>
-                 ))}
-                 {items.length > 2 && (
-                    <Text style={[styles.saleItemCount, { fontStyle: 'italic', color: '#9CA3AF' }]}>
-                       ... dan {items.length - 2} item lainnya
-                    </Text>
-                 )}
-              </View>
-           );
+          return (
+            <View>
+              <Text style={styles.saleItemCountHeader}>{items.length} Item Terjual:</Text>
+              {items.slice(0, 2).map((prod, idx) => (
+                <Text key={idx} style={styles.saleItemCount} numberOfLines={1}>
+                  • {prod.qty}x {prod.product_name} ({formatCurrency(prod.price)})
+                </Text>
+              ))}
+              {items.length > 2 && (
+                <Text style={[styles.saleItemCount, { fontStyle: 'italic', color: '#9CA3AF' }]}>
+                  ... dan {items.length - 2} item lainnya
+                </Text>
+              )}
+            </View>
+          );
         })()}
       </View>
     </TouchableOpacity>
@@ -248,7 +244,7 @@ export default function DashboardScreen({ navigation }) {
       <View style={styles.header}>
         {/* Profile Row */}
         <View style={styles.profileHeaderRow}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.profileInfoBlock}
             activeOpacity={0.8}
             onPress={() => navigation.navigate('Akun')}
@@ -264,24 +260,20 @@ export default function DashboardScreen({ navigation }) {
                 <Text style={styles.businessNameTitle} numberOfLines={1}>
                   {getBusinessName()}
                 </Text>
-                <View style={styles.memberBadge}>
-                  <Ionicons name="shield-checkmark" size={10} color={Colors.primary} style={{ marginRight: 2 }} />
-                  <Text style={styles.memberBadgeText}>Mitra Dewa</Text>
-                </View>
               </View>
             </View>
           </TouchableOpacity>
 
           <View style={styles.headerIcons}>
-            <TouchableOpacity 
-              style={styles.headerIconButton} 
+            <TouchableOpacity
+              style={styles.headerIconButton}
               activeOpacity={0.7}
               onPress={() => navigation.navigate('AIAssistant')}
             >
               <Ionicons name="chatbubble-ellipses-outline" size={22} color="#4B5563" />
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.headerIconButton} 
+            <TouchableOpacity
+              style={styles.headerIconButton}
               activeOpacity={0.7}
               onPress={() => navigation.navigate('History')}
             >
@@ -297,8 +289,8 @@ export default function DashboardScreen({ navigation }) {
 
         {/* Search Bar Row */}
         <View style={styles.searchBarRow}>
-          <TouchableOpacity 
-            style={styles.searchBar} 
+          <TouchableOpacity
+            style={styles.searchBar}
             activeOpacity={0.8}
             onPress={() => navigation.navigate('Produk', { screen: 'DaftarProduk' })}
           >
@@ -314,43 +306,64 @@ export default function DashboardScreen({ navigation }) {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Premium Financial Summary Row */}
-        <View style={styles.financialRow}>
-          <TouchableOpacity 
-            style={[styles.financialCard, styles.omsetCard]}
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('SalesAnalytics', { type: 'sales', period: 'today' })}
+        {/* GoFood/GoPay Wallet Style Financial Card */}
+        <View style={styles.walletCard}>
+          {/* Left Section: Balance Info */}
+          <TouchableOpacity
+            style={styles.walletBalanceSection}
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate('SalesAnalyticsDashboard', { initialTab: 'profit' })}
           >
-            <View style={styles.financialCardHeader}>
-              <View style={[styles.miniIconCircle, { backgroundColor: '#E8F5E9' }]}>
-                <Ionicons name="trending-up" size={14} color={Colors.primary} />
-              </View>
-              <Text style={styles.financialCardTitle}>Omset Hari Ini</Text>
+            <View style={styles.walletBrandRow}>
+              <Ionicons name="wallet-outline" size={14} color={Colors.white} style={{ marginRight: 4 }} />
+              <Text style={styles.walletBrandName}>DewaCell</Text>
             </View>
-            <Text style={styles.financialCardValue}>{formatCurrency(stats?.today?.total)}</Text>
-            <View style={styles.financialCardFooter}>
-              <Text style={styles.financialCardSub}>{stats?.today?.transactions || 0} Transaksi</Text>
-              <Ionicons name="chevron-forward" size={12} color="#9CA3AF" />
+            <Text style={styles.walletBalanceLabel}>Hari Ini</Text>
+            <Text style={styles.walletBalanceValue}>{formatCurrency(stats?.today?.profit)}</Text>
+            <View style={styles.walletProfitBadge}>
+              <Text style={styles.walletProfitLabel}>Bulan Ini: </Text>
+              <Text style={styles.walletProfitValue}>{formatCurrency(stats?.month?.profit)}</Text>
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={[styles.financialCard, styles.profitCard]}
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('SalesAnalytics', { type: 'profit', period: 'today' })}
-          >
-            <View style={styles.financialCardHeader}>
-              <View style={[styles.miniIconCircle, { backgroundColor: '#E3F2FD' }]}>
-                <Ionicons name="wallet" size={14} color="#007AFF" />
+          {/* Vertical Divider */}
+          <View style={styles.walletDivider} />
+
+          {/* Right Section: Action Buttons */}
+          <View style={styles.walletActionsSection}>
+            <TouchableOpacity
+              style={styles.walletActionItem}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('Penjualan')}
+            >
+              <View style={styles.walletActionIconBg}>
+                <Ionicons name="cart" size={18} color={Colors.primary} />
               </View>
-              <Text style={styles.financialCardTitle}>Profit Hari Ini</Text>
-            </View>
-            <Text style={[styles.financialCardValue, { color: Colors.primary }]}>{formatCurrency(stats?.today?.profit)}</Text>
-            <View style={styles.financialCardFooter}>
-              <Text style={styles.financialCardSub}>Keuntungan Bersih</Text>
-              <Ionicons name="chevron-forward" size={12} color="#9CA3AF" />
-            </View>
-          </TouchableOpacity>
+              <Text style={styles.walletActionLabel}>Kasir</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.walletActionItem}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('AnnualProfitReport')}
+            >
+              <View style={styles.walletActionIconBg}>
+                <Ionicons name="trending-up" size={18} color={Colors.primary} />
+              </View>
+              <Text style={styles.walletActionLabel}>Keuangan</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.walletActionItem}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('History')}
+            >
+              <View style={styles.walletActionIconBg}>
+                <Ionicons name="time" size={18} color={Colors.primary} />
+              </View>
+              <Text style={styles.walletActionLabel}>Riwayat</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Menu Grid (Tokopedia Style Shortcuts) */}
@@ -395,7 +408,7 @@ export default function DashboardScreen({ navigation }) {
                 label: 'Bulan Lalu',
                 value: formatCurrency(stats?.month?.lastMonthTotal),
                 isUp: (stats?.month?.total || 0) >= (stats?.month?.lastMonthTotal || 0),
-                diff: (stats?.month?.lastMonthTotal || 0) > 0 
+                diff: (stats?.month?.lastMonthTotal || 0) > 0
                   ? `${Math.abs(((stats?.month?.total - stats.month.lastMonthTotal) / stats.month.lastMonthTotal) * 100).toFixed(1)}%`
                   : stats?.month?.total > 0 ? '100%' : '0%'
               }}
@@ -411,7 +424,7 @@ export default function DashboardScreen({ navigation }) {
                 label: 'Bulan Lalu',
                 value: formatCurrency(stats?.month?.lastMonthProfit),
                 isUp: (stats?.month?.profit || 0) >= (stats?.month?.lastMonthProfit || 0),
-                diff: (stats?.month?.lastMonthProfit || 0) > 0 
+                diff: (stats?.month?.lastMonthProfit || 0) > 0
                   ? `${Math.abs(((stats?.month?.profit - stats.month.lastMonthProfit) / stats.month.lastMonthProfit) * 100).toFixed(1)}%`
                   : stats?.month?.profit > 0 ? '100%' : '0%'
               }}
@@ -451,7 +464,7 @@ export default function DashboardScreen({ navigation }) {
                   <Ionicons name="warning" size={20} color="#FF3B30" />
                   <Text style={styles.alertTitle}>Peringatan Stock</Text>
                 </View>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.alertButton}
                   onPress={() => navigation.navigate('StockManagement')}
                   activeOpacity={0.7}
@@ -470,14 +483,14 @@ export default function DashboardScreen({ navigation }) {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Penjualan Terbaru</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => navigation.navigate('History')}
               activeOpacity={0.7}
             >
               <Text style={styles.seeAllText}>Lihat Semua</Text>
             </TouchableOpacity>
           </View>
-          
+
           {recentSales.length > 0 ? (
             recentSales.map((sale) => (
               <SaleItem key={sale.id} sale={sale} />
@@ -674,7 +687,7 @@ const styles = StyleSheet.create({
   iconBadge: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -848,64 +861,91 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.semibold,
     marginTop: 2,
   },
-  financialRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
+  walletCard: {
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: Spacing.lg,
     marginTop: 14,
-    gap: 12,
-  },
-  financialCard: {
-    flex: 1,
-    borderRadius: Radii.md,
-    padding: Spacing.md,
-    borderWidth: 1,
-    backgroundColor: Colors.card,
-    ...Shadows.card,
-  },
-  omsetCard: {
-    borderColor: Colors.primaryLight,
-    backgroundColor: Colors.successLight,
-  },
-  profitCard: {
-    borderColor: Colors.secondaryLight,
-    backgroundColor: '#FAFCFE',
-  },
-  financialCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: Colors.primaryDark,
   },
-  miniIconCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+  walletBalanceSection: {
+    flex: 1.2,
+  },
+  walletBrandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  walletBrandName: {
+    color: Colors.white,
+    fontSize: FontSize.caption,
+    fontWeight: FontWeight.bold,
+    fontFamily: 'Poppins',
+  },
+  walletBalanceLabel: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: FontSize.sm,
+    fontFamily: 'Poppins',
+    marginBottom: 2,
+  },
+  walletBalanceValue: {
+    color: Colors.white,
+    fontSize: FontSize.h3,
+    fontWeight: FontWeight.extrabold,
+    fontFamily: 'Poppins',
+    lineHeight: 24,
+  },
+  walletProfitBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  walletProfitLabel: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: FontSize.xs,
+    fontFamily: 'Poppins',
+  },
+  walletProfitValue: {
+    color: '#FFE082',
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.bold,
+    fontFamily: 'Poppins',
+  },
+  walletDivider: {
+    width: 1,
+    height: 55,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginHorizontal: 10,
+  },
+  walletActionsSection: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  walletActionItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  walletActionIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 6,
+    marginBottom: 4,
   },
-  financialCardTitle: {
-    fontSize: FontSize.xs,
+  walletActionLabel: {
+    color: Colors.white,
+    fontSize: 10,
     fontWeight: FontWeight.bold,
-    color: Colors.muted,
-  },
-  financialCardValue: {
-    fontSize: FontSize.body,
-    fontWeight: FontWeight.extrabold,
-    color: Colors.textPrimary,
-    marginBottom: 8,
-  },
-  financialCardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: Colors.borderLight,
-    paddingTop: 6,
-  },
-  financialCardSub: {
-    fontSize: FontSize.xxs,
-    color: Colors.placeholder,
+    fontFamily: 'Poppins',
+    textAlign: 'center',
   },
   menuIconWrapper: {
     position: 'relative',
