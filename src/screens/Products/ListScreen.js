@@ -57,6 +57,26 @@ function PulsingCard({ children, onPress, style, type }) {
   );
 }
 
+function isFormatInvalid(name) {
+  const nameStr = String(name || '');
+  
+  // Deteksi apakah produk ini memiliki kuota dan durasi (misal mengandung GB/MB dan Hari/HARI)
+  const hasQuota = /\b\d+(?:\.\d+)?\s*(?:GB|MB|gb|mb|Gb|Mb)\b/i.test(nameStr);
+  const hasDuration = /\b\d+\s*(?:HARI|hari|Hari)\b/i.test(nameStr);
+  
+  if (hasQuota && hasDuration) {
+    // Format ketat: tidak boleh ada spasi antara angka dengan unitnya (GB/MB atau HARI/Hari/hari)
+    // Contoh valid: "7GB + Lokal 28Hari Axis" atau "15GB 28HARI Axis"
+    // Contoh invalid: "15 GB 28 Hari"
+    const hasStrictQuota = /\b\d+(?:\.\d+)?(?:GB|MB|gb|mb|Gb|Mb)\b/.test(nameStr);
+    const hasStrictDuration = /\b\d+(?:HARI|hari|Hari)\b/.test(nameStr);
+    
+    return !hasStrictQuota || !hasStrictDuration;
+  }
+  
+  return false;
+}
+
 export default function ListScreen({ navigation, route }) {
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -485,6 +505,7 @@ export default function ListScreen({ navigation, route }) {
           const isPulsing = stock <= 5;
           const CardComponent = isPulsing ? PulsingCard : TouchableOpacity;
           const pulseType = stock <= 0 ? 'danger' : 'warning';
+          const isInvalid = isFormatInvalid(item.name);
 
           if (isGrid) {
             return (
@@ -501,7 +522,15 @@ export default function ListScreen({ navigation, route }) {
                   </View>
                 )}
                 <View style={styles.productInfoGrid}>
-                  <Text style={styles.productNameGrid} numberOfLines={2}>{item.name}</Text>
+                  <Text style={[styles.productNameGrid, isInvalid && styles.productNameInvalid]} numberOfLines={2}>
+                    {isInvalid ? '⚠️ ' : ''}{item.name}
+                  </Text>
+                  
+                  {isInvalid && (
+                    <Text style={styles.formatWarningText} numberOfLines={1}>
+                      Format: 15GB 28HARI Brand
+                    </Text>
+                  )}
                   
                   {!selectedCategory && (categoryName || brandName) && (
                     <Text style={styles.productCategoryGrid} numberOfLines={1}>
@@ -542,7 +571,9 @@ export default function ListScreen({ navigation, route }) {
             >
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <Text style={styles.productName} numberOfLines={1}>{item.name}</Text>
+                  <Text style={[styles.productName, isInvalid && styles.productNameInvalid]} numberOfLines={1}>
+                    {isInvalid ? '⚠️ ' : ''}{item.name}
+                  </Text>
                   
                   {/* Mini Actions */}
                   <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
@@ -554,6 +585,12 @@ export default function ListScreen({ navigation, route }) {
                       </TouchableOpacity>
                   </View>
                 </View>
+
+                {isInvalid && (
+                  <Text style={styles.formatWarningText}>
+                    Format tidak sesuai! Gunakan format: 15GB 28HARI Brand
+                  </Text>
+                )}
 
                 {!selectedCategory && (categoryName || brandName) && (
                   <Text style={styles.productCategoryText} numberOfLines={1}>
@@ -939,6 +976,16 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.bold,
     color: Colors.primary,
     letterSpacing: 0.5,
+  },
+  productNameInvalid: {
+    color: Colors.danger,
+  },
+  formatWarningText: {
+    fontSize: 9,
+    color: Colors.danger,
+    fontWeight: FontWeight.bold,
+    marginTop: 2,
+    marginBottom: 4,
   },
 });
 
