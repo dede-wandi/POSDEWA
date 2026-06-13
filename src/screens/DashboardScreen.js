@@ -745,8 +745,8 @@ const styles = StyleSheet.create({
   saleItem: {
     backgroundColor: Colors.card,
     borderRadius: Radii.md,
-    padding: 14,
-    marginBottom: 10,
+    padding: 10,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: Colors.border,
     ...Shadows.card,
@@ -755,15 +755,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 6,
   },
   invoiceBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.lightBg,
     borderRadius: Radii.xs,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
   },
   saleItemInvoice: {
     fontSize: FontSize.sm,
@@ -778,12 +778,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 6,
   },
   saleItemLabel: {
     fontSize: FontSize.xxs,
     color: Colors.muted,
-    marginBottom: 2,
+    marginBottom: 1,
   },
   saleItemTotal: {
     fontSize: FontSize.body,
@@ -796,7 +796,7 @@ const styles = StyleSheet.create({
   saleItemLabelProfit: {
     fontSize: FontSize.xxs,
     color: Colors.muted,
-    marginBottom: 2,
+    marginBottom: 1,
     textAlign: 'right',
   },
   saleItemProfit: {
@@ -807,21 +807,21 @@ const styles = StyleSheet.create({
   dividerLine: {
     height: 1,
     backgroundColor: Colors.borderLight,
-    marginVertical: 10,
+    marginVertical: 6,
   },
   saleItemsList: {
-    marginTop: 2,
+    marginTop: 1,
   },
   saleItemCountHeader: {
     fontSize: FontSize.xs,
     fontWeight: FontWeight.semibold,
     color: Colors.textSecondary,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   saleItemCount: {
     fontSize: FontSize.xs,
     color: Colors.muted,
-    marginTop: 2,
+    marginTop: 1,
   },
   emptyState: {
     alignItems: 'center',
