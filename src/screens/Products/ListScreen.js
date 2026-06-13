@@ -71,6 +71,48 @@ export default function ListScreen({ navigation, route }) {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedBrand, setSelectedBrand] = useState(null);
 
+  // Dynamic filter chips logic (Cascading/Contextual Filters)
+  const visibleCategories = useMemo(() => {
+    if (!selectedBrand) return categories;
+    const availableCategoryIds = new Set(
+      products
+        .filter(p => p.brand_id === selectedBrand)
+        .map(p => p.category_id)
+        .filter(Boolean)
+    );
+    return categories.filter(c => availableCategoryIds.has(c.id));
+  }, [categories, products, selectedBrand]);
+
+  const visibleBrands = useMemo(() => {
+    if (!selectedCategory) return brands;
+    const availableBrandIds = new Set(
+      products
+        .filter(p => p.category_id === selectedCategory)
+        .map(p => p.brand_id)
+        .filter(Boolean)
+    );
+    return brands.filter(b => availableBrandIds.has(b.id));
+  }, [brands, products, selectedCategory]);
+
+  // Reset selected filters if they are no longer in the dynamic visible list
+  useEffect(() => {
+    if (selectedBrand) {
+      const isAvailable = visibleBrands.some(b => b.id === selectedBrand);
+      if (!isAvailable) {
+        setSelectedBrand(null);
+      }
+    }
+  }, [selectedBrand, visibleBrands]);
+
+  useEffect(() => {
+    if (selectedCategory) {
+      const isAvailable = visibleCategories.some(c => c.id === selectedCategory);
+      if (!isAvailable) {
+        setSelectedCategory(null);
+      }
+    }
+  }, [selectedCategory, visibleCategories]);
+
   const loadMasterData = async () => {
     if (user?.id) {
       try {
@@ -354,7 +396,7 @@ export default function ListScreen({ navigation, route }) {
             >
               <Text style={[styles.filterChipText, !selectedCategory && styles.filterChipTextActive]}>Semua Kategori</Text>
             </TouchableOpacity>
-            {categories.map(c => (
+            {visibleCategories.map(c => (
               <TouchableOpacity
                 key={c.id}
                 style={[styles.filterChip, selectedCategory === c.id && styles.filterChipActive]}
@@ -371,7 +413,7 @@ export default function ListScreen({ navigation, route }) {
             >
               <Text style={[styles.filterChipText, !selectedBrand && styles.filterChipTextActive]}>Semua Brand</Text>
             </TouchableOpacity>
-            {brands.map(b => (
+            {visibleBrands.map(b => (
               <TouchableOpacity
                 key={b.id}
                 style={[styles.filterChip, selectedBrand === b.id && styles.filterChipActive]}
