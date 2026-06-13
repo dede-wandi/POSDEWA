@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,9 +21,26 @@ export default function AnnualProfitReportScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [annualData, setAnnualData] = useState({});
 
+  const [refreshing, setRefreshing] = useState(false);
+
   useEffect(() => {
     loadData();
   }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      if (user?.id) {
+        const sales = await getAllSalesForSummary(user.id);
+        processSalesData(sales);
+      }
+    } catch (e) {
+      console.error(e);
+      showToast('Gagal memuat data profit tahunan', 'error');
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -149,12 +167,32 @@ export default function AnnualProfitReportScreen({ navigation }) {
           <Text style={styles.loadingText}>Memuat data profit...</Text>
         </View>
       ) : years.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="analytics-outline" size={64} color={Colors.muted} />
+        <ScrollView
+          contentContainerStyle={[styles.emptyContainer, { flexGrow: 1 }]}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[Colors.primary]}
+              tintColor={Colors.primary}
+            />
+          }
+        >
+          <Ionicons name="analytics-outline" size={64} color={Colors.muted} style={{ alignSelf: 'center', marginTop: '40%' }} />
           <Text style={styles.emptyText}>Belum ada data penjualan tersedia.</Text>
-        </View>
+        </ScrollView>
       ) : (
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[Colors.primary]}
+              tintColor={Colors.primary}
+            />
+          }
+        >
           {/* Shortcut to Graph Analytics */}
           <TouchableOpacity
             style={styles.analyticsButtonCard}

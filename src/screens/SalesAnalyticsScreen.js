@@ -9,7 +9,8 @@ import {
   Alert,
   Dimensions,
   Modal,
-  Platform
+  Platform,
+  RefreshControl
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -47,6 +48,7 @@ export default function SalesAnalyticsScreen({ navigation, route }) {
     startDate: new Date(),
     endDate: new Date()
   });
+  const [refreshing, setRefreshing] = useState(false);
   
   // Chart Date Range (defaults to last 10 days)
   const defaultChartStart = new Date();
@@ -73,9 +75,9 @@ export default function SalesAnalyticsScreen({ navigation, route }) {
     { key: 'custom', label: 'Kustom', icon: 'options-outline', color: '#FF3B30' }
   ];
 
-  const loadAnalytics = async (period, customRange = null) => {
+  const loadAnalytics = async (period, customRange = null, isPullToRefresh = false) => {
     try {
-      setLoading(true);
+      if (!isPullToRefresh) setLoading(true);
       
       const result = await getSalesAnalytics(user?.id, period, customRange);
       if (result.success) {
@@ -87,7 +89,24 @@ export default function SalesAnalyticsScreen({ navigation, route }) {
     } catch (error) {
       showToast('Terjadi kesalahan saat memuat data analytics', 'error');
     } finally {
-      setLoading(false);
+      if (!isPullToRefresh) setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      if (user?.id) {
+        const customRange = selectedPeriod === 'custom' ? customDateRange : null;
+        await Promise.all([
+          loadAnalytics(selectedPeriod, customRange, true),
+          loadPerformanceData(chartDateRange.startDate, chartDateRange.endDate)
+        ]);
+      }
+    } catch (e) {
+      console.log('Error refreshing analytics', e);
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -406,7 +425,18 @@ export default function SalesAnalyticsScreen({ navigation, route }) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#007AFF']}
+            tintColor="#007AFF"
+          />
+        }
+      >
         {/* Period Selection */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Periode</Text>

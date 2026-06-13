@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TextInput, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Radii, Shadows } from '../theme';
@@ -57,12 +57,12 @@ end $$;`;
   const [editingMap, setEditingMap] = useState({});
   const [rowEdits, setRowEdits] = useState({});
   const [savingRows, setSavingRows] = useState({});
-  // simplified model: no device search state needed
   const [newRow, setNewRow] = useState({ brand: '', termasuk: '', ukuran_layar: '', stock: '' });
   const [addingRow, setAddingRow] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(async (q) => {
-    setLoading(true);
+  const load = useCallback(async (q, isPullToRefresh = false) => {
+    if (!isPullToRefresh) setLoading(true);
     try {
       const chk = await checkAntiGoresReady();
       if (!chk.ready) {
@@ -84,9 +84,15 @@ end $$;`;
     } catch (e) {
       setData([]);
     } finally {
-      setLoading(false);
+      if (!isPullToRefresh) setLoading(false);
     }
   }, [user.id]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await load(query, true);
+    setRefreshing(false);
+  };
 
   useEffect(() => {
     load('');
@@ -449,6 +455,14 @@ end $$;`;
             renderItem={renderItem}
             contentContainerStyle={{ paddingHorizontal: Spacing.md, paddingBottom: Spacing.lg }}
             ListEmptyComponent={<Text style={styles.empty}>Belum ada tipe antigores.</Text>}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[Colors.primary]}
+                tintColor={Colors.primary}
+              />
+            }
           />
         </>
       )}

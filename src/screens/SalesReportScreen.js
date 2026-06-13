@@ -9,7 +9,8 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
-  ScrollView
+  ScrollView,
+  RefreshControl
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -142,6 +143,20 @@ export default function SalesReportScreen({ navigation }) {
   };
 
   const loadData = loadDataForCurrentFilter; // Alias untuk kompabilitas
+
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const { start, end } = getDateRangeForFilter();
+      const data = await getSalesHistoryByRange(user?.id, start, end);
+      setSales(data || []);
+    } catch (error) {
+      showToast('Gagal memuat data laporan', 'error');
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   // Helper to calculate profit — consistent with HistoryScreen logic
   // Handles legacy data where line_profit may be 0 or null
@@ -494,6 +509,14 @@ export default function SalesReportScreen({ navigation }) {
             </View>
           )}
           contentContainerStyle={{ paddingBottom: 130 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[Colors.primary]}
+              tintColor={Colors.primary}
+            />
+          }
         />
       </View>
     );
@@ -756,6 +779,14 @@ export default function SalesReportScreen({ navigation }) {
             renderItem={renderItem}
             keyExtractor={(item) => item.id}
             contentContainerStyle={{ paddingBottom: 130 }}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[Colors.primary]}
+                tintColor={Colors.primary}
+              />
+            }
           />
         </View>
       )}

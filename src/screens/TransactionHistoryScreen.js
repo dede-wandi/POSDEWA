@@ -10,6 +10,7 @@ import {
   Alert,
   Modal,
   TextInput,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getFinanceTransactions, getPaymentChannels } from '../services/financeSupabase';
@@ -25,6 +26,21 @@ const TransactionHistoryScreen = ({ navigation }) => {
   const [dateFilter, setDateFilter] = useState('all'); // 'all', 'today', 'week', 'month', 'year', 'custom'
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        loadPaymentChannels(),
+        loadTransactions()
+      ]);
+    } catch (error) {
+      console.log('Error refreshing transaction history', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     loadPaymentChannels();
@@ -208,7 +224,17 @@ const TransactionHistoryScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView
+        style={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#007AFF']}
+            tintColor="#007AFF"
+          />
+        }
+      >
         {/* Channel Selector */}
         <View style={styles.channelSelector}>
           <Text style={styles.sectionTitle}>Channel Pembayaran</Text>
