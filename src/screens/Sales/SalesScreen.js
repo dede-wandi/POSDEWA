@@ -24,6 +24,48 @@ export default function SalesScreen({ navigation, route }) {
   const [brands, setBrands] = useState([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
   const [selectedBrandId, setSelectedBrandId] = useState(null);
+
+  // Dynamic filter chips logic (Cascading/Contextual Filters)
+  const visibleCategories = useMemo(() => {
+    if (!selectedBrandId) return categories;
+    const availableCategoryIds = new Set(
+      allProducts
+        .filter(p => p.brand_id === selectedBrandId)
+        .map(p => p.category_id)
+        .filter(Boolean)
+    );
+    return categories.filter(c => availableCategoryIds.has(c.id));
+  }, [categories, allProducts, selectedBrandId]);
+
+  const visibleBrands = useMemo(() => {
+    if (!selectedCategoryId) return brands;
+    const availableBrandIds = new Set(
+      allProducts
+        .filter(p => p.category_id === selectedCategoryId)
+        .map(p => p.brand_id)
+        .filter(Boolean)
+    );
+    return brands.filter(b => availableBrandIds.has(b.id));
+  }, [brands, allProducts, selectedCategoryId]);
+
+  // Reset selected filters if they are no longer in the dynamic visible list
+  useEffect(() => {
+    if (selectedBrandId) {
+      const isAvailable = visibleBrands.some(b => b.id === selectedBrandId);
+      if (!isAvailable) {
+        setSelectedBrandId(null);
+      }
+    }
+  }, [selectedBrandId, visibleBrands]);
+
+  useEffect(() => {
+    if (selectedCategoryId) {
+      const isAvailable = visibleCategories.some(c => c.id === selectedCategoryId);
+      if (!isAvailable) {
+        setSelectedCategoryId(null);
+      }
+    }
+  }, [selectedCategoryId, visibleCategories]);
   
   // Token modal states
   const [showTokenModal, setShowTokenModal] = useState(false);
@@ -336,7 +378,7 @@ export default function SalesScreen({ navigation, route }) {
           <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
-            data={[{ id: null, name: 'Semua Kategori' }, ...categories]}
+            data={[{ id: null, name: 'Semua Kategori' }, ...visibleCategories]}
             keyExtractor={(item) => String(item.id ?? 'all')}
             renderItem={({ item }) => (
               <TouchableOpacity
@@ -358,7 +400,7 @@ export default function SalesScreen({ navigation, route }) {
           <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
-            data={[{ id: null, name: 'Semua Brand' }, ...brands]}
+            data={[{ id: null, name: 'Semua Brand' }, ...visibleBrands]}
             keyExtractor={(item) => String(item.id ?? 'all')}
             renderItem={({ item }) => (
               <TouchableOpacity
