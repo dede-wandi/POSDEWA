@@ -145,40 +145,34 @@ export default function ListScreen({ navigation, route }) {
     }
   };
 
-  const load = async () => {
+  const activeRequestRef = React.useRef(0);
+
+  const load = async (searchQuery = query) => {
+    const requestId = ++activeRequestRef.current;
     try {
-      const all = await getProducts(user?.id);
-      setProducts(all || []);
+      const all = searchQuery.trim() ? await findProducts(user?.id, searchQuery) : await getProducts(user?.id);
+      if (requestId === activeRequestRef.current) {
+        setProducts(all || []);
+      }
       await loadMasterData();
     } catch (error) {
-      setProducts([]);
+      if (requestId === activeRequestRef.current) {
+        setProducts([]);
+      }
     }
   };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await load();
+    await load(query);
     setRefreshing(false);
   };
 
   useEffect(() => {
-    load();
-    const unsub = navigation.addListener('focus', load);
+    load(query);
+    const unsub = navigation.addListener('focus', () => load(query));
     return unsub;
-  }, [navigation, user]);
-
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        const result = query.trim() ? await findProducts(user?.id, query) : await getProducts(user?.id);
-        if (active) setProducts(result || []);
-      } catch (error) {
-        if (active) setProducts([]);
-      }
-    })();
-    return () => { active = false; };
-  }, [query, user]);
+  }, [navigation, user, query]);
 
   // Tangkap barcode dari Scan (mode: pick) untuk digunakan sebagai query pencarian
   useEffect(() => {
@@ -187,21 +181,8 @@ export default function ListScreen({ navigation, route }) {
 
     const code = String(picked).trim();
     setQuery(code);
-
-    let active = true;
-    (async () => {
-      try {
-        const result = await findProducts(user?.id, code);
-        if (active) setProducts(result || []);
-      } catch (error) {
-        if (active) setProducts([]);
-      } finally {
-        // Bersihkan param agar tidak diproses berulang
-        navigation.setParams({ pickedBarcode: null });
-      }
-    })();
-
-    return () => { active = false; };
+    load(code);
+    navigation.setParams({ pickedBarcode: null });
   }, [route?.params?.pickedBarcode]);
 
   // Realtime Auto Sync untuk sinkronisasi pembaruan produk dari Supabase secara instan
