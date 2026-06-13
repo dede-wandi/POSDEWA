@@ -102,8 +102,66 @@ export default function ListScreen({ navigation, route }) {
     if (selectedBrand) {
       result = result.filter(p => p.brand_id === selectedBrand);
     }
-    return result;
-  }, [products, selectedCategory, selectedBrand]);
+
+    // Urutkan: Brand secara alfabet, lalu Kategori secara alfabet, lalu harga terendah ke tertinggi
+    const sorted = [...result].sort((a, b) => {
+      const brandA = brands.find(br => br.id === a.brand_id)?.name || 'Tanpa Brand';
+      const brandB = brands.find(br => br.id === b.brand_id)?.name || 'Tanpa Brand';
+      
+      const isAEmpty = brandA === 'Tanpa Brand';
+      const isBEmpty = brandB === 'Tanpa Brand';
+      
+      if (isAEmpty && !isBEmpty) return 1;
+      if (!isAEmpty && isBEmpty) return -1;
+      
+      const compBrand = brandA.localeCompare(brandB, undefined, { sensitivity: 'base' });
+      if (compBrand !== 0) return compBrand;
+      
+      // Jika brand sama, urutkan berdasarkan kategori
+      const catA = categories.find(c => c.id === a.category_id)?.name || 'Tanpa Kategori';
+      const catB = categories.find(c => c.id === b.category_id)?.name || 'Tanpa Kategori';
+      
+      const isCatAEmpty = catA === 'Tanpa Kategori';
+      const isCatBEmpty = catB === 'Tanpa Kategori';
+      
+      if (isCatAEmpty && !isCatBEmpty) return 1;
+      if (!isCatAEmpty && isCatBEmpty) return -1;
+      
+      const compCat = catA.localeCompare(catB, undefined, { sensitivity: 'base' });
+      if (compCat !== 0) return compCat;
+      
+      return (Number(a.price) || 0) - (Number(b.price) || 0);
+    });
+
+    if (isGrid) {
+      return sorted;
+    }
+
+    // Untuk tampilan list, selipkan header brand - kategori
+    const listWithHeaders = [];
+    let lastBrandId = null;
+    let lastCategoryId = null;
+
+    sorted.forEach((product) => {
+      if (product.brand_id !== lastBrandId || product.category_id !== lastCategoryId) {
+        lastBrandId = product.brand_id;
+        lastCategoryId = product.category_id;
+        
+        const brandName = brands.find(br => br.id === product.brand_id)?.name || 'Tanpa Brand';
+        const categoryName = categories.find(c => c.id === product.category_id)?.name || 'Tanpa Kategori';
+        
+        listWithHeaders.push({
+          id: `brand-header-${product.brand_id || 'none'}-${product.category_id || 'none'}`,
+          isHeader: true,
+          brandName: brandName,
+          categoryName: categoryName,
+        });
+      }
+      listWithHeaders.push(product);
+    });
+
+    return listWithHeaders;
+  }, [products, selectedCategory, selectedBrand, brands, categories, isGrid]);
 
   const confirmDelete = (id) => {
     const product = products.find(p => p.id === id);
@@ -267,11 +325,35 @@ export default function ListScreen({ navigation, route }) {
           />
         }
         renderItem={({ item }) => {
+          if (item.isHeader) {
+            return (
+              <View style={styles.brandHeaderContainer}>
+                <Ionicons name="pricetag" size={12} color={Colors.primary} style={{ marginRight: 6 }} />
+                <Text style={styles.brandHeaderText}>{`${item.brandName} - ${item.categoryName}`}</Text>
+              </View>
+            );
+          }
+
           const margin = Number(item.price || 0) - Number(item.costPrice || item.cost_price || 0);
           const marginPercentage = item.price ? ((margin / item.price) * 100).toFixed(1) : 0;
           const categoryName = categories.find(c => c.id === item.category_id)?.name;
           const brandName = brands.find(b => b.id === item.brand_id)?.name;
           
+          const stock = Number(item.stock) || 0;
+          let stockBadgeStyle = styles.stockBadgeNormal;
+          let stockTextStyle = styles.stockTextNormal;
+          let stockLabel = `Stok: ${stock}`;
+
+          if (stock <= 0) {
+            stockBadgeStyle = styles.stockBadgeHabis;
+            stockTextStyle = styles.stockTextHabis;
+            stockLabel = 'Habis';
+          } else if (stock <= 5) {
+            stockBadgeStyle = styles.stockBadgeSedikit;
+            stockTextStyle = styles.stockTextSedikit;
+            stockLabel = `Stok: ${stock}`;
+          }
+
           if (isGrid) {
             return (
               <TouchableOpacity 
@@ -280,16 +362,30 @@ export default function ListScreen({ navigation, route }) {
               >
                 {item.image_urls && item.image_urls.length > 0 && item.image_urls[0] ? (
                   <Image source={{ uri: item.image_urls[0] }} style={styles.productImageGrid} resizeMode="contain" />
-                ) : null}
+                ) : (
+                  <View style={[styles.productImageGrid, { backgroundColor: '#f9fafb', alignItems: 'center', justifyContent: 'center' }]}>
+                    <Ionicons name="image-outline" size={24} color="#ccc" />
+                  </View>
+                )}
                 <View style={styles.productInfoGrid}>
                   <Text style={styles.productNameGrid} numberOfLines={2}>{item.name}</Text>
-                  <Text style={styles.productPriceGrid}>{formatIDR(item.price)}</Text>
+                  
                   {(categoryName || brandName) && (
                     <Text style={styles.productCategoryGrid} numberOfLines={1}>
                        {[categoryName, brandName].filter(Boolean).join(' • ')}
                     </Text>
                   )}
-                  <Text style={styles.productStockGrid}>Stok: {item.stock}</Text>
+                  
+                  <Text style={styles.productPriceGrid}>{formatIDR(item.price)}</Text>
+                  
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+                    <View style={stockBadgeStyle}>
+                      <Text style={stockTextStyle}>{stockLabel}</Text>
+                    </View>
+                    <Text style={[styles.infoText, { color: Colors.success, fontWeight: '600', fontSize: 10 }]}>
+                      +{marginPercentage}%
+                    </Text>
+                  </View>
                 </View>
               </TouchableOpacity>
             );
@@ -304,17 +400,17 @@ export default function ListScreen({ navigation, route }) {
                 {item.image_urls && item.image_urls.length > 0 && item.image_urls[0] ? (
                   <Image source={{ uri: item.image_urls[0] }} style={styles.productImage} resizeMode="cover" />
                 ) : (
-                  <View style={[styles.productImage, { backgroundColor: '#f5f5f5', alignItems: 'center', justifyContent: 'center' }]}>
+                  <View style={[styles.productImage, { backgroundColor: '#f9fafb', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.borderLight }]}>
                     <Ionicons name="image-outline" size={20} color="#ccc" />
                   </View>
                 )}
                 
-                <View style={{ flex: 1 }}>
+                <View style={{ flex: 1, marginLeft: Spacing.xs }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <Text style={styles.productName} numberOfLines={1}>{item.name}</Text>
                     
                     {/* Mini Actions */}
-                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
                         <TouchableOpacity onPress={() => navigation.navigate('ProductReport', { productId: item.id, productName: item.name })}>
                            <Ionicons name="analytics-outline" size={16} color={Colors.info} />
                         </TouchableOpacity>
@@ -330,30 +426,28 @@ export default function ListScreen({ navigation, route }) {
                     </Text>
                   )}
                   
-                  {/* Single Line Info */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', marginTop: 4 }}>
+                  {/* Price & Stock Row */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+                    <Text style={styles.productPriceText}>{formatIDR(item.price)}</Text>
+                    <View style={stockBadgeStyle}>
+                      <Text style={stockTextStyle}>{stockLabel}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.cardDivider} />
+
+                  {/* Cost, Margin & Barcode */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <Text style={styles.marginCostText}>Modal: {formatIDR(item.costPrice ?? item.cost_price ?? 0)}</Text>
+                      <Text style={styles.marginProfitText}>Laba: {formatIDR(margin)} ({marginPercentage}%)</Text>
+                    </View>
                     {item.barcode ? (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 10 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <Ionicons name="barcode-outline" size={12} color={Colors.muted} style={{ marginRight: 2 }} />
                         <Text style={styles.infoText}>{item.barcode}</Text>
                       </View>
                     ) : null}
-                    
-                    <Text style={[styles.infoText, { color: Colors.success, fontWeight: '900', marginRight: 10 }]}>
-                      {formatIDR(item.price)}
-                    </Text>
-                    
-                    <Text style={[styles.infoText, { color: Colors.danger, marginRight: 10 }]}>
-                      M: {formatIDR(item.costPrice ?? item.cost_price ?? 0)}
-                    </Text>
-
-                    <Text style={[styles.infoText, { color: Colors.success, marginRight: 10 }]}>
-                      L: {formatIDR(margin)} ({marginPercentage}%)
-                    </Text>
-                    
-                    <Text style={[styles.infoText, { color: Colors.primary }]}>
-                      Stok: {item.stock}
-                    </Text>
                   </View>
                 </View>
               </View>
@@ -467,6 +561,11 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
     borderWidth: 1,
     borderColor: Colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   productCategoryText: {
     fontSize: FontSize.xs,
@@ -485,6 +584,11 @@ const styles = StyleSheet.create({
     flex: 0.5,
     borderWidth: 1,
     borderColor: Colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   productImageGrid: {
     width: '100%',
@@ -503,15 +607,15 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   productPriceGrid: {
-    fontSize: FontSize.body,
+    fontSize: FontSize.bodyLg,
     fontWeight: FontWeight.extrabold,
     color: Colors.primary,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   productCategoryGrid: {
     fontSize: FontSize.xs,
     color: Colors.muted,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   productStockGrid: {
     fontSize: FontSize.xs,
@@ -531,15 +635,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   productImage: {
-    width: 52,
-    height: 52,
+    width: 64,
+    height: 64,
     borderRadius: Radii.sm,
     backgroundColor: Colors.lightBg,
     marginRight: Spacing.md,
   },
   productImagePlaceholder: {
-    width: 52,
-    height: 52,
+    width: 64,
+    height: 64,
     borderRadius: Radii.sm,
     backgroundColor: Colors.primaryLight,
     alignItems: 'center',
@@ -551,10 +655,11 @@ const styles = StyleSheet.create({
     marginRight: Spacing.sm,
   },
   productName: {
-    fontSize: FontSize.body,
+    fontSize: FontSize.bodyLg,
     fontWeight: FontWeight.bold,
     color: Colors.textPrimary,
-    marginBottom: 2,
+    flex: 1,
+    marginRight: Spacing.sm,
   },
   productCategory: {
     fontSize: FontSize.xs,
@@ -571,6 +676,11 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.extrabold,
     color: Colors.primary,
   },
+  productPriceText: {
+    fontSize: FontSize.bodyLg,
+    fontWeight: FontWeight.extrabold,
+    color: Colors.primary,
+  },
   productBuyPrice: {
     fontSize: FontSize.xs,
     color: Colors.muted,
@@ -581,31 +691,57 @@ const styles = StyleSheet.create({
     color: Colors.muted,
     marginTop: 2,
   },
-  stockBadge: {
-    backgroundColor: Colors.successLight,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 3,
-    borderRadius: Radii.pill,
-    borderWidth: 1,
-    borderColor: Colors.primary,
+  cardDivider: {
+    height: 1,
+    backgroundColor: Colors.borderLight,
+    marginVertical: Spacing.sm,
   },
-  stockBadgeLow: {
-    backgroundColor: Colors.warningLight,
-    borderColor: Colors.warning,
-  },
-  stockBadgeOut: {
-    backgroundColor: Colors.dangerLight,
-    borderColor: Colors.danger,
-  },
-  stockText: {
+  marginCostText: {
     fontSize: FontSize.xs,
-    fontWeight: FontWeight.bold,
+    color: Colors.muted,
+  },
+  marginProfitText: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
+    color: Colors.success,
+  },
+  stockBadgeNormal: {
+    backgroundColor: Colors.primaryLight,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: Radii.xs,
+    borderWidth: 1,
+    borderColor: 'rgba(3, 172, 14, 0.1)',
+  },
+  stockTextNormal: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
     color: Colors.primary,
   },
-  stockTextLow: {
+  stockBadgeSedikit: {
+    backgroundColor: Colors.warningLight,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: Radii.xs,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 149, 0, 0.15)',
+  },
+  stockTextSedikit: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
     color: Colors.warning,
   },
-  stockTextOut: {
+  stockBadgeHabis: {
+    backgroundColor: Colors.dangerLight,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: Radii.xs,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 59, 48, 0.15)',
+  },
+  stockTextHabis: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
     color: Colors.danger,
   },
   actionButtons: {
@@ -651,6 +787,24 @@ const styles = StyleSheet.create({
     fontSize: FontSize.body,
     fontWeight: FontWeight.bold,
     color: Colors.white,
+  },
+  brandHeaderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.lightBg,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: Radii.sm,
+    marginTop: Spacing.md,
+    marginBottom: Spacing.xs,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  brandHeaderText: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.bold,
+    color: Colors.primary,
+    letterSpacing: 0.5,
   },
 });
 
