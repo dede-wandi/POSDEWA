@@ -412,7 +412,10 @@ export default function ListScreen({ navigation, route }) {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }} contentContainerStyle={{ gap: 8 }}>
             <TouchableOpacity
               style={[styles.filterChip, !selectedCategory && styles.filterChipActive]}
-              onPress={() => setSelectedCategory(null)}
+              onPress={() => {
+                setSelectedCategory(null);
+                setSelectedBrand(null);
+              }}
             >
               <Text style={[styles.filterChipText, !selectedCategory && styles.filterChipTextActive]}>Semua Kategori</Text>
             </TouchableOpacity>
@@ -420,7 +423,10 @@ export default function ListScreen({ navigation, route }) {
               <TouchableOpacity
                 key={c.id}
                 style={[styles.filterChip, selectedCategory === c.id && styles.filterChipActive]}
-                onPress={() => setSelectedCategory(selectedCategory === c.id ? null : c.id)}
+                onPress={() => {
+                  setSelectedCategory(selectedCategory === c.id ? null : c.id);
+                  setSelectedBrand(null);
+                }}
               >
                 <Text style={[styles.filterChipText, selectedCategory === c.id && styles.filterChipTextActive]}>{c.name}</Text>
               </TouchableOpacity>
@@ -459,7 +465,7 @@ export default function ListScreen({ navigation, route }) {
       {/* Products List */}
       <FlatList
         data={filteredProducts}
-        key={isGrid ? 'GRID' : 'LIST'}
+        key={`${isGrid ? 'GRID' : 'LIST'}-${selectedCategory || 'all'}`}
         numColumns={isGrid ? 2 : 1}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
@@ -473,19 +479,20 @@ export default function ListScreen({ navigation, route }) {
           />
         }
         renderItem={({ item }) => {
-          if (item.isHeader) {
-            return (
-              <View style={styles.brandHeaderContainer}>
-                <Ionicons name="pricetag" size={16} color={Colors.white} style={{ marginRight: 8 }} />
-                <Text style={styles.brandHeaderText}>{`${item.brandName} - ${item.categoryName}`}</Text>
-              </View>
-            );
-          }
+          try {
+            if (item.isHeader) {
+              return (
+                <View style={styles.brandHeaderContainer}>
+                  <Ionicons name="pricetag" size={16} color={Colors.white} style={{ marginRight: 8 }} />
+                  <Text style={styles.brandHeaderText}>{`${item.brandName} - ${item.categoryName}`}</Text>
+                </View>
+              );
+            }
 
-          const margin = Number(item.price || 0) - Number(item.costPrice || item.cost_price || 0);
-          const marginPercentage = item.price ? ((margin / item.price) * 100).toFixed(1) : 0;
-          const categoryName = categories.find(c => c.id === item.category_id)?.name;
-          const brandName = brands.find(b => b.id === item.brand_id)?.name;
+            const margin = Number(item.price || 0) - Number(item.costPrice || item.cost_price || 0);
+            const marginPercentage = item.price ? ((margin / item.price) * 100).toFixed(1) : 0;
+            const categoryName = categories.find(c => c.id === item.category_id)?.name;
+            const brandName = brands.find(b => b.id === item.brand_id)?.name;
           
           const stock = Number(item.stock) || 0;
           let stockBadgeStyle = styles.stockBadgeNormal;
@@ -624,6 +631,14 @@ export default function ListScreen({ navigation, route }) {
               </View>
             </CardComponent>
           );
+          } catch (e) {
+            return (
+              <View style={{ padding: Spacing.md, backgroundColor: '#FFF0F0', marginBottom: Spacing.sm, borderRadius: Radii.md, borderWidth: 1, borderColor: 'red' }}>
+                <Text style={{ color: 'red', fontWeight: 'bold' }}>Error rendering item: {item.name || 'Header'}</Text>
+                <Text style={{ color: 'red', fontSize: 11 }}>{e.message}</Text>
+              </View>
+            );
+          }
         }}
         ListEmptyComponent={() => (
           <View style={styles.emptyContainer}>

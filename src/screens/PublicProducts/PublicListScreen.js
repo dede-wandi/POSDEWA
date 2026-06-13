@@ -291,7 +291,10 @@ export default function PublicListScreen({ navigation }) {
                 styles.filterChip,
                 !selectedCategoryId && styles.filterChipActive,
               ]}
-              onPress={() => setSelectedCategoryId(null)}
+              onPress={() => {
+                setSelectedCategoryId(null);
+                setSelectedBrandId(null);
+              }}
             >
               <Text
                 style={[
@@ -309,9 +312,10 @@ export default function PublicListScreen({ navigation }) {
                   styles.filterChip,
                   selectedCategoryId === c.id && styles.filterChipActive,
                 ]}
-                onPress={() =>
-                  setSelectedCategoryId((prev) => (prev === c.id ? null : c.id))
-                }
+                onPress={() => {
+                  setSelectedCategoryId((prev) => (prev === c.id ? null : c.id));
+                  setSelectedBrandId(null);
+                }}
               >
                 <Text
                   style={[
