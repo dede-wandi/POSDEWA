@@ -1,16 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../theme';
 import { createProduct, getProductById, updateProduct, getCategories, getBrands, addCategory, addBrand } from '../../services/products';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function FormScreen({ navigation, route }) {
   const { id } = route.params || {};
   const { user } = useAuth();
   const { showToast } = useToast();
 
+  const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
   const [barcodes, setBarcodes] = useState(['']);
   const [price, setPrice] = useState('');
@@ -28,6 +30,56 @@ export default function FormScreen({ navigation, route }) {
   const [addingBrand, setAddingBrand] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newBrandName, setNewBrandName] = useState('');
+
+  // Draft recovery & auto-save states/refs
+  const [isDraftRestored, setIsDraftRestored] = useState(false);
+  const latestFormState = useRef({
+    name: '',
+    barcodes: [''],
+    price: '',
+    costPrice: '',
+    stock: '',
+    categoryId: null,
+    brandId: null,
+    imageUrls: ['', '', '', '', ''],
+    id,
+    user,
+  });
+
+  const initialValuesRef = useRef(null);
+  const isSavingRef = useRef(false);
+  const hasSavedRef = useRef(false);
+
+  // Sync latestFormState on changes
+  useEffect(() => {
+    latestFormState.current = {
+      name,
+      barcodes,
+      price,
+      costPrice,
+      stock,
+      categoryId,
+      brandId,
+      imageUrls,
+      id,
+      user,
+    };
+  }, [name, barcodes, price, costPrice, stock, categoryId, brandId, imageUrls, id, user]);
+
+  const checkIfDirty = () => {
+    if (!initialValuesRef.current) return false;
+    const current = {
+      name: latestFormState.current.name,
+      barcodes: latestFormState.current.barcodes,
+      price: latestFormState.current.price,
+      costPrice: latestFormState.current.costPrice,
+      stock: latestFormState.current.stock,
+      categoryId: latestFormState.current.categoryId,
+      brandId: latestFormState.current.brandId,
+      imageUrls: latestFormState.current.imageUrls,
+    };
+    return JSON.stringify(current) !== JSON.stringify(initialValuesRef.current);
+  };
 
   const loadMasterData = async () => {
     if (!user?.id) return;
@@ -80,26 +132,266 @@ export default function FormScreen({ navigation, route }) {
 
   useEffect(() => {
     (async () => {
+      setLoading(true);
+      // 1. Fetch database product if editing
+      let initialData = null;
       if (id) {
-        const prod = await getProductById(user?.id, id);
-        if (prod) {
-          setName(prod.name);
-          setBarcodes(prod.barcode ? prod.barcode.split(',') : ['']);
-          setPrice(String(prod.price || ''));
-          setCostPrice(String(prod.costPrice ?? prod.cost_price ?? ''));
-          setStock(String(prod.stock || ''));
-          setCategoryId(prod.category_id || null);
-          setBrandId(prod.brand_id || null);
-          
-          if (prod.image_urls && Array.isArray(prod.image_urls)) {
-            const urls = [...prod.image_urls];
-            while (urls.length < 5) urls.push('');
-            setImageUrls(urls);
-          }
-        }
+        initialData = await getProductById(user?.id, id);
       }
+
+      // 2. Check and restore draft from AsyncStorage if exists
+      try {
+        const draftKey = `product-draft-${id || 'new'}`;
+        const storedDraft = await AsyncStorage.getItem(draftKey);
+        if (storedDraft) {
+          const draft = JSON.parse(storedDraft);
+          setName(draft.name || '');
+          setBarcodes(draft.barcodes || ['']);
+          setPrice(draft.price || '');
+          setCostPrice(draft.costPrice || '');
+          setStock(draft.stock || '');
+          setCategoryId(draft.categoryId || null);
+          setBrandId(draft.brandId || null);
+          setImageUrls(draft.imageUrls || ['', '', '', '', '']);
+          
+          setIsDraftRestored(true);
+
+          if (initialData) {
+            initialValuesRef.current = {
+              name: initialData.name || '',
+              barcodes: initialData.barcode ? initialData.barcode.split(',') : [''],
+              price: String(initialData.price || ''),
+              costPrice: String(initialData.costPrice ?? initialData.cost_price ?? ''),
+              stock: String(initialData.stock || ''),
+              categoryId: initialData.category_id || null,
+              brandId: initialData.brand_id || null,
+              imageUrls: initialData.image_urls && Array.isArray(initialData.image_urls) ? 
+                [...initialData.image_urls, '', '', '', '', ''].slice(0, 5) : ['', '', '', '', ''],
+            };
+          } else {
+            initialValuesRef.current = {
+              name: '',
+              barcodes: [''],
+              price: '',
+              costPrice: '',
+              stock: '',
+              categoryId: null,
+              brandId: null,
+              imageUrls: ['', '', '', '', ''],
+            };
+          }
+          setLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.log('Error reading draft', err);
+      }
+
+      // 3. Fallback to database data
+      if (initialData) {
+        const vals = {
+          name: initialData.name || '',
+          barcodes: initialData.barcode ? initialData.barcode.split(',') : [''],
+          price: String(initialData.price || ''),
+          costPrice: String(initialData.costPrice ?? initialData.cost_price ?? ''),
+          stock: String(initialData.stock || ''),
+          categoryId: initialData.category_id || null,
+          brandId: initialData.brand_id || null,
+          imageUrls: initialData.image_urls && Array.isArray(initialData.image_urls) ? 
+            [...initialData.image_urls, '', '', '', '', ''].slice(0, 5) : ['', '', '', '', ''],
+        };
+        setName(vals.name);
+        setBarcodes(vals.barcodes);
+        setPrice(vals.price);
+        setCostPrice(vals.costPrice);
+        setStock(vals.stock);
+        setCategoryId(vals.categoryId);
+        setBrandId(vals.brandId);
+        setImageUrls(vals.imageUrls);
+        initialValuesRef.current = vals;
+      } else {
+        const vals = {
+          name: '',
+          barcodes: [''],
+          price: '',
+          costPrice: '',
+          stock: '',
+          categoryId: null,
+          brandId: null,
+          imageUrls: ['', '', '', '', ''],
+        };
+        initialValuesRef.current = vals;
+      }
+      setLoading(false);
     })();
   }, [id, user]);
+
+  // Save draft to AsyncStorage on every input change, only after loading is complete
+  useEffect(() => {
+    if (loading || hasSavedRef.current) return;
+    const saveDraft = async () => {
+      try {
+        const draftKey = `product-draft-${id || 'new'}`;
+        const draftData = {
+          name,
+          barcodes,
+          price,
+          costPrice,
+          stock,
+          categoryId,
+          brandId,
+          imageUrls,
+        };
+        await AsyncStorage.setItem(draftKey, JSON.stringify(draftData));
+      } catch (err) {
+        console.log('Error saving draft', err);
+      }
+    };
+    saveDraft();
+  }, [loading, id, name, barcodes, price, costPrice, stock, categoryId, brandId, imageUrls]);
+
+  const performAutoSave = async () => {
+    if (isSavingRef.current || !latestFormState.current.user?.id) return;
+    if (!checkIfDirty()) return;
+
+    const {
+      id: currentId,
+      name: currentName,
+      barcodes: currentBarcodes,
+      price: currentPrice,
+      costPrice: currentCostPrice,
+      stock: currentStock,
+      categoryId: currentCategoryId,
+      brandId: currentBrandId,
+      imageUrls: currentImageUrls,
+      user: currentUser,
+    } = latestFormState.current;
+
+    // Minimum requirement for auto-save is a non-empty name
+    if (!currentName.trim()) return;
+
+    isSavingRef.current = true;
+    try {
+      const payload = {
+        name: currentName.trim(),
+        barcode: currentBarcodes.filter(b => b.trim()).join(','),
+        price: Number(currentPrice || 0),
+        costPrice: Number(currentCostPrice || 0),
+        stock: Number(currentStock || 0),
+        image_urls: currentImageUrls.filter(u => u.trim() !== ''),
+        category_id: currentCategoryId,
+        brand_id: currentBrandId,
+      };
+
+      if (currentId) {
+        await updateProduct(currentUser.id, currentId, payload);
+        console.log('Product auto-saved (edit) successfully.');
+      } else {
+        // Auto-save new product
+        const result = await createProduct(currentUser.id, payload);
+        if (result && result.success && result.data?.id) {
+          console.log('Product auto-saved (new) successfully. ID:', result.data.id);
+          // Clear the 'new' draft
+          const draftKey = `product-draft-new`;
+          await AsyncStorage.removeItem(draftKey);
+        }
+      }
+
+      // Reset initial values to current so dirty is false
+      const currentVals = {
+        name: currentName,
+        barcodes: currentBarcodes,
+        price: currentPrice,
+        costPrice: currentCostPrice,
+        stock: currentStock,
+        categoryId: currentCategoryId,
+        brandId: currentBrandId,
+        imageUrls: currentImageUrls,
+      };
+      initialValuesRef.current = currentVals;
+
+      // Clear draft storage
+      const draftKey = `product-draft-${currentId || 'new'}`;
+      await AsyncStorage.removeItem(draftKey);
+    } catch (e) {
+      console.log('Auto-save request failed', e);
+    } finally {
+      isSavingRef.current = false;
+    }
+  };
+
+  const resetFormToDatabase = async () => {
+    try {
+      const draftKey = `product-draft-${id || 'new'}`;
+      await AsyncStorage.removeItem(draftKey);
+      setIsDraftRestored(false);
+      
+      // Reload values
+      if (id) {
+        const initialData = await getProductById(user?.id, id);
+        if (initialData) {
+          const vals = {
+            name: initialData.name || '',
+            barcodes: initialData.barcode ? initialData.barcode.split(',') : [''],
+            price: String(initialData.price || ''),
+            costPrice: String(initialData.costPrice ?? initialData.cost_price ?? ''),
+            stock: String(initialData.stock || ''),
+            categoryId: initialData.category_id || null,
+            brandId: initialData.brand_id || null,
+            imageUrls: initialData.image_urls && Array.isArray(initialData.image_urls) ? 
+              [...initialData.image_urls, '', '', '', '', ''].slice(0, 5) : ['', '', '', '', ''],
+          };
+          setName(vals.name);
+          setBarcodes(vals.barcodes);
+          setPrice(vals.price);
+          setCostPrice(vals.costPrice);
+          setStock(vals.stock);
+          setCategoryId(vals.categoryId);
+          setBrandId(vals.brandId);
+          setImageUrls(vals.imageUrls);
+          initialValuesRef.current = vals;
+        }
+      } else {
+        setName('');
+        setBarcodes(['']);
+        setPrice('');
+        setCostPrice('');
+        setStock('');
+        setCategoryId(null);
+        setBrandId(null);
+        setImageUrls(['', '', '', '', '']);
+        initialValuesRef.current = {
+          name: '',
+          barcodes: [''],
+          price: '',
+          costPrice: '',
+          stock: '',
+          categoryId: null,
+          brandId: null,
+          imageUrls: ['', '', '', '', ''],
+        };
+      }
+      showToast('Formulir berhasil di-reset ke data asli', 'success');
+    } catch (err) {
+      console.log('Error resetting draft', err);
+      showToast('Gagal mereset formulir', 'error');
+    }
+  };
+
+  // Trigger auto save on navigation blur
+  useEffect(() => {
+    const unsub = navigation.addListener('blur', () => {
+      performAutoSave();
+    });
+    return unsub;
+  }, [navigation]);
+
+  // Trigger auto save on component unmount
+  useEffect(() => {
+    return () => {
+      performAutoSave();
+    };
+  }, []);
 
   // Tangkap barcode hasil scan dari screen Scan (mode: pick)
   useEffect(() => {
@@ -138,6 +430,7 @@ export default function FormScreen({ navigation, route }) {
     }
 
     try {
+      hasSavedRef.current = true; // prevent saveDraft from writing again
       let result;
       if (id) {
         result = await updateProduct(user?.id, id, payload);
@@ -147,13 +440,35 @@ export default function FormScreen({ navigation, route }) {
       
       // Handle new response format
       if (result && result.success === false) {
+        hasSavedRef.current = false; // reset in case of failure
         showToast(result.error || 'Gagal menyimpan produk', 'error');
         return;
       }
+
+      // Clear draft on successful save
+      try {
+        const draftKey = `product-draft-${id || 'new'}`;
+        await AsyncStorage.removeItem(draftKey);
+      } catch (err) {
+        console.log('Error removing draft on save', err);
+      }
+
+      // Update initial values so unmount doesn't auto-save again
+      initialValuesRef.current = {
+        name,
+        barcodes,
+        price,
+        costPrice,
+        stock,
+        categoryId,
+        brandId,
+        imageUrls,
+      };
       
       showToast('Produk tersimpan', 'success');
       navigation.goBack();
     } catch (e) {
+      hasSavedRef.current = false; // reset in case of failure
       showToast(e.message || 'Gagal menyimpan produk', 'error');
     }
   };
@@ -254,6 +569,20 @@ export default function FormScreen({ navigation, route }) {
 
   return (
     <ScrollView style={styles.container}>
+      {isDraftRestored && (
+        <View style={styles.draftBanner}>
+          <View style={styles.draftBannerTextContainer}>
+            <Ionicons name="document-text" size={16} color={Colors.info} style={{ marginRight: 6 }} />
+            <Text style={styles.draftBannerText}>
+              Memulihkan draf yang belum disimpan.
+            </Text>
+          </View>
+          <TouchableOpacity style={styles.draftResetButton} onPress={resetFormToDatabase}>
+            <Text style={styles.draftResetButtonText}>Reset ke Asli</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {!user && (
         <View style={styles.warningContainer}>
           <Text style={styles.warningText}>
@@ -669,5 +998,39 @@ const styles = StyleSheet.create({
   },
   sectionSpacing: {
     marginBottom: 0,
+  },
+  draftBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.infoLight,
+    borderColor: Colors.info,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 0,
+  },
+  draftBannerTextContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  draftBannerText: {
+    color: Colors.info,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  draftResetButton: {
+    backgroundColor: Colors.info,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  draftResetButtonText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

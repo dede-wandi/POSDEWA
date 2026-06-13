@@ -476,7 +476,7 @@ export default function ListScreen({ navigation, route }) {
           if (item.isHeader) {
             return (
               <View style={styles.brandHeaderContainer}>
-                <Ionicons name="pricetag" size={12} color={Colors.primary} style={{ marginRight: 6 }} />
+                <Ionicons name="pricetag" size={16} color={Colors.white} style={{ marginRight: 8 }} />
                 <Text style={styles.brandHeaderText}>{`${item.brandName} - ${item.categoryName}`}</Text>
               </View>
             );
@@ -779,7 +779,7 @@ const styles = StyleSheet.create({
   },
   productPriceGrid: {
     fontSize: FontSize.bodyLg,
-    fontWeight: FontWeight.extrabold,
+    fontWeight: 'bold',
     color: Colors.primary,
     marginBottom: 4,
   },
@@ -844,12 +844,12 @@ const styles = StyleSheet.create({
   },
   productPrice: {
     fontSize: FontSize.bodyLg,
-    fontWeight: FontWeight.extrabold,
+    fontWeight: 'bold',
     color: Colors.primary,
   },
   productPriceText: {
     fontSize: FontSize.bodyLg,
-    fontWeight: FontWeight.extrabold,
+    fontWeight: 'bold',
     color: Colors.primary,
   },
   productBuyPrice: {
@@ -962,19 +962,17 @@ const styles = StyleSheet.create({
   brandHeaderContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.lightBg,
+    backgroundColor: Colors.primary,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: Radii.sm,
-    marginTop: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radii.md,
+    marginTop: Spacing.lg,
     marginBottom: Spacing.xs,
-    borderWidth: 1,
-    borderColor: Colors.border,
   },
   brandHeaderText: {
-    fontSize: FontSize.xs,
+    fontSize: FontSize.subtitle,
     fontWeight: FontWeight.bold,
-    color: Colors.primary,
+    color: Colors.white,
     letterSpacing: 0.5,
   },
   productNameInvalid: {
