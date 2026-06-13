@@ -395,6 +395,20 @@ export async function deleteProduct(userId, id) {
     return { error: 'Anda tidak memiliki izin menghapus produk ini' };
   }
 
+  // 1. Hapus riwayat stok produk ini terlebih dahulu di level aplikasi
+  try {
+    const { error: stockHistError } = await supabase
+      .from('stock_history')
+      .delete()
+      .eq('product_id', id);
+    if (stockHistError) {
+      console.log('Error deleting related stock history:', stockHistError);
+    }
+  } catch (err) {
+    console.log('Failed to execute stock history deletion:', err);
+  }
+
+  // 2. Hapus produk
   const { error, data } = await supabase
     .from('products')
     .delete()
@@ -403,14 +417,11 @@ export async function deleteProduct(userId, id) {
     .select();
 
   if (error) {
-    // Jika error foreign key violation (23503), berarti database menahan penghapusan
-    // karena setting ON DELETE masih RESTRICT atau CASCADE (tapi user mau history disimpan)
     if (error.code === '23503') {
       return { 
-        error: 'Gagal hapus: Data terkunci oleh riwayat stok. Harap jalankan script "fix_product_delete.sql" di Supabase agar produk bisa dihapus tanpa menghilangkan history.' 
+        error: 'Gagal hapus: Data masih terikat oleh foreign key constraint. Silakan jalankan script SQL di file "src/database/fix_product_delete.sql" pada Supabase editor Anda untuk mengaktifkan CASCADE.' 
       };
     }
-    
     return { error: error.message };
   }
 
