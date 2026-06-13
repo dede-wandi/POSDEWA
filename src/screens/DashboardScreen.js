@@ -316,7 +316,7 @@ export default function DashboardScreen({ navigation }) {
           >
             <View style={styles.walletBrandRow}>
               <Ionicons name="wallet-outline" size={14} color={Colors.white} style={{ marginRight: 4 }} />
-              <Text style={styles.walletBrandName}>DewaCell</Text>
+              <Text style={styles.walletBrandName}>{getBusinessName()}</Text>
             </View>
             <Text style={styles.walletBalanceLabel}>Hari Ini</Text>
             <Text style={styles.walletBalanceValue}>{formatCurrency(stats?.today?.profit)}</Text>
