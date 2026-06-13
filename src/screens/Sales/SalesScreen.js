@@ -439,6 +439,9 @@ export default function SalesScreen({ navigation, route }) {
               />
             }
             renderItem={({ item }) => {
+              const categoryName = categories.find(c => c.id === item.category_id)?.name;
+              const brandName = brands.find(b => b.id === item.brand_id)?.name;
+
               if (productLayout === 'grid') {
                 return (
                   <View style={styles.resultCardGrid}>
@@ -451,6 +454,11 @@ export default function SalesScreen({ navigation, route }) {
                     )}
                     <View style={styles.resultInfoGrid}>
                       <Text style={styles.resultNameGrid} numberOfLines={2}>{item.name}</Text>
+                      {(categoryName || brandName) && (
+                        <Text style={styles.productCategoryGrid} numberOfLines={1}>
+                           {[categoryName, brandName].filter(Boolean).join(' • ')}
+                        </Text>
+                      )}
                       <View style={styles.productRowGrid}>
                         <View style={{ flex: 1 }}>
                           <Text style={styles.resultPrice}>{formatIDR(item.price)}</Text>
@@ -487,6 +495,11 @@ export default function SalesScreen({ navigation, route }) {
                   )}
                   <View style={styles.resultInfo}>
                     <Text style={styles.resultName}>{item.name}</Text>
+                    {(categoryName || brandName) && (
+                      <Text style={styles.productCategoryText} numberOfLines={1}>
+                         {[categoryName, brandName].filter(Boolean).join(' • ')}
+                      </Text>
+                    )}
                     <View style={styles.resultBarcodeRow}>
                       <Ionicons name="barcode-outline" size={12} color={Colors.muted} style={{ marginRight: 4 }} />
                       <Text style={styles.resultBarcode}>{item.barcode || 'Tanpa barcode'}</Text>
@@ -1071,5 +1084,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  productCategoryText: {
+    fontSize: FontSize.xs,
+    color: Colors.muted,
+    marginBottom: 4,
+  },
+  productCategoryGrid: {
+    fontSize: FontSize.xs,
+    color: Colors.muted,
+    marginBottom: 4,
   },
 });
