@@ -1,13 +1,30 @@
 import { getSupabaseClient } from './supabase';
 
 export async function listProducts(userId) {
-  
   const supabase = getSupabaseClient();
   if (!supabase) {
     return [];
   }
 
-  // Check current session with retry mechanism
+  // Jika userId dilewatkan langsung, gunakan langsung untuk efisiensi & menghindari delay session pada Web
+  const ownerId = userId;
+  if (ownerId) {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('owner_id', ownerId)
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        return data;
+      }
+    } catch (e) {
+      // Fallback ke pengecekan sesi jika terjadi error
+    }
+  }
+
+  // Check current session dengan retry mechanism
   let session = null;
   let sessionError = null;
   
@@ -15,7 +32,6 @@ export async function listProducts(userId) {
     const sessionResult = await supabase.auth.getSession();
     session = sessionResult.data?.session;
     sessionError = sessionResult.error;
-    
     
     // If no session, try to refresh
     if (!session) {
@@ -30,13 +46,11 @@ export async function listProducts(userId) {
   }
 
   try {
-    
-    const { data, error, count } = await supabase
+    const { data, error } = await supabase
       .from('products')
-      .select('*', { count: 'exact' })
+      .select('*')
       .eq('owner_id', session.user.id) // Use session user ID
       .order('created_at', { ascending: false });
-
 
     if (error) {
       throw error;
@@ -51,6 +65,30 @@ export async function listProducts(userId) {
 export async function searchProducts(userId, q) {
   const supabase = getSupabaseClient();
   if (!supabase) return { data: [], error: 'Supabase tidak tersedia' };
+
+  const ownerId = userId;
+  const query = String(q || '').toLowerCase();
+
+  // Jika ownerId didefinisikan, cari langsung menggunakan ID tersebut untuk kehandalan render awal
+  if (ownerId) {
+    try {
+      if (!query) {
+        const data = await listProducts(ownerId);
+        return { data: data || [], error: null };
+      }
+
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('owner_id', ownerId)
+        .or(`name.ilike.%${query}%,barcode.ilike.%${query}%`)
+        .order('created_at', { ascending: false });
+
+      return { data: data || [], error };
+    } catch (e) {
+      // Fallback jika terjadi error
+    }
+  }
 
   // Selalu gunakan session user agar konsisten, abaikan userId arg jika tidak cocok/undefined
   let session = null;
@@ -69,8 +107,7 @@ export async function searchProducts(userId, q) {
     return { data: [], error: 'User tidak ter-autentikasi' };
   }
 
-  const query = String(q || '').toLowerCase();
-  if (!query) return listProducts(session.user.id);
+  if (!query) return { data: await listProducts(session.user.id), error: null };
 
   const { data, error } = await supabase
     .from('products')
@@ -89,10 +126,27 @@ export async function findProducts(userId, query) {
 }
 
 export async function getProduct(userId, id) {
-  
   const supabase = getSupabaseClient();
   if (!supabase) {
     return { data: null, error: 'Supabase tidak tersedia' };
+  }
+
+  const ownerId = userId;
+  if (ownerId) {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('owner_id', ownerId)
+        .eq('id', id)
+        .single();
+
+      if (!error && data) {
+        return { data, error: null };
+      }
+    } catch (e) {
+      // Fallback
+    }
   }
 
   // Check current session
@@ -126,6 +180,30 @@ export async function findByBarcodeExact(userId, barcode) {
   const supabase = getSupabaseClient();
   if (!supabase) return { data: null, error: 'Supabase tidak tersedia' };
 
+  const ownerId = userId;
+  const cleanBarcode = String(barcode || '').trim();
+
+  if (ownerId) {
+    try {
+      const { data: potentialMatches, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('owner_id', ownerId)
+        .ilike('barcode', `%${cleanBarcode}%`);
+
+      if (!error && potentialMatches) {
+        const exactMatch = potentialMatches.find(p => {
+          if (!p.barcode) return false;
+          const barcodes = p.barcode.split(',').map(b => b.trim());
+          return barcodes.includes(cleanBarcode);
+        });
+        return { data: exactMatch || null, error: null };
+      }
+    } catch (e) {
+      // Fallback
+    }
+  }
+
   // Gunakan session user agar konsisten
   let session = null;
   try {
@@ -143,8 +221,6 @@ export async function findByBarcodeExact(userId, barcode) {
     return { data: null, error: 'User tidak ter-autentikasi' };
   }
 
-  const cleanBarcode = String(barcode || '').trim();
-  
   // Use textSearch or ilike to find potential matches
   // Because barcodes are stored as "A,B,C", we search for substring
   const { data: potentialMatches, error } = await supabase
