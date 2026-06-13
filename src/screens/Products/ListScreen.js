@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, Alert, StyleSheet, Dimensions, RefreshControl, Image, ScrollView, Animated } from 'react-native';
+import ConfirmModal from '../../components/ConfirmModal';
+import { View, Text, TextInput, FlatList, TouchableOpacity, Alert, StyleSheet, Dimensions, RefreshControl, Image, ScrollView, Animated, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getProducts, deleteProduct, findProducts, getCategories, getBrands } from '../../services/products';
 import { useAuth } from '../../context/AuthContext';
@@ -84,6 +85,9 @@ export default function ListScreen({ navigation, route }) {
   const [query, setQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [isGrid, setIsGrid] = useState(false);
+
+  // Confirm Modal state
+  const [confirmModal, setConfirmModal] = useState({ visible: false, id: null, name: '' });
 
   // Filter State
   const [categories, setCategories] = useState([]);
@@ -296,30 +300,19 @@ export default function ListScreen({ navigation, route }) {
   const confirmDelete = (id) => {
     const product = products.find(p => p.id === id);
     const productName = product?.name || 'produk ini';
-    
-    Alert.alert(
-      '🗑️ Hapus Produk', 
-      `Apakah Anda yakin ingin menghapus "${productName}"?\n\nTindakan ini tidak dapat dibatalkan.`, 
-      [
-        { 
-          text: '❌ Batal', 
-          style: 'cancel' 
-        },
-        { 
-          text: '🗑️ Hapus', 
-          style: 'destructive', 
-          onPress: async () => { 
-            try {
-              await deleteProduct(user?.id, id); 
-              showToast(`Produk "${productName}" telah dihapus`, 'success');
-              load(); 
-            } catch (error) {
-              Alert.alert('Gagal', `Gagal menghapus produk: ${error.message}`);
-            }
-          } 
-        }
-      ]
-    );
+    setConfirmModal({ visible: true, id, name: productName });
+  };
+
+  const performDelete = async () => {
+    const { id, name } = confirmModal;
+    setConfirmModal({ visible: false, id: null, name: '' });
+    try {
+      await deleteProduct(user?.id, id);
+      showToast(`Produk "${name}" telah dihapus`, 'success');
+      load();
+    } catch (error) {
+      showToast(`Gagal menghapus produk: ${error.message}`, 'error');
+    }
   };
 
   return (
@@ -566,10 +559,24 @@ export default function ListScreen({ navigation, route }) {
                   
                   {/* Mini Actions */}
                   <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-                      <TouchableOpacity onPress={() => navigation.navigate('ProductReport', { productId: item.id, productName: item.name })}>
+                      <TouchableOpacity 
+                        onPress={(e) => {
+                          if (e && typeof e.stopPropagation === 'function') {
+                            e.stopPropagation();
+                          }
+                          navigation.navigate('ProductReport', { productId: item.id, productName: item.name });
+                        }}
+                      >
                          <Ionicons name="analytics-outline" size={16} color={Colors.info} />
                       </TouchableOpacity>
-                      <TouchableOpacity onPress={() => confirmDelete(item.id)}>
+                      <TouchableOpacity 
+                        onPress={(e) => {
+                          if (e && typeof e.stopPropagation === 'function') {
+                            e.stopPropagation();
+                          }
+                          confirmDelete(item.id);
+                        }}
+                      >
                          <Ionicons name="trash-outline" size={16} color={Colors.danger} />
                       </TouchableOpacity>
                   </View>
@@ -635,6 +642,16 @@ export default function ListScreen({ navigation, route }) {
             </TouchableOpacity>
           </View>
         )}
+      />
+      <ConfirmModal
+        visible={confirmModal.visible}
+        title="Hapus Produk"
+        message={`Apakah Anda yakin ingin menghapus "${confirmModal.name}"? Tindakan ini tidak dapat dibatalkan.`}
+        confirmText="Hapus"
+        cancelText="Batal"
+        onConfirm={performDelete}
+        onCancel={() => setConfirmModal({ visible: false, id: null, name: '' })}
+        type="danger"
       />
     </SafeAreaView>
   );

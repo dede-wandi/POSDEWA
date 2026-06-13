@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import ConfirmModal from '../../components/ConfirmModal';
 import { 
   View, 
   Text, 
@@ -35,6 +36,7 @@ export default function HistoryScreen({ navigation }) {
   const [filterPeriod, setFilterPeriod] = useState('today'); // all, today, yesterday, week, month, year, custom
   const [selectedSale, setSelectedSale] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [confirmDeleteSale, setConfirmDeleteSale] = useState({ visible: false, id: null, invoiceNo: '' });
 
   // Custom Date Picker State
   const [customDateRange, setCustomDateRange] = useState({
@@ -51,6 +53,23 @@ export default function HistoryScreen({ navigation }) {
   useEffect(() => {
     loadSalesHistory();
   }, []);
+
+  const performDeleteSale = async () => {
+    const { id } = confirmDeleteSale;
+    setConfirmDeleteSale({ visible: false, id: null, invoiceNo: '' });
+    try {
+      const result = await deleteSale(id);
+      if (result.success) {
+        showToast('Transaksi berhasil dihapus', 'success');
+        setShowDetailModal(false);
+        loadSalesHistory();
+      } else {
+        showToast(result.error || 'Gagal menghapus transaksi', 'error');
+      }
+    } catch (error) {
+      showToast(`Gagal menghapus transaksi: ${error.message}`, 'error');
+    }
+  };
 
   useEffect(() => {
     filterSales();
@@ -697,6 +716,19 @@ export default function HistoryScreen({ navigation }) {
                 <Text style={styles.modalPrintButtonText}>🖨️ Cetak Invoice</Text>
               </TouchableOpacity>
 
+              <TouchableOpacity
+                style={styles.modalDeleteButton}
+                onPress={() => {
+                  setConfirmDeleteSale({
+                    visible: true,
+                    id: selectedSale.id,
+                    invoiceNo: selectedSale.no_invoice || `#INV-${new Date(selectedSale.created_at).getFullYear()}${String(new Date(selectedSale.created_at).getMonth() + 1).padStart(2, '0')}${String(new Date(selectedSale.created_at).getDate()).padStart(2, '0')}-${String(selectedSale.id).slice(-4)}`
+                  });
+                }}
+              >
+                <Text style={styles.modalDeleteButtonText}>🗑️ Hapus Riwayat Penjualan</Text>
+              </TouchableOpacity>
+
             </ScrollView>
           )}
         </View>
@@ -765,6 +797,17 @@ export default function HistoryScreen({ navigation }) {
           </View>
         </View>
       </Modal>
+
+      <ConfirmModal
+        visible={confirmDeleteSale.visible}
+        title="Hapus Penjualan"
+        message={`Apakah Anda yakin ingin menghapus transaksi "${confirmDeleteSale.invoiceNo}"? Tindakan ini tidak dapat dibatalkan.`}
+        confirmText="Hapus"
+        cancelText="Batal"
+        onConfirm={performDeleteSale}
+        onCancel={() => setConfirmDeleteSale({ visible: false, id: null, invoiceNo: '' })}
+        type="danger"
+      />
     </SafeAreaView>
   );
 }
@@ -1098,6 +1141,19 @@ const styles = StyleSheet.create({
     ...Shadows.card,
   },
   modalPrintButtonText: {
+    color: Colors.white,
+    fontSize: FontSize.subtitle,
+    fontWeight: FontWeight.bold,
+  },
+  modalDeleteButton: {
+    backgroundColor: Colors.danger,
+    borderRadius: Radii.md,
+    padding: Spacing.lg,
+    alignItems: 'center',
+    marginBottom: 24,
+    ...Shadows.card,
+  },
+  modalDeleteButtonText: {
     color: Colors.white,
     fontSize: FontSize.subtitle,
     fontWeight: FontWeight.bold,

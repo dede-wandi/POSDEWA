@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import ConfirmModal from '../../components/ConfirmModal';
 import {
   View,
   Text,
@@ -9,6 +10,7 @@ import {
   RefreshControl,
   Alert,
   Image,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,6 +33,7 @@ export default function AdminListScreen({ navigation }) {
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
   const [priceSort, setPriceSort] = useState('none');
   const [showFilters, setShowFilters] = useState(false);
+  const [confirmModal, setConfirmModal] = useState({ visible: false, id: null, title: '' });
 
   const load = async () => {
     setLoading(true);
@@ -96,26 +99,19 @@ export default function AdminListScreen({ navigation }) {
   };
 
   const confirmDelete = (id, title) => {
-    Alert.alert(
-      'Hapus Produk',
-      `Hapus produk publik "${title}"?`,
-      [
-        { text: 'Batal', style: 'cancel' },
-        {
-          text: 'Hapus',
-          style: 'destructive',
-          onPress: async () => {
-            const result = await deletePublicProduct(id);
-            if (!result.success) {
-              showToast(result.error || 'Gagal menghapus produk', 'error');
-              return;
-            }
-            showToast('Produk berhasil dihapus', 'success');
-            await load();
-          },
-        },
-      ],
-    );
+    setConfirmModal({ visible: true, id, title });
+  };
+
+  const performDelete = async () => {
+    const { id } = confirmModal;
+    setConfirmModal({ visible: false, id: null, title: '' });
+    const result = await deletePublicProduct(id);
+    if (!result.success) {
+      showToast(result.error || 'Gagal menghapus produk', 'error');
+      return;
+    }
+    showToast('Produk berhasil dihapus', 'success');
+    await load();
   };
 
   const renderItem = ({ item }) => {
@@ -164,13 +160,23 @@ export default function AdminListScreen({ navigation }) {
           <View style={styles.actions}>
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: Colors.primary }]}
-              onPress={() => navigation.navigate('PublicProductForm', { id: item.id })}
+              onPress={(e) => {
+                if (e && typeof e.stopPropagation === 'function') {
+                  e.stopPropagation();
+                }
+                navigation.navigate('PublicProductForm', { id: item.id });
+              }}
             >
               <Ionicons name="create-outline" size={16} color="#fff" />
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: Colors.danger }]}
-              onPress={() => confirmDelete(item.id, item.title)}
+              onPress={(e) => {
+                if (e && typeof e.stopPropagation === 'function') {
+                  e.stopPropagation();
+                }
+                confirmDelete(item.id, item.title);
+              }}
             >
               <Ionicons name="trash-outline" size={16} color="#fff" />
             </TouchableOpacity>
@@ -364,6 +370,16 @@ export default function AdminListScreen({ navigation }) {
             <Text style={styles.emptySubtitle}>Tambahkan produk untuk ditampilkan di halaman publik.</Text>
           </View>
         }
+      />
+      <ConfirmModal
+        visible={confirmModal.visible}
+        title="Hapus Produk Publik"
+        message={`Apakah Anda yakin ingin menghapus produk publik "${confirmModal.title}"?`}
+        confirmText="Hapus"
+        cancelText="Batal"
+        onConfirm={performDelete}
+        onCancel={() => setConfirmModal({ visible: false, id: null, title: '' })}
+        type="danger"
       />
     </SafeAreaView>
   );
