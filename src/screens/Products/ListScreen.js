@@ -103,6 +103,19 @@ export default function ListScreen({ navigation, route }) {
       result = result.filter(p => p.brand_id === selectedBrand);
     }
 
+    // Jika tidak mem-filter kategori spesifik (e.g. Semua Kategori dipilih), tampilkan normal tanpa header/pengelompokan
+    // Urutkan berdasarkan item yang paling baru ditambahkan (created_at descending)
+    if (!selectedCategory) {
+      return [...result].sort((a, b) => {
+        const dateA = a.created_at || '';
+        const dateB = b.created_at || '';
+        if (dateA && dateB) {
+          return dateB.localeCompare(dateA);
+        }
+        return String(b.id || '').localeCompare(String(a.id || ''));
+      });
+    }
+
     // Urutkan: Brand secara alfabet, lalu Kategori secara alfabet, lalu harga terendah ke tertinggi
     const sorted = [...result].sort((a, b) => {
       const brandA = brands.find(br => br.id === a.brand_id)?.name || 'Tanpa Brand';
