@@ -83,6 +83,81 @@ export default function SalesScreen({ navigation, route }) {
     }, 0);
   }, [cart]);
 
+  const processedResults = useMemo(() => {
+    let list = [...results];
+    
+    // 1. Jika tidak mem-filter kategori spesifik (e.g. Semua Kategori dipilih), tampilkan normal tanpa header/pengelompokan
+    // Urutkan berdasarkan item yang paling baru ditambahkan (created_at descending)
+    if (!selectedCategoryId) {
+      return list.sort((a, b) => {
+        const dateA = a.created_at || '';
+        const dateB = b.created_at || '';
+        if (dateA && dateB) {
+          return dateB.localeCompare(dateA);
+        }
+        return String(b.id || '').localeCompare(String(a.id || ''));
+      });
+    }
+
+    // 2. Jika kategori dipilih, urutkan: Brand secara alfabet, lalu Kategori secara alfabet, lalu harga terendah ke tertinggi (termurah)
+    const sorted = list.sort((a, b) => {
+      const brandA = brands.find(br => br.id === a.brand_id)?.name || 'Tanpa Brand';
+      const brandB = brands.find(br => br.id === b.brand_id)?.name || 'Tanpa Brand';
+      
+      const isAEmpty = brandA === 'Tanpa Brand';
+      const isBEmpty = brandB === 'Tanpa Brand';
+      
+      if (isAEmpty && !isBEmpty) return 1;
+      if (!isAEmpty && isBEmpty) return -1;
+      
+      const compBrand = brandA.localeCompare(brandB, undefined, { sensitivity: 'base' });
+      if (compBrand !== 0) return compBrand;
+      
+      const catA = categories.find(c => c.id === a.category_id)?.name || 'Tanpa Kategori';
+      const catB = categories.find(c => c.id === b.category_id)?.name || 'Tanpa Kategori';
+      
+      const isCatAEmpty = catA === 'Tanpa Kategori';
+      const isCatBEmpty = catB === 'Tanpa Kategori';
+      
+      if (isCatAEmpty && !isCatBEmpty) return 1;
+      if (!isCatAEmpty && isCatBEmpty) return -1;
+      
+      const compCat = catA.localeCompare(catB, undefined, { sensitivity: 'base' });
+      if (compCat !== 0) return compCat;
+      
+      return (Number(a.price) || 0) - (Number(b.price) || 0);
+    });
+
+    if (productLayout === 'grid') {
+      return sorted;
+    }
+
+    // Untuk tampilan list, selipkan header brand - kategori
+    const listWithHeaders = [];
+    let lastBrandId = null;
+    let lastCategoryId = null;
+
+    sorted.forEach((product) => {
+      if (product.brand_id !== lastBrandId || product.category_id !== lastCategoryId) {
+        lastBrandId = product.brand_id;
+        lastCategoryId = product.category_id;
+        
+        const brandName = brands.find(br => br.id === product.brand_id)?.name || 'Tanpa Brand';
+        const categoryName = categories.find(c => c.id === product.category_id)?.name || 'Tanpa Kategori';
+        
+        listWithHeaders.push({
+          id: `brand-header-${product.brand_id || 'none'}-${product.category_id || 'none'}`,
+          isHeader: true,
+          brandName: brandName,
+          categoryName: categoryName,
+        });
+      }
+      listWithHeaders.push(product);
+    });
+
+    return listWithHeaders;
+  }, [results, selectedCategoryId, productLayout, brands, categories]);
+
   const loadInitialProducts = async () => {
     try {
       if (!user?.id) return;
@@ -425,8 +500,8 @@ export default function SalesScreen({ navigation, route }) {
       {/* Product List */}
       <View style={styles.resultsSection}>
           <FlatList
-            data={results}
-            key={productLayout} // Force re-render when layout changes
+            data={processedResults}
+            key={`${productLayout}-${selectedCategoryId || 'all'}`} // Force re-render when layout/category changes
             numColumns={productLayout === 'grid' ? 2 : 1}
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
@@ -439,6 +514,15 @@ export default function SalesScreen({ navigation, route }) {
               />
             }
             renderItem={({ item }) => {
+              if (item.isHeader) {
+                return (
+                  <View style={styles.brandHeaderContainer}>
+                    <Ionicons name="pricetag" size={14} color={Colors.white} style={{ marginRight: 6 }} />
+                    <Text style={styles.brandHeaderText}>{`${item.brandName} - ${item.categoryName}`}</Text>
+                  </View>
+                );
+              }
+
               const categoryName = categories.find(c => c.id === item.category_id)?.name;
               const brandName = brands.find(b => b.id === item.brand_id)?.name;
 
@@ -1094,5 +1178,22 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     color: Colors.muted,
     marginBottom: 4,
+  },
+  brandHeaderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primary,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radii.md,
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.xs,
+    width: '100%',
+  },
+  brandHeaderText: {
+    fontSize: FontSize.subtitle,
+    fontWeight: FontWeight.bold,
+    color: Colors.white,
+    letterSpacing: 0.5,
   },
 });
