@@ -355,22 +355,26 @@ export default function AdminListScreen({ navigation }) {
         </View>
       </View>
       )}
-      <FlatList
-        data={products}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={products.length === 0 ? styles.emptyContainer : styles.listContainer}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyContent}>
-            <Ionicons name="cube-outline" size={40} color={Colors.muted} />
-            <Text style={styles.emptyTitle}>Belum ada produk publik</Text>
-            <Text style={styles.emptySubtitle}>Tambahkan produk untuk ditampilkan di halaman publik.</Text>
-          </View>
-        }
-      />
+      <View style={{ flex: 1 }}>
+        <FlatList
+          data={products}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          initialNumToRender={100}
+          windowSize={100}
+          contentContainerStyle={products.length === 0 ? styles.emptyContainer : styles.listContainer}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContent}>
+              <Ionicons name="cube-outline" size={40} color={Colors.muted} />
+              <Text style={styles.emptyTitle}>Belum ada produk publik</Text>
+              <Text style={styles.emptySubtitle}>Tambahkan produk untuk ditampilkan di halaman publik.</Text>
+            </View>
+          }
+        />
+      </View>
       <ConfirmModal
         visible={confirmModal.visible}
         title="Hapus Produk Publik"

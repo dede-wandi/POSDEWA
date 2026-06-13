@@ -382,24 +382,28 @@ export default function PublicListScreen({ navigation }) {
           </View>
         </View>
       )}
-      <FlatList
-        data={products}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        numColumns={2}
-        contentContainerStyle={products.length === 0 ? styles.emptyContainer : styles.listContainer}
-        columnWrapperStyle={styles.columnWrapper}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyContent}>
-            <Ionicons name="cube-outline" size={40} color={Colors.muted} />
-            <Text style={styles.emptyTitle}>Belum ada produk</Text>
-            <Text style={styles.emptySubtitle}>Produk akan muncul di sini jika sudah diaktifkan oleh admin.</Text>
-          </View>
-        }
-      />
+      <View style={{ flex: 1 }}>
+        <FlatList
+          data={products}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          initialNumToRender={100}
+          windowSize={100}
+          numColumns={2}
+          contentContainerStyle={products.length === 0 ? styles.emptyContainer : styles.listContainer}
+          columnWrapperStyle={styles.columnWrapper}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContent}>
+              <Ionicons name="cube-outline" size={40} color={Colors.muted} />
+              <Text style={styles.emptyTitle}>Belum ada produk</Text>
+              <Text style={styles.emptySubtitle}>Produk akan muncul di sini jika sudah diaktifkan oleh admin.</Text>
+            </View>
+          }
+        />
+      </View>
     </SafeAreaView>
   );
 }

@@ -438,211 +438,215 @@ export default function ListScreen({ navigation, route }) {
       )}
 
       {/* Products List */}
-      <FlatList
-        data={filteredProducts}
-        key={`${isGrid ? 'GRID' : 'LIST'}-${selectedCategory || 'all'}`}
-        numColumns={isGrid ? 2 : 1}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContainer}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[Colors.primary]}
-            tintColor={Colors.primary}
-          />
-        }
-        renderItem={({ item }) => {
-          try {
-            if (item.isHeader) {
+      <View style={{ flex: 1 }}>
+        <FlatList
+          data={filteredProducts}
+          key={`${isGrid ? 'GRID' : 'LIST'}-${selectedCategory || 'all'}`}
+          numColumns={isGrid ? 2 : 1}
+          keyExtractor={(item) => item.id}
+          initialNumToRender={100}
+          windowSize={100}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[Colors.primary]}
+              tintColor={Colors.primary}
+            />
+          }
+          renderItem={({ item }) => {
+            try {
+              if (item.isHeader) {
+                return (
+                  <View style={styles.brandHeaderContainer}>
+                    <Ionicons name="pricetag" size={16} color={Colors.white} style={{ marginRight: 8 }} />
+                    <Text style={styles.brandHeaderText}>{`${item.brandName} - ${item.categoryName}`}</Text>
+                  </View>
+                );
+              }
+  
+              const margin = Number(item.price || 0) - Number(item.costPrice || item.cost_price || 0);
+              const marginPercentage = item.price ? ((margin / item.price) * 100).toFixed(1) : 0;
+              const categoryName = categories.find(c => c.id === item.category_id)?.name;
+              const brandName = brands.find(b => b.id === item.brand_id)?.name;
+            
+            const stock = Number(item.stock) || 0;
+            let stockBadgeStyle = styles.stockBadgeNormal;
+            let stockTextStyle = styles.stockTextNormal;
+            let stockLabel = `Stok: ${stock}`;
+  
+            if (stock <= 0) {
+              stockBadgeStyle = styles.stockBadgeHabis;
+              stockTextStyle = styles.stockTextHabis;
+              stockLabel = 'Habis';
+            } else if (stock <= 5) {
+              stockBadgeStyle = styles.stockBadgeSedikit;
+              stockTextStyle = styles.stockTextSedikit;
+              stockLabel = `Stok: ${stock}`;
+            }
+  
+            const isPulsing = stock <= 5;
+            const CardComponent = isPulsing ? PulsingCard : TouchableOpacity;
+            const pulseType = stock <= 0 ? 'danger' : 'warning';
+            const isInvalid = isFormatInvalid(item.name);
+  
+            if (isGrid) {
               return (
-                <View style={styles.brandHeaderContainer}>
-                  <Ionicons name="pricetag" size={16} color={Colors.white} style={{ marginRight: 8 }} />
-                  <Text style={styles.brandHeaderText}>{`${item.brandName} - ${item.categoryName}`}</Text>
-                </View>
+                <CardComponent 
+                  onPress={() => navigation.navigate('FormProduk', { id: item.id })} 
+                  style={styles.productCardGrid}
+                  type={pulseType}
+                >
+                  {item.image_urls && item.image_urls.length > 0 && item.image_urls[0] ? (
+                    <Image source={{ uri: item.image_urls[0] }} style={styles.productImageGrid} resizeMode="contain" />
+                  ) : (
+                    <View style={[styles.productImageGrid, { backgroundColor: '#f9fafb', alignItems: 'center', justifyContent: 'center' }]}>
+                      <Ionicons name="image-outline" size={24} color="#ccc" />
+                    </View>
+                  )}
+                  <View style={styles.productInfoGrid}>
+                    <Text style={[styles.productNameGrid, isInvalid && styles.productNameInvalid]} numberOfLines={2}>
+                      {isInvalid ? '⚠️ ' : ''}{item.name}
+                    </Text>
+                    
+                    {isInvalid && (
+                      <Text style={styles.formatWarningText} numberOfLines={1}>
+                        Format: 15GB 28HARI Brand
+                      </Text>
+                    )}
+                    
+                    {!selectedCategory && (categoryName || brandName) && (
+                      <Text style={styles.productCategoryGrid} numberOfLines={1}>
+                         {[categoryName, brandName].filter(Boolean).join(' • ')}
+                      </Text>
+                    )}
+                    
+                    {/* Price & Stock Row */}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+                      <Text style={styles.productPriceGrid}>{formatIDR(item.price)}</Text>
+                      <View style={stockBadgeStyle}>
+                        <Text style={stockTextStyle}>{stockLabel}</Text>
+                      </View>
+                    </View>
+  
+                    <View style={styles.cardDivider} />
+                    
+                    {/* Cost & Profit Info */}
+                    <View style={{ flexDirection: 'column', gap: 2 }}>
+                      <Text style={styles.marginCostText}>Modal: {formatIDR(item.costPrice ?? item.cost_price ?? 0)}</Text>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={styles.marginProfitText}>Laba: {formatIDR(margin)}</Text>
+                        <Text style={[styles.marginProfitText, { fontSize: 9, color: Colors.success, fontWeight: '700' }]}>
+                          ({marginPercentage}%)
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </CardComponent>
               );
             }
-
-            const margin = Number(item.price || 0) - Number(item.costPrice || item.cost_price || 0);
-            const marginPercentage = item.price ? ((margin / item.price) * 100).toFixed(1) : 0;
-            const categoryName = categories.find(c => c.id === item.category_id)?.name;
-            const brandName = brands.find(b => b.id === item.brand_id)?.name;
-          
-          const stock = Number(item.stock) || 0;
-          let stockBadgeStyle = styles.stockBadgeNormal;
-          let stockTextStyle = styles.stockTextNormal;
-          let stockLabel = `Stok: ${stock}`;
-
-          if (stock <= 0) {
-            stockBadgeStyle = styles.stockBadgeHabis;
-            stockTextStyle = styles.stockTextHabis;
-            stockLabel = 'Habis';
-          } else if (stock <= 5) {
-            stockBadgeStyle = styles.stockBadgeSedikit;
-            stockTextStyle = styles.stockTextSedikit;
-            stockLabel = `Stok: ${stock}`;
-          }
-
-          const isPulsing = stock <= 5;
-          const CardComponent = isPulsing ? PulsingCard : TouchableOpacity;
-          const pulseType = stock <= 0 ? 'danger' : 'warning';
-          const isInvalid = isFormatInvalid(item.name);
-
-          if (isGrid) {
+  
             return (
               <CardComponent 
                 onPress={() => navigation.navigate('FormProduk', { id: item.id })} 
-                style={styles.productCardGrid}
+                style={styles.productCard}
                 type={pulseType}
               >
-                {item.image_urls && item.image_urls.length > 0 && item.image_urls[0] ? (
-                  <Image source={{ uri: item.image_urls[0] }} style={styles.productImageGrid} resizeMode="contain" />
-                ) : (
-                  <View style={[styles.productImageGrid, { backgroundColor: '#f9fafb', alignItems: 'center', justifyContent: 'center' }]}>
-                    <Ionicons name="image-outline" size={24} color="#ccc" />
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Text style={[styles.productName, isInvalid && styles.productNameInvalid]} numberOfLines={1}>
+                      {isInvalid ? '⚠️ ' : ''}{item.name}
+                    </Text>
+                    
+                    {/* Mini Actions */}
+                    <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                        <TouchableOpacity 
+                          onPress={(e) => {
+                            if (e && typeof e.stopPropagation === 'function') {
+                              e.stopPropagation();
+                            }
+                            navigation.navigate('ProductReport', { productId: item.id, productName: item.name });
+                          }}
+                        >
+                           <Ionicons name="analytics-outline" size={16} color={Colors.info} />
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          onPress={(e) => {
+                            if (e && typeof e.stopPropagation === 'function') {
+                              e.stopPropagation();
+                            }
+                            confirmDelete(item.id);
+                          }}
+                        >
+                           <Ionicons name="trash-outline" size={16} color={Colors.danger} />
+                        </TouchableOpacity>
+                    </View>
                   </View>
-                )}
-                <View style={styles.productInfoGrid}>
-                  <Text style={[styles.productNameGrid, isInvalid && styles.productNameInvalid]} numberOfLines={2}>
-                    {isInvalid ? '⚠️ ' : ''}{item.name}
-                  </Text>
-                  
+  
                   {isInvalid && (
-                    <Text style={styles.formatWarningText} numberOfLines={1}>
-                      Format: 15GB 28HARI Brand
+                    <Text style={styles.formatWarningText}>
+                      Format tidak sesuai! Gunakan format: 15GB 28HARI Brand
                     </Text>
                   )}
-                  
+  
                   {!selectedCategory && (categoryName || brandName) && (
-                    <Text style={styles.productCategoryGrid} numberOfLines={1}>
+                    <Text style={styles.productCategoryText} numberOfLines={1}>
                        {[categoryName, brandName].filter(Boolean).join(' • ')}
                     </Text>
                   )}
                   
                   {/* Price & Stock Row */}
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
-                    <Text style={styles.productPriceGrid}>{formatIDR(item.price)}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+                    <Text style={styles.productPriceText}>{formatIDR(item.price)}</Text>
                     <View style={stockBadgeStyle}>
                       <Text style={stockTextStyle}>{stockLabel}</Text>
                     </View>
                   </View>
-
+  
                   <View style={styles.cardDivider} />
-                  
-                  {/* Cost & Profit Info */}
-                  <View style={{ flexDirection: 'column', gap: 2 }}>
-                    <Text style={styles.marginCostText}>Modal: {formatIDR(item.costPrice ?? item.cost_price ?? 0)}</Text>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Text style={styles.marginProfitText}>Laba: {formatIDR(margin)}</Text>
-                      <Text style={[styles.marginProfitText, { fontSize: 9, color: Colors.success, fontWeight: '700' }]}>
-                        ({marginPercentage}%)
-                      </Text>
+  
+                  {/* Cost, Margin & Barcode */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <Text style={styles.marginCostText}>Modal: {formatIDR(item.costPrice ?? item.cost_price ?? 0)}</Text>
+                      <Text style={styles.marginProfitText}>Laba: {formatIDR(margin)} ({marginPercentage}%)</Text>
                     </View>
+                    {item.barcode ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Ionicons name="barcode-outline" size={12} color={Colors.muted} style={{ marginRight: 2 }} />
+                        <Text style={styles.infoText}>{item.barcode}</Text>
+                      </View>
+                    ) : null}
                   </View>
                 </View>
               </CardComponent>
             );
-          }
-
-          return (
-            <CardComponent 
-              onPress={() => navigation.navigate('FormProduk', { id: item.id })} 
-              style={styles.productCard}
-              type={pulseType}
-            >
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <Text style={[styles.productName, isInvalid && styles.productNameInvalid]} numberOfLines={1}>
-                    {isInvalid ? '⚠️ ' : ''}{item.name}
-                  </Text>
-                  
-                  {/* Mini Actions */}
-                  <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-                      <TouchableOpacity 
-                        onPress={(e) => {
-                          if (e && typeof e.stopPropagation === 'function') {
-                            e.stopPropagation();
-                          }
-                          navigation.navigate('ProductReport', { productId: item.id, productName: item.name });
-                        }}
-                      >
-                         <Ionicons name="analytics-outline" size={16} color={Colors.info} />
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        onPress={(e) => {
-                          if (e && typeof e.stopPropagation === 'function') {
-                            e.stopPropagation();
-                          }
-                          confirmDelete(item.id);
-                        }}
-                      >
-                         <Ionicons name="trash-outline" size={16} color={Colors.danger} />
-                      </TouchableOpacity>
-                  </View>
+            } catch (e) {
+              return (
+                <View style={{ padding: Spacing.md, backgroundColor: '#FFF0F0', marginBottom: Spacing.sm, borderRadius: Radii.md, borderWidth: 1, borderColor: 'red' }}>
+                  <Text style={{ color: 'red', fontWeight: 'bold' }}>Error rendering item: {item.name || 'Header'}</Text>
+                  <Text style={{ color: 'red', fontSize: 11 }}>{e.message}</Text>
                 </View>
-
-                {isInvalid && (
-                  <Text style={styles.formatWarningText}>
-                    Format tidak sesuai! Gunakan format: 15GB 28HARI Brand
-                  </Text>
-                )}
-
-                {!selectedCategory && (categoryName || brandName) && (
-                  <Text style={styles.productCategoryText} numberOfLines={1}>
-                     {[categoryName, brandName].filter(Boolean).join(' • ')}
-                  </Text>
-                )}
-                
-                {/* Price & Stock Row */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-                  <Text style={styles.productPriceText}>{formatIDR(item.price)}</Text>
-                  <View style={stockBadgeStyle}>
-                    <Text style={stockTextStyle}>{stockLabel}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.cardDivider} />
-
-                {/* Cost, Margin & Barcode */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <Text style={styles.marginCostText}>Modal: {formatIDR(item.costPrice ?? item.cost_price ?? 0)}</Text>
-                    <Text style={styles.marginProfitText}>Laba: {formatIDR(margin)} ({marginPercentage}%)</Text>
-                  </View>
-                  {item.barcode ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Ionicons name="barcode-outline" size={12} color={Colors.muted} style={{ marginRight: 2 }} />
-                      <Text style={styles.infoText}>{item.barcode}</Text>
-                    </View>
-                  ) : null}
-                </View>
-              </View>
-            </CardComponent>
-          );
-          } catch (e) {
-            return (
-              <View style={{ padding: Spacing.md, backgroundColor: '#FFF0F0', marginBottom: Spacing.sm, borderRadius: Radii.md, borderWidth: 1, borderColor: 'red' }}>
-                <Text style={{ color: 'red', fontWeight: 'bold' }}>Error rendering item: {item.name || 'Header'}</Text>
-                <Text style={{ color: 'red', fontSize: 11 }}>{e.message}</Text>
-              </View>
-            );
-          }
-        }}
-        ListEmptyComponent={() => (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="cube" size={48} color={Colors.muted} style={styles.emptyIcon} />
-            <Text style={styles.emptyTitle}>Belum ada produk</Text>
-            <Text style={styles.emptySubtitle}>Tambah produk pertama Anda untuk memulai</Text>
-            <TouchableOpacity 
-              style={styles.emptyButton}
-              onPress={() => navigation.navigate('FormProduk')}
-            >
-              <Text style={styles.emptyButtonText}>+ Tambah Produk</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      />
+              );
+            }
+          }}
+          ListEmptyComponent={() => (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="cube" size={48} color={Colors.muted} style={styles.emptyIcon} />
+              <Text style={styles.emptyTitle}>Belum ada produk</Text>
+              <Text style={styles.emptySubtitle}>Tambah produk pertama Anda untuk memulai</Text>
+              <TouchableOpacity 
+                style={styles.emptyButton}
+                onPress={() => navigation.navigate('FormProduk')}
+              >
+                <Text style={styles.emptyButtonText}>+ Tambah Produk</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        />
+      </View>
       <ConfirmModal
         visible={confirmModal.visible}
         title="Hapus Produk"
