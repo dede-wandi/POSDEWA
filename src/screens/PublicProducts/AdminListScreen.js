@@ -60,6 +60,7 @@ export default function AdminListScreen({ navigation }) {
   };
 
   useEffect(() => {
+    load();
     const unsubscribe = navigation.addListener('focus', () => {
       load();
     });

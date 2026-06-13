@@ -162,6 +162,7 @@ export default function ListScreen({ navigation, route }) {
   };
 
   useEffect(() => {
+    load();
     const unsub = navigation.addListener('focus', load);
     return unsub;
   }, [navigation, user]);
