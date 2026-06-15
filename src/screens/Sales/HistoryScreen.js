@@ -20,7 +20,7 @@ import { Calendar } from 'react-native-calendars';
 import { formatIDR } from '../../utils/currency';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
-import { getSalesHistory, getSaleById, deleteSale } from '../../services/salesSupabase';
+import { getSalesHistory, getSalesHistoryByRange, searchAllSalesHistory, getSaleById, deleteSale } from '../../services/salesSupabase';
 import { printInvoiceToPDF, shareInvoicePDF, printToSelectedPrinter, printToBluetoothPrinter } from '../../utils/invoicePrint';
 
 export default function HistoryScreen({ navigation }) {
@@ -50,9 +50,72 @@ export default function HistoryScreen({ navigation }) {
     endDate: null
   });
 
+  // Periods that need full date-range fetch (no client-side limit)
+  const RANGE_PERIODS = ['year', 'month', 'week', 'custom'];
+
+  // Calculate date range boundaries for a given period
+  const getDateRangeForPeriod = (period, customRange) => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    switch (period) {
+      case 'today': {
+        const start = new Date(today);
+        const end = new Date(today);
+        end.setDate(end.getDate() + 1);
+        return { start, end };
+      }
+      case 'yesterday': {
+        const start = new Date(today);
+        start.setDate(start.getDate() - 1);
+        const end = new Date(today);
+        return { start, end };
+      }
+      case 'week': {
+        const start = new Date(today);
+        start.setDate(start.getDate() - 7);
+        const end = new Date(today);
+        end.setDate(end.getDate() + 1);
+        return { start, end };
+      }
+      case 'month': {
+        const start = new Date(today);
+        start.setMonth(start.getMonth() - 1);
+        const end = new Date(today);
+        end.setDate(end.getDate() + 1);
+        return { start, end };
+      }
+      case 'year': {
+        const start = new Date(today);
+        start.setFullYear(start.getFullYear() - 1);
+        const end = new Date(today);
+        end.setDate(end.getDate() + 1);
+        return { start, end };
+      }
+      case 'custom': {
+        if (customRange && customRange.startDate && customRange.endDate) {
+          const start = new Date(customRange.startDate);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date(customRange.endDate);
+          end.setHours(23, 59, 59, 999);
+          return { start, end };
+        }
+        return null;
+      }
+      default:
+        return null;
+    }
+  };
+
   useEffect(() => {
     loadSalesHistory();
   }, []);
+
+  // Reload from Supabase when switching to range-based periods
+  useEffect(() => {
+    if (RANGE_PERIODS.includes(filterPeriod)) {
+      loadSalesByPeriod(filterPeriod);
+    }
+  }, [filterPeriod, customDateRange]);
 
   const performDeleteSale = async () => {
     const { id } = confirmDeleteSale;
@@ -62,7 +125,12 @@ export default function HistoryScreen({ navigation }) {
       if (result.success) {
         showToast('Transaksi berhasil dihapus', 'success');
         setShowDetailModal(false);
-        loadSalesHistory();
+        // Reload data that is appropriate for current period
+        if (RANGE_PERIODS.includes(filterPeriod)) {
+          loadSalesByPeriod(filterPeriod);
+        } else {
+          loadSalesHistory();
+        }
       } else {
         showToast(result.error || 'Gagal menghapus transaksi', 'error');
       }
@@ -75,6 +143,7 @@ export default function HistoryScreen({ navigation }) {
     filterSales();
   }, [sales, searchQuery, filterPeriod, customDateRange]);
 
+  // Load recent sales (limit 500) – used for short periods (today, yesterday, all)
   const loadSalesHistory = async () => {
     setLoading(true);
     try {
@@ -87,11 +156,53 @@ export default function HistoryScreen({ navigation }) {
     }
   };
 
+  // Load sales for a wide date range – bypasses the 500-row limit
+  const loadSalesByPeriod = async (period) => {
+    const range = getDateRangeForPeriod(period, customDateRange);
+    if (!range) return;
+    setLoading(true);
+    try {
+      const result = await getSalesHistoryByRange(
+        user?.id,
+        range.start.toISOString(),
+        range.end.toISOString()
+      );
+      setSales(result || []);
+    } catch (error) {
+      showToast('Gagal memuat riwayat penjualan', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadSalesHistory();
+    if (RANGE_PERIODS.includes(filterPeriod)) {
+      await loadSalesByPeriod(filterPeriod);
+    } else {
+      await loadSalesHistory();
+    }
     setRefreshing(false);
   };
+
+  // Auto-load ALL data (with pagination) when user starts searching
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      // When searching, paginate through ALL sales — bypass 1000-row Supabase limit
+      setLoading(true);
+      searchAllSalesHistory(user?.id)
+        .then(result => setSales(result || []))
+        .catch(() => showToast('Gagal memuat data pencarian', 'error'))
+        .finally(() => setLoading(false));
+    } else {
+      // When clearing search, reload based on current period
+      if (RANGE_PERIODS.includes(filterPeriod)) {
+        loadSalesByPeriod(filterPeriod);
+      } else {
+        loadSalesHistory();
+      }
+    }
+  }, [searchQuery]);
 
   const filterSales = () => {
     let filtered = [...sales];
@@ -107,6 +218,23 @@ export default function HistoryScreen({ navigation }) {
         );
         return matchInvoice || matchItems;
       });
+    }
+
+    // Skip period filter when actively searching — show results across all time
+    if (searchQuery.trim()) {
+      filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      setFilteredSales(filtered);
+      const itemMap = {};
+      filtered.forEach(sale => {
+        (sale.items || []).forEach(it => {
+          const key = it.product_name;
+          if (!itemMap[key]) itemMap[key] = { name: it.product_name, totalQty: 0, transactionCount: 0 };
+          itemMap[key].totalQty += Number(it.qty) || 0;
+          itemMap[key].transactionCount += 1;
+        });
+      });
+      setTopItems(Object.values(itemMap).sort((a, b) => b.totalQty - a.totalQty).slice(0, 5));
+      return;
     }
 
     // Filter by period
@@ -510,7 +638,7 @@ export default function HistoryScreen({ navigation }) {
         <View style={styles.searchContainer}>
           <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
-            placeholder="Cari nomor invoice atau ID transaksi..."
+            placeholder="Cari invoice, nama produk (misal: TWS, Aqua)..."
             value={searchQuery}
             onChangeText={setSearchQuery}
             style={styles.searchInput}
@@ -523,6 +651,7 @@ export default function HistoryScreen({ navigation }) {
       <View style={styles.filterSection}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.filterContainer}>
+            {renderFilterButton('all', 'Semua')}
             {renderFilterButton('today', 'Hari Ini')}
             {renderFilterButton('yesterday', 'Kemarin')}
             {renderFilterButton('week', 'Minggu Ini')}

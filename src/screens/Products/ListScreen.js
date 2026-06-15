@@ -577,6 +577,16 @@ export default function ListScreen({ navigation, route }) {
                             if (e && typeof e.stopPropagation === 'function') {
                               e.stopPropagation();
                             }
+                            navigation.navigate('ProductChangeLog', { productId: item.id, productName: item.name });
+                          }}
+                        >
+                           <Ionicons name="time-outline" size={16} color="#8E44AD" />
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          onPress={(e) => {
+                            if (e && typeof e.stopPropagation === 'function') {
+                              e.stopPropagation();
+                            }
                             confirmDelete(item.id);
                           }}
                         >

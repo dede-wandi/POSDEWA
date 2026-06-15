@@ -433,6 +433,13 @@ export async function updateProduct(userId, id, payload) {
     if (payload.category_id !== undefined) patch.category_id = payload.category_id;
     if (payload.brand_id !== undefined) patch.brand_id = payload.brand_id;
 
+    // Sertakan alasan perubahan agar trigger product_change_log mencatatnya dengan benar
+    // Nilai: 'edit_manual' | 'penjualan' | 'restock' | 'koreksi' | 'import'
+    if (payload.changeReason != null) {
+      patch.last_change_reason = String(payload.changeReason);
+    } else {
+      patch.last_change_reason = 'edit_manual';
+    }
 
     const { data, error } = await supabase
       .from('products')
@@ -447,6 +454,7 @@ export async function updateProduct(userId, id, payload) {
     return { data: null, error: error.message };
   }
 }
+
 
 export async function deleteProduct(userId, id) {
   const supabase = getSupabaseClient();

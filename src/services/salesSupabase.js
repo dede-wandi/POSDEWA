@@ -56,6 +56,76 @@ export const getSalesHistory = async (userId) => {
 };
 
 // Get sales history filtered by date range — untuk Report agar tidak kena limit default Supabase
+// Search ALL sales with full pagination (bypasses Supabase 1000-row default limit)
+// Use this for product/invoice search across all time
+export const searchAllSalesHistory = async (userId) => {
+  try {
+    const supabase = getSupabaseClient();
+    let allSales = [];
+    let page = 0;
+    const pageSize = 1000;
+    let keepFetching = true;
+
+    while (keepFetching) {
+      const { data, error } = await supabase
+        .from('sales')
+        .select(`
+          id,
+          no_invoice,
+          total,
+          profit,
+          payment_method,
+          payment_channel_id,
+          cash_amount,
+          change_amount,
+          customer_name,
+          notes,
+          created_at,
+          sale_items (
+            id,
+            product_name,
+            barcode,
+            price,
+            qty,
+            line_total,
+            cost_price,
+            line_profit
+          ),
+          payment_channels (
+            id,
+            name,
+            type
+          )
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        keepFetching = false;
+      } else {
+        const transformed = data.map(sale => ({
+          ...sale,
+          items: sale.sale_items || [],
+          payment_channel: sale.payment_channels
+        }));
+        allSales = [...allSales, ...transformed];
+        if (data.length < pageSize) {
+          keepFetching = false;
+        } else {
+          page++;
+        }
+      }
+    }
+
+    return allSales;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const getSalesHistoryByRange = async (userId, startDate, endDate) => {
   try {
     const supabase = getSupabaseClient();

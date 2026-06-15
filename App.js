@@ -12,6 +12,7 @@ import * as Linking from 'expo-linking';
 import ListScreen from './src/screens/Products/ListScreen';
 import FormScreen from './src/screens/Products/FormScreen';
 import ProductReportScreen from './src/screens/ProductReportScreen';
+import ProductChangeLogScreen from './src/screens/Products/ProductChangeLogScreen';
 import PublicProductsAdminListScreen from './src/screens/PublicProducts/AdminListScreen';
 import PublicProductsAdminFormScreen from './src/screens/PublicProducts/AdminFormScreen';
 import PublicProductsPublicListScreen from './src/screens/PublicProducts/PublicListScreen';
@@ -61,6 +62,7 @@ function ProductsStack() {
       <Stack.Screen name="DaftarProduk" component={ListScreen} options={{ headerShown: false }} />
       <Stack.Screen name="FormProduk" component={FormScreen} options={{ title: 'From Produk' }} />
       <Stack.Screen name="ProductReport" component={ProductReportScreen} options={{ title: 'Report Produk' }} />
+      <Stack.Screen name="ProductChangeLog" component={ProductChangeLogScreen} options={{ headerShown: false }} />
       <Stack.Screen 
         name="PublicProductsAdmin" 
         component={PublicProductsAdminListScreen} 
@@ -394,6 +396,7 @@ function AppNavigator() {
                 PublicProductForm: 'produk-publik-admin/form',
                 ProductReport: 'produk/report/:id?',
                 FormProduk: 'produk/form/:id?',
+                ProductChangeLog: 'produk/log',
               },
             },
             Penjualan: 'penjualan',
