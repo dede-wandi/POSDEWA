@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import ConfirmModal from '../../components/ConfirmModal';
-import { View, Text, TextInput, FlatList, TouchableOpacity, Alert, StyleSheet, Dimensions, RefreshControl, Image, ScrollView, Animated, Platform } from 'react-native';
+import { View, Text, TextInput, FlatList, TouchableOpacity, Alert, StyleSheet, Dimensions, RefreshControl, Image, ScrollView, Animated, Platform, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getProducts, deleteProduct, findProducts, getCategories, getBrands } from '../../services/products';
 import { useAuth } from '../../context/AuthContext';
@@ -85,6 +85,9 @@ export default function ListScreen({ navigation, route }) {
   const [query, setQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [isGrid, setIsGrid] = useState(false);
+
+  const { width } = useWindowDimensions();
+  const gridColumns = width >= 1024 ? 4 : (width >= 768 ? 3 : (width >= 600 ? 3 : 2));
 
   // Confirm Modal state
   const [confirmModal, setConfirmModal] = useState({ visible: false, id: null, name: '' });
@@ -441,8 +444,8 @@ export default function ListScreen({ navigation, route }) {
       <View style={{ flex: 1 }}>
         <FlatList
           data={filteredProducts}
-          key={`${isGrid ? 'GRID' : 'LIST'}-${selectedCategory || 'all'}`}
-          numColumns={isGrid ? 2 : 1}
+          key={`${isGrid ? 'GRID' : 'LIST'}-${selectedCategory || 'all'}-${gridColumns}`}
+          numColumns={isGrid ? gridColumns : 1}
           keyExtractor={(item) => item.id}
           initialNumToRender={100}
           windowSize={100}

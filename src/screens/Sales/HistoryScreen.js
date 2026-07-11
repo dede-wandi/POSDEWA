@@ -676,27 +676,7 @@ export default function HistoryScreen({ navigation }) {
             tintColor="#007AFF"
           />
         }
-        ListHeaderComponent={() => (
-          topItems.length > 0 ? (
-            <View style={[styles.saleCard, { marginHorizontal: 0, marginTop: 0 }]}>
-              <Text style={styles.sectionTitle}>Insight Performa</Text>
-              {topItems.slice(0, showAllTopItems ? 5 : 3).map((it, idx) => (
-                <View key={`${it.name}-${idx}`} style={styles.insightItemRow}>
-                  <View style={{ flex: 1, marginRight: 10 }}>
-                    <Text style={styles.insightItemName}>{it.name}</Text>
-                    <Text style={styles.insightItemInfo}>{it.totalQty}x dibeli • {it.transactionCount} transaksi</Text>
-                  </View>
-                  <Ionicons name="trending-up" size={20} color="#28a745" />
-                </View>
-              ))}
-              {topItems.length > 3 && (
-                <TouchableOpacity style={[styles.insightMoreButton, { marginTop: 8 }]} onPress={() => setShowAllTopItems(prev => !prev)}>
-                  <Text style={styles.insightMoreText}>{showAllTopItems ? 'Hide' : 'More+'}</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          ) : null
-        )}
+
         ListEmptyComponent={() => (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>📋</Text>
@@ -730,85 +710,85 @@ export default function HistoryScreen({ navigation }) {
           </View>
 
           {selectedSale && (
-            <ScrollView style={styles.modalContent}>
-              <View style={styles.detailSection}>
-                <Text style={styles.detailLabel}>No. Invoice:</Text>
-                <Text style={styles.detailValue}>{selectedSale.no_invoice || selectedSale.id}</Text>
-              </View>
+            <ScrollView style={[styles.modalContent, { backgroundColor: '#f5f5f5' }]}>
+              <View style={styles.receiptContainer}>
+                <View style={styles.receiptHeader}>
+                  <Text style={styles.receiptStoreName}>{user?.user_metadata?.business_name || 'Toko Saya'}</Text>
+                  <Text style={styles.receiptInvoice}>{selectedSale.no_invoice || selectedSale.id}</Text>
+                  <Text style={styles.receiptDate}>{formatDate(selectedSale.created_at)}</Text>
+                </View>
 
-              <View style={styles.detailSection}>
-                <Text style={styles.detailLabel}>Tanggal:</Text>
-                <Text style={styles.detailValue}>{formatDate(selectedSale.created_at)}</Text>
-              </View>
+                {/* Items */}
+                <View style={{ marginBottom: 10 }}>
+                  {selectedSale.items?.map((item, index) => (
+                    <View key={index} style={{ marginBottom: 12 }}>
+                      <Text style={styles.receiptItemName}>{item.product_name}</Text>
+                      <View style={styles.receiptRow}>
+                        <Text style={styles.receiptText}>{item.qty} x {formatIDR(item.price)}</Text>
+                        <Text style={styles.receiptText}>{formatIDR(item.line_total)}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
 
-              <View style={styles.detailSection}>
-                <Text style={styles.detailLabel}>Metode Pembayaran:</Text>
-                <Text style={styles.detailValue}>
-                  {selectedSale.payment_method === 'cash' ? '💵 Tunai' : 
-                   selectedSale.payment_method === 'digital' ? '💳 Digital' : 
-                   selectedSale.payment_method === 'bank' ? '🏦 Transfer Bank' : 
-                   '💵 Tunai'}
-                </Text>
-              </View>
+                <View style={styles.receiptDivider} />
 
-              {selectedSale.payment_method === 'cash' && (
-                <>
-                  <View style={styles.detailSection}>
-                    <Text style={styles.detailLabel}>Uang Diterima:</Text>
-                    <Text style={styles.detailValue}>{formatIDR(selectedSale.cash_amount || selectedSale.total)}</Text>
+                {/* Totals */}
+                <View style={styles.receiptRow}>
+                  <Text style={[styles.receiptText, { fontWeight: 'bold' }]}>Total Belanja</Text>
+                  <Text style={[styles.receiptText, { fontWeight: 'bold' }]}>{formatIDR(selectedSale.total)}</Text>
+                </View>
+
+                <View style={styles.receiptDivider} />
+
+                {/* Payment Info */}
+
+
+                {selectedSale.payment_method === 'cash' && (
+                  <>
+                    <View style={styles.receiptRow}>
+                      <Text style={styles.receiptText}>Tunai</Text>
+                      <Text style={styles.receiptText}>{formatIDR(selectedSale.cash_amount || selectedSale.total)}</Text>
+                    </View>
+                    <View style={styles.receiptRow}>
+                      <Text style={styles.receiptText}>Kembali</Text>
+                      <Text style={styles.receiptText}>{formatIDR(selectedSale.change_amount || 0)}</Text>
+                    </View>
+                  </>
+                )}
+
+                {selectedSale.payment_method !== 'cash' && selectedSale.change_amount > 0 && (
+                  <View style={styles.receiptRow}>
+                    <Text style={styles.receiptText}>Kembali</Text>
+                    <Text style={styles.receiptText}>{formatIDR(selectedSale.change_amount)}</Text>
                   </View>
-                  <View style={styles.detailSection}>
-                    <Text style={styles.detailLabel}>Kembalian:</Text>
-                    <Text style={styles.detailValue}>{formatIDR(selectedSale.change_amount || 0)}</Text>
+                )}
+
+                {selectedSale.customer_name && (
+                  <View style={styles.receiptRow}>
+                    <Text style={styles.receiptText}>Pelanggan</Text>
+                    <Text style={styles.receiptText}>{selectedSale.customer_name}</Text>
                   </View>
-                </>
-              )}
+                )}
+                
+                {selectedSale.payment_channel && (
+                  <View style={styles.receiptRow}>
+                    <Text style={styles.receiptText}>Channel</Text>
+                    <Text style={styles.receiptText}>{selectedSale.payment_channel.name}</Text>
+                  </View>
+                )}
 
-              {/* Show change amount for non-cash payments if exists */}
-              {selectedSale.payment_method !== 'cash' && selectedSale.change_amount > 0 && (
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailLabel}>Kembalian:</Text>
-                  <Text style={styles.detailValue}>{formatIDR(selectedSale.change_amount)}</Text>
-                </View>
-              )}
-
-              {selectedSale.customer_name && (
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailLabel}>Nama Pelanggan:</Text>
-                  <Text style={styles.detailValue}>{selectedSale.customer_name}</Text>
-                </View>
-              )}
-
-              {selectedSale.payment_channel && (
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailLabel}>Channel Pembayaran:</Text>
-                  <Text style={styles.detailValue}>{selectedSale.payment_channel.name}</Text>
-                </View>
-              )}
-
-              {selectedSale.notes && (
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailLabel}>Catatan:</Text>
-                  <Text style={styles.detailValue}>{selectedSale.notes}</Text>
-                </View>
-              )}
-
-              <View style={[styles.detailSection, { flexDirection: 'column', alignItems: 'flex-start' }]}>
-                <Text style={[styles.detailLabel, { marginBottom: 8 }]}>Items:</Text>
-                {selectedSale.items?.map((item, index) => (
-                  <View key={index} style={styles.itemDetail}>
-                    <Text style={styles.itemName}>{item.product_name}</Text>
-                    <Text style={styles.itemInfo}>
-                      {item.qty} × {formatIDR(item.price)} = {formatIDR(item.line_total)}
+                {selectedSale.notes && (
+                  <View style={{ marginTop: 10 }}>
+                    <Text style={[styles.receiptText, { fontStyle: 'italic', textAlign: 'center' }]}>
+                      Catatan: {selectedSale.notes}
                     </Text>
                   </View>
-                ))}
-              </View>
+                )}
 
-              <View style={styles.totalSection}>
-                <View style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>Total:</Text>
-                  <Text style={styles.totalValue}>{formatIDR(selectedSale.total)}</Text>
+                <View style={{ marginTop: 20, alignItems: 'center' }}>
+                  <Text style={[styles.receiptText, { fontSize: 12, textAlign: 'center' }]}>Terima Kasih</Text>
+                  <Text style={[styles.receiptText, { fontSize: 12, textAlign: 'center' }]}>Selamat Berbelanja Kembali</Text>
                 </View>
               </View>
 
@@ -971,8 +951,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: FontSize.title,
-    fontWeight: FontWeight.bold,
+    fontSize: 18,
+    fontWeight: 'bold',
     color: Colors.darkText,
     flex: 1,
     textAlign: 'center',
@@ -1336,5 +1316,67 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: FontSize.subtitle,
     fontWeight: FontWeight.semibold,
-  }
+  },
+  receiptContainer: {
+    backgroundColor: '#fff',
+    padding: 20,
+    marginVertical: 10,
+    marginBottom: 20,
+    marginHorizontal: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  receiptHeader: {
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    borderStyle: 'dashed',
+  },
+  receiptStoreName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#000',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  receiptInvoice: {
+    fontSize: 12,
+    color: '#666',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    marginBottom: 2,
+  },
+  receiptDate: {
+    fontSize: 12,
+    color: '#666',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  receiptDivider: {
+    height: 1,
+    borderBottomWidth: 1,
+    borderColor: '#ddd',
+    borderStyle: 'dashed',
+    marginVertical: 12,
+  },
+  receiptRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  receiptText: {
+    fontSize: 13,
+    color: '#333',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  receiptItemName: {
+    fontSize: 13,
+    color: '#000',
+    fontWeight: 'bold',
+    marginBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
 });

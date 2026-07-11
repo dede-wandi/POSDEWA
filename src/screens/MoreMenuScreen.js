@@ -84,13 +84,7 @@ export default function MoreMenuScreen({ navigation }) {
       bgColor: '#F5F5F5',
       onPress: () => navigation.navigate('Scan'),
     },
-    {
-      label: 'AI Assistant',
-      icon: 'sparkles',
-      iconColor: '#9C27B0',
-      bgColor: '#F3E5F5',
-      onPress: () => navigation.navigate('AIAssistant'),
-    },
+
     {
       label: 'Cek Stok Antigores',
       icon: 'shield-checkmark',

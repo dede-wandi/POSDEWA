@@ -37,7 +37,7 @@ import SalesAnalyticsDashboardScreen from './src/screens/TopSales/SalesAnalytics
 import AnnualProfitReportScreen from './src/screens/AnnualProfitReportScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import MoreMenuScreen from './src/screens/MoreMenuScreen';
-import AIAssistantScreen from './src/screens/AIAssistantScreen';
+
 import StockManagementScreen from './src/screens/StockManagementScreen';
 import SalesAnalyticsScreen from './src/screens/SalesAnalyticsScreen';
 import FinanceScreen from './src/screens/FinanceScreen';
@@ -335,14 +335,7 @@ function MainStack() {
           headerShown: false,
         }}
       />
-      <Stack.Screen 
-        name="AIAssistant" 
-        component={AIAssistantScreen}
-        options={{
-          presentation: 'card',
-          headerShown: false,
-        }}
-      />
+
       <Stack.Screen 
         name="ProfileEdit"  
         component={ProfileEditScreen}
