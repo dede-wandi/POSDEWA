@@ -17,16 +17,35 @@ export default function BarcodeScanScreen({ navigation, route }) {
     if (scanned) return;
     setScanned(true);
     const barcode = String(data);
+    if (route?.params?.onScan) {
+      route.params.onScan(barcode);
+      navigation.goBack();
+      return;
+    }
+
     if (mode === 'pick' && returnTo) {
-      // Navigasi ke screen di navigator bertingkat (Produk Stack)
       if (returnTo === 'DaftarProduk' || returnTo === 'FormProduk' || returnTo === 'ProductReport') {
-        navigation.navigate('Produk', { screen: returnTo, params: { pickedBarcode: barcode, ...returnParams } });
+        navigation.navigate({
+          name: 'MainTabs',
+          params: {
+            screen: 'Produk',
+            params: {
+              screen: returnTo,
+              params: { pickedBarcode: barcode, ...returnParams },
+            }
+          },
+          merge: true,
+        });
       } else {
-        navigation.navigate(returnTo, { pickedBarcode: barcode, ...returnParams });
+        navigation.navigate({
+          name: returnTo,
+          params: { pickedBarcode: barcode, ...returnParams },
+          merge: true,
+        });
       }
     } else {
       // Navigasi ke tab Penjualan dan teruskan param ke screen dalam SalesStack
-      navigation.navigate('Penjualan', { screen: 'Penjualan', params: { scannedBarcode: barcode } });
+      navigation.navigate('MainTabs', { screen: 'Penjualan', params: { screen: 'Penjualan', params: { scannedBarcode: barcode } } });
     }
     setTimeout(() => setScanned(false), 500);
   };

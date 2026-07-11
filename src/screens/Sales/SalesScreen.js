@@ -236,7 +236,14 @@ export default function SalesScreen({ navigation, route }) {
         try {
           const exactMatch = await findByBarcodeExact(user?.id, query.trim());
           if (active && exactMatch) {
-            addToCart(exactMatch);
+            let matchedVariant = null;
+            if (exactMatch.variants && exactMatch.variants.length > 0) {
+              matchedVariant = exactMatch.variants.find(v => {
+                if (!v.barcode) return false;
+                return v.barcode.split(',').map(b => b.trim()).includes(query.trim());
+              });
+            }
+            addToCart(exactMatch, matchedVariant);
             setQuery('');
             setResults([]);
           }
@@ -293,7 +300,14 @@ export default function SalesScreen({ navigation, route }) {
         const exactMatch = await findByBarcodeExact(user?.id, String(scanned).trim());
         if (!active) return;
         if (exactMatch) {
-          addToCart(exactMatch);
+          let matchedVariant = null;
+          if (exactMatch.variants && exactMatch.variants.length > 0) {
+            matchedVariant = exactMatch.variants.find(v => {
+              if (!v.barcode) return false;
+              return v.barcode.split(',').map(b => b.trim()).includes(String(scanned).trim());
+            });
+          }
+          addToCart(exactMatch, matchedVariant);
           setQuery('');
           setResults([]);
         } else {
@@ -319,7 +333,16 @@ export default function SalesScreen({ navigation, route }) {
     );
   };
 
-  const addToCart = (product) => {
+  const addToCart = (product, matchedVariant = null) => {
+    if (matchedVariant) {
+      if (Number(matchedVariant.stock) <= 0) {
+        showToast(`Stok varian ${matchedVariant.name} habis`, 'error');
+        return;
+      }
+      addProductToCart(product, null, matchedVariant);
+      return;
+    }
+
     if (product.stock <= 0 && (!Array.isArray(product.variants) || product.variants.length === 0)) {
       showToast('Stok habis, tidak bisa menambahkan produk', 'error');
       return;

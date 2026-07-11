@@ -23,14 +23,35 @@ export default function BarcodeScanScreen({ navigation, route }) {
           if (!active) return;
           if (result) {
             const data = String(result.getText());
+            if (route?.params?.onScan) {
+              route.params.onScan(data);
+              navigation.goBack();
+              return;
+            }
+
             if (mode === 'pick' && returnTo) {
               if (returnTo === 'DaftarProduk' || returnTo === 'FormProduk' || returnTo === 'ProductReport') {
-                navigation.navigate('Produk', { screen: returnTo, params: { pickedBarcode: data, ...returnParams } });
+                navigation.navigate({
+                  name: 'MainTabs',
+                  params: {
+                    screen: 'Produk',
+                    params: {
+                      screen: returnTo,
+                      params: { pickedBarcode: data, ...returnParams },
+                    }
+                  },
+                  merge: true,
+                });
               } else {
-                navigation.navigate(returnTo, { pickedBarcode: data, ...returnParams });
+                navigation.navigate({
+                  name: returnTo,
+                  params: { pickedBarcode: data, ...returnParams },
+                  merge: true,
+                });
               }
             } else {
-              navigation.navigate('Penjualan', { screen: 'Penjualan', params: { scannedBarcode: data } });
+              // Navigasi ke tab Penjualan dan teruskan param ke screen dalam SalesStack
+              navigation.navigate('MainTabs', { screen: 'Penjualan', params: { screen: 'Penjualan', params: { scannedBarcode: data } } });
             }
           }
         });

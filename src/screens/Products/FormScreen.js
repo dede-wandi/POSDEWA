@@ -35,6 +35,8 @@ export default function FormScreen({ navigation, route }) {
   const [addingBrand, setAddingBrand] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newBrandName, setNewBrandName] = useState('');
+  const [showAllCategories, setShowAllCategories] = useState(false);
+  const [showAllBrands, setShowAllBrands] = useState(false);
 
   // Draft recovery & auto-save states/refs
   const [isDraftRestored, setIsDraftRestored] = useState(false);
@@ -168,7 +170,12 @@ export default function FormScreen({ navigation, route }) {
           if (initialData) {
             initialValuesRef.current = {
               name: initialData.name || '',
-              barcodes: initialData.barcode ? initialData.barcode.split(',') : [''],
+              barcodes: (() => {
+                const allB = initialData.barcode ? initialData.barcode.split(',') : [];
+                const varB = (initialData.variants || []).map(v => v.barcode).filter(Boolean);
+                const mainB = allB.filter(b => !varB.includes(b));
+                return mainB.length > 0 ? mainB : [''];
+              })(),
               price: String(initialData.price || ''),
               costPrice: String(initialData.costPrice ?? initialData.cost_price ?? ''),
               stock: String(initialData.stock || ''),
@@ -202,7 +209,12 @@ export default function FormScreen({ navigation, route }) {
       if (initialData) {
         const vals = {
           name: initialData.name || '',
-          barcodes: initialData.barcode ? initialData.barcode.split(',') : [''],
+          barcodes: (() => {
+            const allB = initialData.barcode ? initialData.barcode.split(',') : [];
+            const varB = (initialData.variants || []).map(v => v.barcode).filter(Boolean);
+            const mainB = allB.filter(b => !varB.includes(b));
+            return mainB.length > 0 ? mainB : [''];
+          })(),
           price: String(initialData.price || ''),
           costPrice: String(initialData.costPrice ?? initialData.cost_price ?? ''),
           stock: String(initialData.stock || ''),
@@ -427,24 +439,33 @@ export default function FormScreen({ navigation, route }) {
     };
   }, []);
 
-  // Tangkap barcode hasil scan dari screen Scan (mode: pick)
-  useEffect(() => {
-    if (route?.params?.pickedBarcode) {
-      const scanned = String(route.params.pickedBarcode).trim();
-      setBarcodes(prev => {
-        // Jika input terakhir kosong, pakai itu. Jika tidak, tambah baru.
-        const last = prev[prev.length - 1];
-        if (!last || last.trim() === '') {
-           const newArr = [...prev];
-           newArr[newArr.length - 1] = scanned;
-           return newArr;
+  const handleScanBarcode = (variantIdx = undefined) => {
+    navigation.navigate('Scan', {
+      mode: 'pick',
+      onScan: (scannedData) => {
+        const scanned = String(scannedData).trim();
+        if (variantIdx !== undefined) {
+          setVariants(prev => {
+            const newVars = [...prev];
+            if (newVars[variantIdx]) {
+              newVars[variantIdx].barcode = scanned;
+            }
+            return newVars;
+          });
+        } else {
+          setBarcodes(prev => {
+            const last = prev[prev.length - 1];
+            if (!last || last.trim() === '') {
+               const newArr = [...prev];
+               newArr[newArr.length - 1] = scanned;
+               return newArr;
+            }
+            return [...prev, scanned];
+          });
         }
-        return [...prev, scanned];
-      });
-      // Bersihkan param agar tidak diproses berulang
-      navigation.setParams({ pickedBarcode: null });
-    }
-  }, [route?.params?.pickedBarcode]);
+      }
+    });
+  };
 
   const save = async () => {
     let finalPrice = Number(price || 0);
@@ -459,9 +480,19 @@ export default function FormScreen({ navigation, route }) {
       finalCostPrice = costPrices.length > 0 ? Math.min(...costPrices) : finalCostPrice;
     }
 
+    const allBarcodes = [...barcodes];
+    if (variants && variants.length > 0) {
+      variants.forEach(v => {
+        if (v.barcode && v.barcode.trim()) {
+          allBarcodes.push(v.barcode.trim());
+        }
+      });
+    }
+    const uniqueBarcodes = [...new Set(allBarcodes.filter(b => b.trim()))];
+
     const payload = {
       name: name.trim(),
-      barcode: barcodes.filter(b => b.trim()).join(','),
+      barcode: uniqueBarcodes.join(','),
       price: finalPrice,
       costPrice: finalCostPrice,
       stock: finalStock,
@@ -520,9 +551,11 @@ export default function FormScreen({ navigation, route }) {
     }
   };
 
-  const renderBrandOptions = () => (
+  const renderBrandOptions = () => {
+    const visibleBrands = showAllBrands ? brands : brands.slice(0, 5);
+    return (
     <View style={styles.chipsRow}>
-      {brands.map((b) => (
+      {visibleBrands.map((b) => (
         <TouchableOpacity
           key={b.id}
           style={[
@@ -541,6 +574,11 @@ export default function FormScreen({ navigation, route }) {
           </Text>
         </TouchableOpacity>
       ))}
+      {!showAllBrands && brands.length > 5 && (
+        <TouchableOpacity style={styles.addChip} onPress={() => setShowAllBrands(true)}>
+          <Text style={styles.addChipText}>More (+{brands.length - 5})</Text>
+        </TouchableOpacity>
+      )}
       <TouchableOpacity style={styles.addChip} onPress={() => setAddingBrand(true)}>
         <Ionicons name="add" size={14} color={Colors.primary} />
         <Text style={styles.addChipText}>Brand</Text>
@@ -565,11 +603,14 @@ export default function FormScreen({ navigation, route }) {
         </View>
       )}
     </View>
-  );
+    );
+  };
 
-  const renderCategoryOptions = () => (
+  const renderCategoryOptions = () => {
+    const visibleCategories = showAllCategories ? categories : categories.slice(0, 5);
+    return (
     <View style={styles.chipsRow}>
-      {categories.map((c) => (
+      {visibleCategories.map((c) => (
         <TouchableOpacity
           key={c.id}
           style={[
@@ -588,6 +629,11 @@ export default function FormScreen({ navigation, route }) {
           </Text>
         </TouchableOpacity>
       ))}
+      {!showAllCategories && categories.length > 5 && (
+        <TouchableOpacity style={styles.addChip} onPress={() => setShowAllCategories(true)}>
+          <Text style={styles.addChipText}>More (+{categories.length - 5})</Text>
+        </TouchableOpacity>
+      )}
       <TouchableOpacity style={styles.addChip} onPress={() => setAddingCategory(true)}>
         <Ionicons name="add" size={14} color={Colors.primary} />
         <Text style={styles.addChipText}>Kategori</Text>
@@ -612,7 +658,8 @@ export default function FormScreen({ navigation, route }) {
         </View>
       )}
     </View>
-  );
+    );
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -688,60 +735,62 @@ export default function FormScreen({ navigation, route }) {
           />
         </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Barcode (Bisa lebih dari satu)</Text>
-          {barcodes.map((code, index) => (
-            <View key={index} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-              <TextInput 
-                value={code} 
-                onChangeText={(text) => {
-                  const newArr = [...barcodes];
-                  newArr[index] = text;
-                  setBarcodes(newArr);
-                }} 
-                placeholder={`Barcode ${index + 1}`} 
-                style={[styles.input, { flex: 1 }]}
-                placeholderTextColor={Colors.muted}
-              />
-              {index === barcodes.length - 1 && (
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('Scan', { mode: 'pick', returnTo: 'FormProduk', returnParams: { id } })}
-                  style={{
-                    marginLeft: 8,
-                    backgroundColor: Colors.primary,
-                    padding: 12,
-                    borderRadius: 10,
-                  }}
-                >
-                  <Ionicons name="scan" size={20} color="#fff" />
-                </TouchableOpacity>
-              )}
-              {barcodes.length > 1 && (
-                <TouchableOpacity
-                  onPress={() => {
-                    const newArr = barcodes.filter((_, i) => i !== index);
+        {(!variants || variants.length === 0) && (
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Barcode (Bisa lebih dari satu)</Text>
+            {barcodes.map((code, index) => (
+              <View key={index} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                <TextInput 
+                  value={code} 
+                  onChangeText={(text) => {
+                    const newArr = [...barcodes];
+                    newArr[index] = text;
                     setBarcodes(newArr);
-                  }}
-                  style={{
-                    marginLeft: 8,
-                    backgroundColor: Colors.error,
-                    padding: 12,
-                    borderRadius: 10,
-                  }}
-                >
-                  <Ionicons name="trash" size={20} color="#fff" />
-                </TouchableOpacity>
-              )}
-            </View>
-          ))}
-          <TouchableOpacity 
-            onPress={() => setBarcodes([...barcodes, ''])}
-            style={{ flexDirection: 'row', alignItems: 'center', marginTop: 5 }}
-          >
-             <Ionicons name="add-circle" size={20} color={Colors.primary} />
-             <Text style={{ color: Colors.primary, marginLeft: 5 }}>Tambah Barcode Lain</Text>
-          </TouchableOpacity>
-        </View>
+                  }} 
+                  placeholder={`Barcode ${index + 1}`} 
+                  style={[styles.input, { flex: 1 }]}
+                  placeholderTextColor={Colors.muted}
+                />
+                {index === barcodes.length - 1 && (
+                  <TouchableOpacity
+                    onPress={() => handleScanBarcode()}
+                    style={{
+                      marginLeft: 8,
+                      backgroundColor: Colors.primary,
+                      padding: 12,
+                      borderRadius: 10,
+                    }}
+                  >
+                    <Ionicons name="scan" size={20} color="#fff" />
+                  </TouchableOpacity>
+                )}
+                {barcodes.length > 1 && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      const newArr = barcodes.filter((_, i) => i !== index);
+                      setBarcodes(newArr);
+                    }}
+                    style={{
+                      marginLeft: 8,
+                      backgroundColor: Colors.error,
+                      padding: 12,
+                      borderRadius: 10,
+                    }}
+                  >
+                    <Ionicons name="trash" size={20} color="#fff" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
+            <TouchableOpacity 
+              onPress={() => setBarcodes([...barcodes, ''])}
+              style={{ flexDirection: 'row', alignItems: 'center', marginTop: 5 }}
+            >
+              <Ionicons name="add-circle" size={20} color={Colors.primary} />
+              <Text style={{ color: Colors.primary, marginLeft: 5 }}>Tambah Barcode Lain</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Brand</Text>
@@ -821,19 +870,48 @@ export default function FormScreen({ navigation, route }) {
                 shadowRadius: 2,
                 elevation: 1,
               }}>
-                <View style={{ marginBottom: 10 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.muted, marginBottom: 4 }}>Nama Varian</Text>
-                  <TextInput
-                    style={[styles.input, { paddingVertical: 8, paddingHorizontal: 10, fontSize: 14 }]}
-                    value={v.name}
-                    onChangeText={(val) => {
-                      const newVars = [...variants];
-                      newVars[idx].name = val;
-                      setVariants(newVars);
-                    }}
-                    placeholder="Contoh: Merah XL"
-                    placeholderTextColor={Colors.muted}
-                  />
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.muted, marginBottom: 4 }}>Nama Varian</Text>
+                    <TextInput
+                      style={[styles.input, { paddingVertical: 8, paddingHorizontal: 10, fontSize: 14 }]}
+                      value={v.name}
+                      onChangeText={(val) => {
+                        const newVars = [...variants];
+                        newVars[idx].name = val;
+                        setVariants(newVars);
+                      }}
+                      placeholder="Contoh: Merah XL"
+                      placeholderTextColor={Colors.muted}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.muted, marginBottom: 4 }}>Barcode</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <TextInput
+                        style={[styles.input, { paddingVertical: 8, paddingHorizontal: 10, fontSize: 14, flex: 1 }]}
+                        value={v.barcode || ''}
+                        onChangeText={(val) => {
+                          const newVars = [...variants];
+                          newVars[idx].barcode = val;
+                          setVariants(newVars);
+                        }}
+                        placeholder="Scan/Ketik Barcode"
+                        placeholderTextColor={Colors.muted}
+                      />
+                      <TouchableOpacity
+                        onPress={() => handleScanBarcode(idx)}
+                        style={{
+                          marginLeft: 6,
+                          backgroundColor: Colors.primary,
+                          padding: 8,
+                          borderRadius: 8,
+                        }}
+                      >
+                        <Ionicons name="scan" size={16} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 </View>
                 
                 <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
@@ -900,6 +978,7 @@ export default function FormScreen({ navigation, route }) {
             onPress={() => {
               setVariants([...variants, {
                 name: '',
+                barcode: '',
                 costPrice: '',
                 price: '',
                 stock: '',

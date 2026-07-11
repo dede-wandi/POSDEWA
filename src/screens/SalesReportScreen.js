@@ -31,6 +31,9 @@ export default function SalesReportScreen({ navigation }) {
   const [flattenedItems, setFlattenedItems] = useState([]);
   const [filteredSalesList, setFilteredSalesList] = useState([]);
   
+  const [selectedSale, setSelectedSale] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  
   // Filter state
   const [filterType, setFilterType] = useState('today'); // 'today', 'yesterday', 'thisMonth', 'custom', 'month', 'year'
   const [showCalendar, setShowCalendar] = useState(false);
@@ -545,7 +548,13 @@ export default function SalesReportScreen({ navigation }) {
     return (
       <View style={styles.transactionGroup}>
         {/* Transaction Parent Row */}
-        <View style={styles.parentRow}>
+        <TouchableOpacity 
+          style={styles.parentRow}
+          onPress={() => {
+            setSelectedSale(sale);
+            setShowDetailModal(true);
+          }}
+        >
           {visibleColumns.no && <Text style={[styles.cell, { width: 30, fontWeight: '700' }]}>{index + 1}</Text>}
           {visibleColumns.date && <Text style={[styles.cell, { width: 65, fontSize: 10, fontWeight: '600' }]}>{formatDateStr(sale.created_at)}</Text>}
           
@@ -553,9 +562,6 @@ export default function SalesReportScreen({ navigation }) {
             <Ionicons name="receipt-outline" size={12} color={Colors.primary} style={{ marginRight: 4 }} />
             <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.darkText }} numberOfLines={1}>
               {sale.no_invoice || `TRX-${sale.id.slice(-6).toUpperCase()}`}
-            </Text>
-            <Text style={{ fontSize: 9, color: Colors.muted, marginLeft: 6 }}>
-              ({sale.payment_method === 'cash' ? 'Tunai' : 'Non-Tunai'})
             </Text>
           </View>
 
@@ -593,66 +599,7 @@ export default function SalesReportScreen({ navigation }) {
               </TouchableOpacity>
             </View>
           )}
-        </View>
-
-        {/* Transaction Child Items (Breakdown Bagan) */}
-        <View style={styles.childRowsContainer}>
-          {saleItems.map((item, itemIdx) => (
-            <View key={`${item.id}-${itemIdx}`} style={styles.childRow}>
-              {/* Spacer cells matching parent column widths */}
-              {visibleColumns.no && <View style={{ width: 30 }} />}
-              {visibleColumns.date && <View style={{ width: 65 }} />}
-              
-              {/* Product name cell with indentation */}
-              <View style={{ flex: 1, paddingLeft: 10 }}>
-                <Text style={styles.childProductName} numberOfLines={2}>
-                  ↳ {item.product_name}
-                </Text>
-                {item.barcode ? <Text style={styles.childProductBarcode}>{item.barcode}</Text> : null}
-              </View>
-
-              {/* Individual Item Qty */}
-              {visibleColumns.qty && (
-                <Text style={[styles.cell, { width: 35, textAlign: 'center', color: Colors.text, fontSize: 11 }]}>
-                  {item.qty || 1}
-                </Text>
-              )}
-
-              {/* Individual Capital Price */}
-              {visibleColumns.capitalPrice && (
-                <Text style={[styles.cell, { width: 75, textAlign: 'right', color: Colors.muted, fontSize: 10 }]}>
-                  {formatCurrency((item.cost_price || 0) * (item.qty || 1))}
-                </Text>
-              )}
-
-              {/* Individual Total Price */}
-              {visibleColumns.price && (
-                <Text style={[styles.cell, { width: 75, textAlign: 'right', color: Colors.muted, fontSize: 10 }]}>
-                  {formatCurrency(item.line_total)}
-                </Text>
-              )}
-
-              {/* Individual Profit */}
-              {visibleColumns.profit && (
-                <Text style={[styles.cell, { width: 75, textAlign: 'right', color: item.line_profit >= 0 ? '#10B981' : '#EF4444', fontSize: 10 }]}>
-                  {formatCurrency(item.line_profit)}
-                </Text>
-              )}
-
-              {/* Action cell for individual item deletion if needed */}
-              {visibleColumns.action && isSelectMode && (
-                <View style={{ width: 40, alignItems: 'center', justifyContent: 'center' }}>
-                  <TouchableOpacity 
-                    onPress={() => handleDeleteItem(item)}
-                    style={styles.deleteButton}
-                  >
-                    <Ionicons name="close-circle-outline" size={16} color={Colors.danger} />
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          ))}
-        </View>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -995,6 +942,56 @@ export default function SalesReportScreen({ navigation }) {
                 <Text style={[styles.modalBtnText, {color: Colors.white}]}>Simpan</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Transaction Detail Modal */}
+      <Modal visible={showDetailModal} animationType="slide" transparent>
+        <View style={styles.modalContainer}>
+          <View style={[styles.modalContent, { maxHeight: '80%', padding: 0 }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: Colors.borderLight }}>
+              <Text style={[styles.modalTitle, { marginBottom: 0 }]}>Detail Transaksi</Text>
+              <TouchableOpacity onPress={() => setShowDetailModal(false)}>
+                <Ionicons name="close" size={24} color={Colors.darkText} />
+              </TouchableOpacity>
+            </View>
+            
+            {selectedSale && (
+              <ScrollView style={{ padding: 20 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: Colors.borderLight, borderStyle: 'dashed' }}>
+                  <View>
+                    <Text style={{ fontSize: 11, color: Colors.muted, marginBottom: 2 }}>No. Invoice</Text>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.darkText }}>
+                      {selectedSale.no_invoice || `TRX-${selectedSale.id.slice(-6).toUpperCase()}`}
+                    </Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={{ fontSize: 11, color: Colors.muted, marginBottom: 2 }}>Tanggal</Text>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.darkText }}>
+                      {new Date(selectedSale.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}
+                    </Text>
+                  </View>
+                </View>
+                
+                {(selectedSale.items || selectedSale.sale_items || []).map((item, idx) => (
+                  <View key={idx} style={{ marginBottom: 12 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.darkText, flex: 1, paddingRight: 8 }}>{item.product_name}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.darkText }}>{formatCurrency(item.line_total)}</Text>
+                    </View>
+                    <Text style={{ fontSize: 11, color: Colors.muted, marginTop: 2 }}>
+                      {item.qty || 1} x {formatCurrency(item.price)}
+                    </Text>
+                  </View>
+                ))}
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: Colors.borderLight, borderStyle: 'dashed', marginBottom: 30 }}>
+                  <Text style={{ fontSize: 16, fontWeight: 'bold', color: Colors.darkText }}>Total</Text>
+                  <Text style={{ fontSize: 16, fontWeight: 'bold', color: Colors.primary }}>{formatCurrency(selectedSale.total)}</Text>
+                </View>
+              </ScrollView>
+            )}
           </View>
         </View>
       </Modal>
