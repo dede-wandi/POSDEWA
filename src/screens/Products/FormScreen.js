@@ -806,77 +806,94 @@ export default function FormScreen({ navigation, route }) {
             Jika produk memiliki varian, tentukan nama, modal, jual, dan stok per varian.
           </Text>
           
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-            <View style={{ minWidth: Platform.OS === 'web' ? '100%' : 500 }}>
-              {variants.length > 0 && (
-                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8, paddingHorizontal: 4 }}>
-                  <Text style={{ flex: 2, fontSize: 12, fontWeight: '600', color: Colors.muted }}>Nama Varian</Text>
-                  <Text style={{ flex: 1.5, fontSize: 12, fontWeight: '600', color: Colors.muted }}>Modal</Text>
-                  <Text style={{ flex: 1.5, fontSize: 12, fontWeight: '600', color: Colors.muted }}>Jual</Text>
-                  <Text style={{ flex: 1, fontSize: 12, fontWeight: '600', color: Colors.muted }}>Stok</Text>
-                  <View style={{ width: 30 }} />
-                </View>
-              )}
-              
-              {variants.map((v, idx) => (
-                <View key={idx} style={{ flexDirection: 'row', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+          <View style={{ marginBottom: 12 }}>
+            {variants.map((v, idx) => (
+              <View key={idx} style={{ 
+                backgroundColor: Colors.card, 
+                padding: 12, 
+                borderRadius: 12, 
+                marginBottom: 12, 
+                borderWidth: 1, 
+                borderColor: Colors.borderLight,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.05,
+                shadowRadius: 2,
+                elevation: 1,
+              }}>
+                <View style={{ marginBottom: 10 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.muted, marginBottom: 4 }}>Nama Varian</Text>
                   <TextInput
-                    style={[styles.input, { flex: 2, paddingVertical: 8, paddingHorizontal: 10, fontSize: 14 }]}
+                    style={[styles.input, { paddingVertical: 8, paddingHorizontal: 10, fontSize: 14 }]}
                     value={v.name}
                     onChangeText={(val) => {
                       const newVars = [...variants];
                       newVars[idx].name = val;
                       setVariants(newVars);
                     }}
-                    placeholder="Nama"
+                    placeholder="Contoh: Merah XL"
                     placeholderTextColor={Colors.muted}
                   />
-                  <TextInput
-                    style={[styles.input, { flex: 1.5, paddingVertical: 8, paddingHorizontal: 10, fontSize: 14 }]}
-                    value={String(v.costPrice !== undefined && v.costPrice !== null ? v.costPrice : '')}
-                    onChangeText={(val) => {
-                      const newVars = [...variants];
-                      newVars[idx].costPrice = val;
-                      setVariants(newVars);
-                    }}
-                    keyboardType="numeric"
-                    placeholder="0"
-                    placeholderTextColor={Colors.muted}
-                  />
-                  <TextInput
-                    style={[styles.input, { flex: 1.5, paddingVertical: 8, paddingHorizontal: 10, fontSize: 14 }]}
-                    value={String(v.price !== undefined && v.price !== null ? v.price : '')}
-                    onChangeText={(val) => {
-                      const newVars = [...variants];
-                      newVars[idx].price = val;
-                      setVariants(newVars);
-                    }}
-                    keyboardType="numeric"
-                    placeholder="0"
-                    placeholderTextColor={Colors.muted}
-                  />
-                  <TextInput
-                    style={[styles.input, { flex: 1, paddingVertical: 8, paddingHorizontal: 10, fontSize: 14 }]}
-                    value={String(v.stock !== undefined && v.stock !== null ? v.stock : '')}
-                    onChangeText={(val) => {
-                      const newVars = [...variants];
-                      newVars[idx].stock = val;
-                      setVariants(newVars);
-                    }}
-                    keyboardType="numeric"
-                    placeholder="0"
-                    placeholderTextColor={Colors.muted}
-                  />
-                  <TouchableOpacity 
-                    onPress={() => setVariants(variants.filter((_, i) => i !== idx))}
-                    style={{ width: 30, alignItems: 'center', justifyContent: 'center' }}
-                  >
-                    <Ionicons name="trash-outline" size={20} color={Colors.danger} />
-                  </TouchableOpacity>
                 </View>
-              ))}
-            </View>
-          </ScrollView>
+                
+                <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                  <View style={{ flex: 1.5 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.muted, marginBottom: 4 }}>Modal</Text>
+                    <TextInput
+                      style={[styles.input, { paddingVertical: 8, paddingHorizontal: 10, fontSize: 14 }]}
+                      value={String(v.costPrice !== undefined && v.costPrice !== null ? v.costPrice : '')}
+                      onChangeText={(val) => {
+                        const newVars = [...variants];
+                        newVars[idx].costPrice = val;
+                        setVariants(newVars);
+                      }}
+                      keyboardType="numeric"
+                      placeholder="0"
+                      placeholderTextColor={Colors.muted}
+                    />
+                  </View>
+                  <View style={{ flex: 1.5 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.muted, marginBottom: 4 }}>Jual</Text>
+                    <TextInput
+                      style={[styles.input, { paddingVertical: 8, paddingHorizontal: 10, fontSize: 14 }]}
+                      value={String(v.price !== undefined && v.price !== null ? v.price : '')}
+                      onChangeText={(val) => {
+                        const newVars = [...variants];
+                        newVars[idx].price = val;
+                        setVariants(newVars);
+                      }}
+                      keyboardType="numeric"
+                      placeholder="0"
+                      placeholderTextColor={Colors.muted}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.muted, marginBottom: 4 }}>Stok</Text>
+                    <TextInput
+                      style={[styles.input, { paddingVertical: 8, paddingHorizontal: 10, fontSize: 14 }]}
+                      value={String(v.stock !== undefined && v.stock !== null ? v.stock : '')}
+                      onChangeText={(val) => {
+                        const newVars = [...variants];
+                        newVars[idx].stock = val;
+                        setVariants(newVars);
+                      }}
+                      keyboardType="numeric"
+                      placeholder="0"
+                      placeholderTextColor={Colors.muted}
+                    />
+                  </View>
+                  <View style={{ paddingTop: 20 }}>
+                    <TouchableOpacity 
+                      onPress={() => setVariants(variants.filter((_, i) => i !== idx))}
+                      style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.dangerLight, borderRadius: 8 }}
+                    >
+                      <Ionicons name="trash-outline" size={18} color={Colors.danger} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
           
           <TouchableOpacity 
             style={[styles.smallButton, { backgroundColor: Colors.primary, justifyContent: 'center', alignSelf: 'flex-start' }]} 
