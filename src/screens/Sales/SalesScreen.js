@@ -234,7 +234,7 @@ export default function SalesScreen({ navigation, route }) {
     const searchByBarcode = async () => {
       if (query.trim() && /^\d+$/.test(query.trim())) {
         try {
-          const { data: exactMatch } = await findByBarcodeExact(user?.id, query.trim());
+          const exactMatch = await findByBarcodeExact(user?.id, query.trim());
           if (active && exactMatch) {
             let matchedVariant = null;
             if (exactMatch.variants && exactMatch.variants.length > 0) {
@@ -297,7 +297,7 @@ export default function SalesScreen({ navigation, route }) {
     let active = true;
     (async () => {
       try {
-        const { data: exactMatch } = await findByBarcodeExact(user?.id, String(scanned).trim());
+        const exactMatch = await findByBarcodeExact(user?.id, String(scanned).trim());
         if (!active) return;
         if (exactMatch) {
           let matchedVariant = null;

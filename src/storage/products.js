@@ -75,16 +75,22 @@ export async function findByBarcodeOrName(query) {
   const q = String(query || '').toLowerCase().trim();
   const products = await getProducts();
   if (!q) return [];
-  return products.filter(p =>
-    (p.barcode || '').toLowerCase() === q ||
-    (p.name || '').toLowerCase().includes(q)
-  );
+  return products.filter(p => {
+    const b = (p.barcode || '').toLowerCase();
+    const n = (p.name || '').toLowerCase();
+    const codes = b.split(',').map(code => code.trim());
+    return codes.includes(q) || n.includes(q);
+  });
 }
 
 export async function findByBarcodeExact(barcode) {
   const products = await getProducts();
   const q = String(barcode || '').trim();
-  return products.find(p => (p.barcode || '').trim() === q) || null;
+  return products.find(p => {
+    if (!p.barcode) return false;
+    const codes = p.barcode.split(',').map(code => code.trim());
+    return codes.includes(q);
+  }) || null;
 }
 
 export async function adjustStockOnSale(cartItems) {
