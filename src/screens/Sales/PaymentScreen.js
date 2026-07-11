@@ -8,7 +8,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { adjustStockOnSale } from '../../services/productsSupabase';
 import { createSale } from '../../services/sales';
-import { getPaymentChannels, processPayment } from '../../services/financeSupabase';
 import { sendWhatsAppNotification } from '../../services/whatsappService';
 import { Colors, Spacing, Radii, Shadows, Typography } from '../../theme';
 
@@ -20,41 +19,9 @@ export default function PaymentScreen({ navigation, route }) {
   // Payment states
   const [cashAmount, setCashAmount] = useState(total ? total.toString() : '');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('cash');
-  const [selectedChannel, setSelectedChannel] = useState(null);
-  
-  // Channel states
-  const [paymentChannels, setPaymentChannels] = useState([]);
-  const [loadingChannels, setLoadingChannels] = useState(true);
-  const [showChannelModal, setShowChannelModal] = useState(false);
 
   const cashValue = parseFloat(cashAmount) || 0;
-  const change = selectedPaymentMethod === 'cash' ? cashValue - total : 0;
-
-  // Load payment channels
-  const loadPaymentChannels = async () => {
-    try {
-      const result = await getPaymentChannels();
-      if (result.success) {
-        setPaymentChannels(result.data);
-        // Auto-select cash channel if available
-        const cashChannel = result.data.find(channel => channel.type === 'cash');
-        if (cashChannel && !selectedChannel) {
-          setSelectedChannel(cashChannel);
-        }
-      } else {
-      }
-    } catch (error) {
-    } finally {
-      setLoadingChannels(false);
-    }
-  };
-
-  useFocusEffect(
-    useCallback(() => {
-      loadPaymentChannels();
-    }, [])
-  );
+  const change = cashValue - total;
 
   const quickAmounts = [
     Math.ceil(total / 1000) * 1000, // Round up to nearest thousand
@@ -63,41 +30,11 @@ export default function PaymentScreen({ navigation, route }) {
     Math.ceil(total / 50000) * 50000, // Round up to nearest 50k
   ].filter((amount, index, arr) => arr.indexOf(amount) === index && amount > total);
 
-  const handlePaymentMethodChange = (method) => {
-    setSelectedPaymentMethod(method);
-    if (method === 'cash') {
-      const cashChannel = paymentChannels.find(channel => channel.type === 'cash');
-      setSelectedChannel(cashChannel);
-    } else {
-      setSelectedChannel(null);
-      setShowChannelModal(true);
-    }
-  };
-
-  const handleChannelSelect = (channel) => {
-    setSelectedChannel(channel);
-    setShowChannelModal(false);
-  };
-
   const validatePayment = () => {
-    if (!selectedChannel) {
-      showToast('Pilih channel pembayaran terlebih dahulu', 'error');
+    if (cashValue < total) {
+      showToast(`Jumlah uang tidak mencukupi. Kurang: ${formatIDR(total - cashValue)}`, 'error');
       return false;
     }
-
-    if (selectedPaymentMethod === 'cash') {
-      if (cashValue < total) {
-        showToast(`Jumlah uang tidak mencukupi. Kurang: ${formatIDR(total - cashValue)}`, 'error');
-        return false;
-      }
-    } else {
-      // For non-cash payments, check channel balance
-      if (selectedChannel.balance < total) {
-        showToast(`Saldo channel ${selectedChannel.name} tidak mencukupi. Saldo: ${formatIDR(selectedChannel.balance)}`, 'error');
-        return false;
-      }
-    }
-
     return true;
   };
 
@@ -113,9 +50,9 @@ export default function PaymentScreen({ navigation, route }) {
         user_id: user?.id,
         total: total,
         profit: profit,
-        payment_method: selectedPaymentMethod,
-        payment_channel_id: selectedChannel?.id,
-        cash_amount: selectedPaymentMethod === 'cash' ? cashValue : total,
+        payment_method: 'cash',
+        payment_channel_id: null,
+        cash_amount: cashValue,
         change_amount: change,
         items: cart.map(item => ({
           product_name: item.name,
@@ -133,22 +70,6 @@ export default function PaymentScreen({ navigation, route }) {
       
       if (!saleResult.success) {
         throw new Error(saleResult.error || 'Gagal menyimpan transaksi');
-      }
-
-
-      // 2. Process payment through finance system
-      if (selectedChannel) {
-        const paymentResult = await processPayment(
-          selectedChannel.id,
-          total,
-          saleResult.data.id
-        );
-
-        if (!paymentResult.success) {
-          // Don't fail the transaction, just warn
-          showToast('Transaksi berhasil, tetapi ada masalah dengan pencatatan keuangan', 'warning');
-        } else {
-        }
       }
 
       // 3. Adjust stock
@@ -182,10 +103,10 @@ export default function PaymentScreen({ navigation, route }) {
         saleData: saleResult?.data || saleResult || {},
         cart: cart || [],
         total: total || 0,
-        cashAmount: selectedPaymentMethod === 'cash' ? cashValue : total,
+        cashAmount: cashValue,
         change: change || 0,
-        paymentMethod: selectedPaymentMethod || 'cash',
-        paymentChannel: selectedChannel || null
+        paymentMethod: 'cash',
+        paymentChannel: null
       };
       
       
@@ -216,55 +137,8 @@ export default function PaymentScreen({ navigation, route }) {
     }
   };
 
-  // Component definition for ChannelItem - Fixed React.memo usage
-  const ChannelItem = React.memo(({ item, onSelect }) => {
-    return (
-      <TouchableOpacity
-        style={[
-          styles.channelItem,
-          selectedChannel?.id === item.id && styles.selectedChannelItem
-        ]}
-        onPress={() => onSelect(item)}
-      >
-        <View style={styles.channelItemHeader}>
-          <View style={styles.channelItemInfo}>
-            <View style={styles.channelItemTitleRow}>
-              <Ionicons 
-                name={getChannelTypeIcon(item.type)} 
-                size={20} 
-                color={getChannelTypeColor(item.type)} 
-              />
-              <Text style={styles.channelItemName}>{item.name}</Text>
-            </View>
-            <Text style={styles.channelItemType}>{item.type.toUpperCase()}</Text>
-          </View>
-          <View style={styles.channelItemBalance}>
-            <Text style={styles.channelItemBalanceLabel}>Saldo:</Text>
-            <Text style={styles.channelItemBalanceAmount}>{formatIDR(item.balance)}</Text>
-          </View>
-        </View>
-        {selectedChannel?.id === item.id && (
-          <View style={styles.selectedIndicator}>
-            <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
-          </View>
-        )}
-      </TouchableOpacity>
-    );
-  });
-
-  if (loadingChannels) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>Memuat channel pembayaran...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView style={styles.container}>
 
         <View style={styles.section}>
@@ -290,66 +164,7 @@ export default function PaymentScreen({ navigation, route }) {
           </View>
         </View>
 
-        {/* Payment Method Selection */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Metode Pembayaran</Text>
-          <View style={styles.paymentMethods}>
-            <TouchableOpacity
-              style={[
-                styles.paymentMethodButton,
-                selectedPaymentMethod === 'cash' && styles.selectedPaymentMethod
-              ]}
-              onPress={() => handlePaymentMethodChange('cash')}
-            >
-              <Ionicons name="cash" size={20} color={selectedPaymentMethod === 'cash' ? Colors.primary : Colors.muted} style={{ marginRight: 8 }} />
-              <Text style={[
-                styles.paymentMethodText,
-                selectedPaymentMethod === 'cash' && styles.selectedPaymentMethodText
-              ]}>Tunai</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[
-                styles.paymentMethodButton,
-                selectedPaymentMethod === 'non-cash' && styles.selectedPaymentMethod
-              ]}
-              onPress={() => handlePaymentMethodChange('non-cash')}
-            >
-              <Ionicons name="card" size={20} color={selectedPaymentMethod === 'non-cash' ? Colors.primary : Colors.muted} style={{ marginRight: 8 }} />
-              <Text style={[
-                styles.paymentMethodText,
-                selectedPaymentMethod === 'non-cash' && styles.selectedPaymentMethodText
-              ]}>Non-Tunai</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Selected Payment Channel */}
-        {selectedChannel && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Channel Pembayaran</Text>
-            <TouchableOpacity
-              style={styles.selectedChannelContainer}
-              onPress={() => setShowChannelModal(true)}
-            >
-              <View style={styles.selectedChannelInfo}>
-                <Ionicons 
-                  name={getChannelTypeIcon(selectedChannel.type)} 
-                  size={22} 
-                  color={getChannelTypeColor(selectedChannel.type)} 
-                />
-                <View style={styles.selectedChannelDetails}>
-                  <Text style={styles.selectedChannelName}>{selectedChannel.name}</Text>
-                  <Text style={styles.selectedChannelBalance}>Saldo: {formatIDR(selectedChannel.balance)}</Text>
-                </View>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={Colors.muted} />
-            </TouchableOpacity>
-          </View>
-        )}
-
         {/* Cash Payment Input */}
-        {selectedPaymentMethod === 'cash' && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Jumlah Uang Tunai</Text>
             <TextInput
@@ -397,57 +212,27 @@ export default function PaymentScreen({ navigation, route }) {
               </View>
             )}
           </View>
-        )}
 
         {/* Process Payment Button */}
         <View style={[styles.section, { backgroundColor: 'transparent', borderWidth: 0, shadowOpacity: 0, elevation: 0, marginTop: 4, marginBottom: 20 }]}>
           <TouchableOpacity
             style={[
               styles.processButton,
-              (!selectedChannel || isProcessing || (selectedPaymentMethod === 'cash' && cashValue < total)) && styles.disabledButton
+              (isProcessing || cashValue < total) && styles.disabledButton
             ]}
             onPress={processPaymentTransaction}
-            disabled={!selectedChannel || isProcessing || (selectedPaymentMethod === 'cash' && cashValue < total)}
+            disabled={isProcessing || cashValue < total}
           >
             {isProcessing ? (
               <ActivityIndicator color={Colors.white} />
             ) : (
               <Text style={styles.processButtonText}>
-                {selectedPaymentMethod === 'cash' ? 'Proses Pembayaran Tunai' : 'Proses Pembayaran Non-Tunai'}
+                Proses Pembayaran Tunai
               </Text>
             )}
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      {/* Payment Channel Selection Modal */}
-      <Modal
-        visible={showChannelModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowChannelModal(false)}>
-              <Text style={styles.modalCancelButton}>Batal</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Pilih Channel Pembayaran</Text>
-            <View style={{ width: 50 }} />
-          </View>
-          
-          <FlatList
-            data={paymentChannels.filter(channel => 
-              selectedPaymentMethod === 'cash' ? channel.type === 'cash' : channel.type !== 'cash'
-            )}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <ChannelItem item={item} onSelect={handleChannelSelect} />
-            )}
-            contentContainerStyle={styles.channelList}
-            showsVerticalScrollIndicator={false}
-          />
-        </SafeAreaView>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -455,7 +240,7 @@ export default function PaymentScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.card,
   },
   loadingContainer: {
     flex: 1,

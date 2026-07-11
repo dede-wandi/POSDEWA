@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, Alert, StyleSheet, Dimensions, RefreshControl, Modal, Image } from 'react-native';
+import { View, Text, TextInput, FlatList, TouchableOpacity, Alert, StyleSheet, Dimensions, RefreshControl, Modal, Image, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -71,6 +71,9 @@ export default function SalesScreen({ navigation, route }) {
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [tokenCode, setTokenCode] = useState('');
+  const [showMobileCart, setShowMobileCart] = useState(false);
+  const [showVariantModal, setShowVariantModal] = useState(false);
+  const [selectedProductForVariant, setSelectedProductForVariant] = useState(null);
 
   const total = useMemo(() => {
     return cart.reduce((sum, item) => sum + item.lineTotal, 0);
@@ -317,8 +320,15 @@ export default function SalesScreen({ navigation, route }) {
   };
 
   const addToCart = (product) => {
-    if (product.stock <= 0) {
+    if (product.stock <= 0 && (!Array.isArray(product.variants) || product.variants.length === 0)) {
       showToast('Stok habis, tidak bisa menambahkan produk', 'error');
+      return;
+    }
+
+    // Check if product has variants
+    if (Array.isArray(product.variants) && product.variants.length > 0) {
+      setSelectedProductForVariant(product);
+      setShowVariantModal(true);
       return;
     }
 
@@ -334,29 +344,37 @@ export default function SalesScreen({ navigation, route }) {
     addProductToCart(product);
   };
 
-  const addProductToCart = (product, tokenCode = null) => {
-    const existingItem = cart.find(item => item.id === product.id);
+  const addProductToCart = (product, tokenCode = null, variant = null) => {
+    const cartItemId = variant ? `${product.id}-${variant.name}` : product.id;
+    const existingItem = cart.find(item => item.id === cartItemId);
     
+    const maxStock = variant ? variant.stock : product.stock;
+    const itemPrice = variant ? variant.price : product.price;
+    const itemName = variant ? `${product.name} - ${variant.name}` : product.name;
+    const itemCostPrice = variant ? variant.costPrice : (product.cost_price || product.costPrice || product.cost || 0);
+
     if (existingItem) {
-      if (existingItem.qty >= product.stock) {
-        showToast(`Stok tidak cukup. Sisa stok hanya ${product.stock}`, 'error');
+      if (existingItem.qty >= maxStock) {
+        showToast(`Stok tidak cukup. Sisa stok hanya ${maxStock}`, 'error');
         return;
       }
       setCart(cart.map(item =>
-        item.id === product.id
-          ? { ...item, qty: item.qty + 1, lineTotal: (item.qty + 1) * item.price }
+        item.id === cartItemId
+          ? { ...item, qty: item.qty + 1, lineTotal: (item.qty + 1) * itemPrice }
           : item
       ));
     } else {
       const newItem = {
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        costPrice: product.cost_price || product.costPrice || product.cost || 0,
+        id: cartItemId,
+        originalProductId: product.id,
+        variantName: variant ? variant.name : null,
+        name: itemName,
+        price: itemPrice,
+        costPrice: itemCostPrice,
         qty: 1,
-        lineTotal: product.price,
+        lineTotal: itemPrice,
         tokenCode: tokenCode,
-        stock: product.stock // Store stock for validation
+        stock: maxStock
       };
       setCart([...cart, newItem]);
     }
@@ -419,10 +437,82 @@ export default function SalesScreen({ navigation, route }) {
     });
   };
 
+  const { width } = useWindowDimensions();
+  const isTablet = width > 768;
+  const gridColumns = width >= 1024 ? 4 : (width >= 768 ? 3 : (width >= 600 ? 3 : 2));
+
+  const cartContent = (
+    <>
+      <View style={[styles.cartSection, !isTablet && { flex: 1, paddingTop: 16 }]}>
+        {isTablet && <Text style={styles.sectionTitle}>Keranjang Belanja</Text>}
+        <FlatList
+          data={cart}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item }) => (
+            <View style={styles.cartItem}>
+              <View style={styles.cartItemInfo}>
+                <Text style={styles.cartItemName}>{item.name}</Text>
+                {item.tokenCode && (
+                  <Text style={styles.cartItemToken}>Token: {item.tokenCode}</Text>
+                )}
+                <Text style={styles.cartItemPrice}>
+                  {item.qty}x {formatIDR(item.price)} = {formatIDR(item.lineTotal)}
+                </Text>
+              </View>
+              <View style={styles.cartItemActions}>
+                <TouchableOpacity
+                  style={styles.quantityButton}
+                  onPress={() => updateQuantity(item.id, item.qty - 1)}
+                >
+                  <Ionicons name="remove" size={16} color={Colors.muted} />
+                </TouchableOpacity>
+                <Text style={styles.quantityText}>{item.qty}</Text>
+                <TouchableOpacity
+                  style={styles.quantityButton}
+                  onPress={() => updateQuantity(item.id, item.qty + 1)}
+                >
+                  <Ionicons name="add" size={16} color={Colors.primary} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.removeButton}
+                  onPress={() => removeFromCart(item.id)}
+                >
+                  <Ionicons name="trash-outline" size={16} color={Colors.danger} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        />
+      </View>
+
+      {/* Summary and Checkout */}
+      <View style={styles.summarySection}>
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Total Penjualan</Text>
+            <Text style={styles.summaryTotal}>{formatIDR(total)}</Text>
+          </View>
+          <TouchableOpacity style={styles.checkoutButton} onPress={() => {
+            setShowMobileCart(false);
+            navigateToPayment();
+          }}>
+            <View style={styles.checkoutContent}>
+              <Ionicons name="card-outline" size={18} color="#ffffff" style={{ marginRight: 8 }} />
+              <Text style={styles.checkoutButtonText}>Lanjut ke Pembayaran</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </>
+  );
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Search Section */}
-      <View style={styles.searchSection}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <View style={[styles.mainLayout, isTablet && styles.mainLayoutTablet]}>
+        <View style={[styles.leftPanel, isTablet && cart.length > 0 && styles.leftPanelTablet]}>
+          {/* Search Section */}
+          <View style={styles.searchSection}>
         <View style={styles.searchRow}>
           <View style={styles.searchContainer}>
             <Ionicons name="search" size={18} color={Colors.muted} style={styles.searchIcon} />
@@ -437,6 +527,12 @@ export default function SalesScreen({ navigation, route }) {
             />
           </View>
           <View style={styles.toggleGroup}>
+            <TouchableOpacity
+              style={[styles.toggleButton, styles.toggleButtonActive, { marginRight: 8 }]}
+              onPress={() => navigation.navigate('Scan', { mode: 'sale' })}
+            >
+              <Ionicons name="barcode-outline" size={18} color="#fff" />
+            </TouchableOpacity>
             <TouchableOpacity
               style={[styles.toggleButton, styles.toggleButtonActive]}
               onPress={() => setProductLayout(prev => prev === 'grid' ? 'list' : 'grid')}
@@ -501,8 +597,8 @@ export default function SalesScreen({ navigation, route }) {
       <View style={styles.resultsSection}>
           <FlatList
             data={processedResults}
-            key={`${productLayout}-${selectedCategoryId || 'all'}`} // Force re-render when layout/category changes
-            numColumns={productLayout === 'grid' ? 2 : 1}
+            key={`${productLayout}-${selectedCategoryId || 'all'}-${gridColumns}`} // Force re-render when layout/category/columns change
+            numColumns={productLayout === 'grid' ? gridColumns : 1}
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
             refreshControl={
@@ -526,9 +622,30 @@ export default function SalesScreen({ navigation, route }) {
               const categoryName = categories.find(c => c.id === item.category_id)?.name;
               const brandName = brands.find(b => b.id === item.brand_id)?.name;
 
+              let displayPrice = formatIDR(item.price || 0);
+              let stock = Number(item.stock) || 0;
+              
+              if (Array.isArray(item.variants) && item.variants.length > 0) {
+                const prices = item.variants.map(v => Number(v.price) || 0);
+                const stocks = item.variants.map(v => Number(v.stock) || 0);
+                
+                const minPrice = Math.min(...prices);
+                const maxPrice = Math.max(...prices);
+                
+                displayPrice = minPrice === maxPrice ? formatIDR(minPrice) : `${formatIDR(minPrice)} - ${formatIDR(maxPrice)}`;
+                stock = stocks.reduce((sum, s) => sum + s, 0);
+              }
+              
+              const stockLabel = stock > 0 ? `Stok: ${stock}` : 'Habis';
+
               if (productLayout === 'grid') {
                 return (
                   <View style={styles.resultCardGrid}>
+                    <View style={[styles.stockBadge, stock <= 0 && styles.stockBadgeEmpty]}>
+                      <Text style={[styles.stockBadgeText, stock <= 0 && styles.stockBadgeTextEmpty]}>
+                        {stockLabel}
+                      </Text>
+                    </View>
                     {item.image_urls && item.image_urls[0] ? (
                       <Image source={{ uri: item.image_urls[0] }} style={styles.resultImageGrid} resizeMode="cover" />
                     ) : (
@@ -545,21 +662,20 @@ export default function SalesScreen({ navigation, route }) {
                       )}
                       <View style={styles.productRowGrid}>
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.resultPrice}>{formatIDR(item.price)}</Text>
-                          <Text style={styles.resultStock}>Stok: {item.stock}</Text>
+                          <Text style={styles.resultPrice}>{displayPrice}</Text>
                         </View>
                         <TouchableOpacity
                           style={[
                             styles.addButtonGrid,
-                            item.stock <= 0 && styles.addButtonDisabled
+                            stock <= 0 && styles.addButtonDisabled
                           ]}
                           onPress={() => addToCart(item)}
-                          disabled={item.stock <= 0}
+                          disabled={stock <= 0}
                         >
                           <Ionicons 
-                            name={item.stock <= 0 ? "ban" : "add"} 
+                            name={stock <= 0 ? "ban" : "add"} 
                             size={16} 
-                            color={item.stock <= 0 ? Colors.muted : Colors.white} 
+                            color={stock <= 0 ? Colors.muted : Colors.white} 
                           />
                         </TouchableOpacity>
                       </View>
@@ -570,6 +686,11 @@ export default function SalesScreen({ navigation, route }) {
 
               return (
                 <View style={styles.resultCard}>
+                  <View style={[styles.stockBadge, stock <= 0 && styles.stockBadgeEmpty]}>
+                    <Text style={[styles.stockBadgeText, stock <= 0 && styles.stockBadgeTextEmpty]}>
+                      {stockLabel}
+                    </Text>
+                  </View>
                   {item.image_urls && item.image_urls[0] ? (
                     <Image source={{ uri: item.image_urls[0] }} style={styles.resultImageList} resizeMode="cover" />
                   ) : (
@@ -589,8 +710,7 @@ export default function SalesScreen({ navigation, route }) {
                       <Text style={styles.resultBarcode}>{item.barcode || 'Tanpa barcode'}</Text>
                     </View>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 4 }}>
-                      <Text style={styles.resultPrice}>{formatIDR(item.price)}</Text>
-                      <Text style={styles.resultStock}>Stok: {item.stock}</Text>
+                      <Text style={styles.resultPrice}>{displayPrice}</Text>
                     </View>
                   </View>
                   <TouchableOpacity
@@ -612,70 +732,116 @@ export default function SalesScreen({ navigation, route }) {
             }}
           />
         </View>
-
-      {/* Cart Section */}
-      {cart.length > 0 && (
-        <View style={styles.cartSection}>
-          <Text style={styles.sectionTitle}>Keranjang Belanja</Text>
-          <FlatList
-            data={cart}
-            keyExtractor={(item) => item.id}
-            showsVerticalScrollIndicator={false}
-            renderItem={({ item }) => (
-              <View style={styles.cartItem}>
-                <View style={styles.cartItemInfo}>
-                  <Text style={styles.cartItemName}>{item.name}</Text>
-                  {item.tokenCode && (
-                    <Text style={styles.cartItemToken}>Token: {item.tokenCode}</Text>
-                  )}
-                  <Text style={styles.cartItemPrice}>
-                    {item.qty}x {formatIDR(item.price)} = {formatIDR(item.lineTotal)}
-                  </Text>
-                </View>
-                <View style={styles.cartItemActions}>
-                  <TouchableOpacity
-                    style={styles.quantityButton}
-                    onPress={() => updateQuantity(item.id, item.qty - 1)}
-                  >
-                    <Ionicons name="remove" size={16} color={Colors.muted} />
-                  </TouchableOpacity>
-                  <Text style={styles.quantityText}>{item.qty}</Text>
-                  <TouchableOpacity
-                    style={styles.quantityButton}
-                    onPress={() => updateQuantity(item.id, item.qty + 1)}
-                  >
-                    <Ionicons name="add" size={16} color={Colors.primary} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.removeButton}
-                    onPress={() => removeFromCart(item.id)}
-                  >
-                    <Ionicons name="trash-outline" size={16} color={Colors.danger} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-          />
         </View>
+
+      {/* Right / Bottom Panel */}
+      {cart.length > 0 && (
+        isTablet ? (
+          <View style={[styles.rightPanel, styles.rightPanelTablet]}>
+            {cartContent}
+          </View>
+        ) : (
+          <View style={styles.floatingMobileCart}>
+             <TouchableOpacity style={styles.floatingMobileCartButton} onPress={() => setShowMobileCart(true)}>
+               <View style={styles.floatingMobileCartInfo}>
+                 <Text style={styles.floatingMobileCartItemCount}>{cart.length} Item</Text>
+                 <Text style={styles.floatingMobileCartTotal}>{formatIDR(total)}</Text>
+               </View>
+               <View style={styles.floatingMobileCartAction}>
+                 <Text style={styles.floatingMobileCartActionText}>Lihat Keranjang</Text>
+                 <Ionicons name="chevron-up" size={16} color="#fff" />
+               </View>
+             </TouchableOpacity>
+          </View>
+        )
+      )}
+      </View>
+
+      {/* Mobile Cart Modal */}
+      {!isTablet && (
+        <Modal
+          visible={showMobileCart}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowMobileCart(false)}
+        >
+          <View style={styles.mobileCartOverlay}>
+             <View style={styles.mobileCartContainer}>
+               <View style={styles.mobileCartHeader}>
+                 <Text style={styles.mobileCartHeaderTitle}>Keranjang Belanja</Text>
+                 <TouchableOpacity onPress={() => setShowMobileCart(false)} style={styles.mobileCartCloseButton}>
+                   <Ionicons name="close" size={24} color={Colors.darkText} />
+                 </TouchableOpacity>
+               </View>
+               {cartContent}
+             </View>
+          </View>
+        </Modal>
       )}
 
-      {/* Summary and Checkout */}
-      {cart.length > 0 && (
-        <View style={styles.summarySection}>
-          <View style={styles.summaryCard}>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Total Penjualan</Text>
-              <Text style={styles.summaryTotal}>{formatIDR(total)}</Text>
+      {/* Variant Selection Modal */}
+      <Modal
+        visible={showVariantModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {
+          setShowVariantModal(false);
+          setSelectedProductForVariant(null);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Pilih Varian Produk</Text>
+            <Text style={styles.modalSubtitle}>
+              {selectedProductForVariant?.name}
+            </Text>
+            
+            <View style={{ gap: 10, marginBottom: 20, maxHeight: 300 }}>
+              {selectedProductForVariant?.variants?.map((v, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={[
+                    styles.tokenInput,
+                    { 
+                      marginBottom: 0, 
+                      backgroundColor: v.stock <= 0 ? Colors.background : Colors.white,
+                      opacity: v.stock <= 0 ? 0.5 : 1
+                    }
+                  ]}
+                  disabled={v.stock <= 0}
+                  onPress={() => {
+                    if (v.stock > 0) {
+                      addProductToCart(selectedProductForVariant, null, v);
+                      setShowVariantModal(false);
+                      setSelectedProductForVariant(null);
+                    }
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 16, fontWeight: '600', color: Colors.text }}>{v.name}</Text>
+                    <Text style={{ fontSize: 14, color: Colors.primary, fontWeight: '700' }}>
+                      {formatIDR(v.price)}
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 12, color: Colors.muted, marginTop: 4 }}>
+                    Sisa Stok: {v.stock}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-            <TouchableOpacity style={styles.checkoutButton} onPress={navigateToPayment}>
-              <View style={styles.checkoutContent}>
-                <Ionicons name="card-outline" size={18} color="#ffffff" style={{ marginRight: 8 }} />
-                <Text style={styles.checkoutButtonText}>Lanjut ke Pembayaran</Text>
-              </View>
+
+            <TouchableOpacity 
+              style={[styles.modalCancelButton, { marginRight: 0 }]}
+              onPress={() => {
+                setShowVariantModal(false);
+                setSelectedProductForVariant(null);
+              }}
+            >
+              <Text style={styles.modalCancelText}>Tutup</Text>
             </TouchableOpacity>
           </View>
         </View>
-      )}
+      </Modal>
 
       {/* Token Input Modal */}
       <Modal
@@ -720,36 +886,123 @@ export default function SalesScreen({ navigation, route }) {
       </View>
       </Modal>
 
-      {/* Tombol Scan mengambang untuk langsung scan dan tambah ke keranjang */}
-      <TouchableOpacity
-        style={{
-          position: 'absolute',
-          right: 16,
-          bottom: 24,
-          width: 56,
-          height: 56,
-          borderRadius: 28,
-          backgroundColor: Colors.primary,
-          alignItems: 'center',
-          justifyContent: 'center',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.2,
-          shadowRadius: 6,
-          elevation: 6,
-        }}
-        onPress={() => navigation.navigate('Scan', { mode: 'sale' })}
-      >
-        <Ionicons name="scan" size={28} color="#fff" />
-      </TouchableOpacity>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  floatingMobileCart: {
+    padding: 16,
+    backgroundColor: Colors.card,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  floatingMobileCartButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+  },
+  floatingMobileCartInfo: {
+    flex: 1,
+  },
+  floatingMobileCartItemCount: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  floatingMobileCartTotal: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  floatingMobileCartAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  floatingMobileCartActionText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginRight: 4,
+  },
+  mobileCartOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  mobileCartContainer: {
+    backgroundColor: Colors.card,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '85%',
+    minHeight: '50%',
+    paddingBottom: 20,
+  },
+  mobileCartHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+  },
+  mobileCartHeaderTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.darkText,
+  },
+  mobileCartCloseButton: {
+    padding: 4,
+  },
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  mainLayout: {
+    flex: 1,
+    flexDirection: 'column',
+  },
+  mainLayoutTablet: {
+    flexDirection: 'row',
+  },
+  leftPanel: {
+    flex: 1,
+    display: 'flex',
+  },
+  leftPanelTablet: {
+    flex: 2.2,
+    borderRightWidth: 1,
+    borderRightColor: Colors.border,
+  },
+  rightPanel: {
+    flexShrink: 1,
+    maxHeight: '50%',
+    backgroundColor: Colors.card,
+    borderTopLeftRadius: Radii.lg,
+    borderTopRightRadius: Radii.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  rightPanelTablet: {
+    flex: 1.2,
+    height: '100%',
+    maxHeight: '100%',
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   header: {
     backgroundColor: Colors.card,
@@ -955,6 +1208,31 @@ const styles = StyleSheet.create({
     color: Colors.muted,
     marginTop: 2,
   },
+  stockBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    zIndex: 1,
+    ...Shadows.card,
+  },
+  stockBadgeEmpty: {
+    backgroundColor: Colors.dangerLight,
+    borderColor: Colors.danger,
+  },
+  stockBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+  },
+  stockBadgeTextEmpty: {
+    color: Colors.danger,
+  },
   addButtonDisabled: {
     backgroundColor: '#E2E8F0',
   },
@@ -983,7 +1261,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   cartSection: {
-    flex: 1,
+    flexShrink: 1,
     backgroundColor: Colors.card,
     paddingHorizontal: 20,
     paddingTop: 16,

@@ -6,7 +6,7 @@ import { createProduct, getProductById, updateProduct, getCategories, getBrands,
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import { formatIDR } from '../../utils/currency';
 export default function FormScreen({ navigation, route }) {
   const { id } = route.params || {};
   const { user } = useAuth();
@@ -18,6 +18,11 @@ export default function FormScreen({ navigation, route }) {
   const [price, setPrice] = useState('');
   const [costPrice, setCostPrice] = useState('');
   const [stock, setStock] = useState('');
+  const [variants, setVariants] = useState([]);
+  const [newVariantName, setNewVariantName] = useState('');
+  const [newVariantPrice, setNewVariantPrice] = useState('');
+  const [newVariantCostPrice, setNewVariantCostPrice] = useState('');
+  const [newVariantStock, setNewVariantStock] = useState('');
   const [imageUrls, setImageUrls] = useState(['', '', '', '', '']);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   
@@ -39,6 +44,7 @@ export default function FormScreen({ navigation, route }) {
     price: '',
     costPrice: '',
     stock: '',
+    variants: [],
     categoryId: null,
     brandId: null,
     imageUrls: ['', '', '', '', ''],
@@ -58,13 +64,14 @@ export default function FormScreen({ navigation, route }) {
       price,
       costPrice,
       stock,
+      variants,
       categoryId,
       brandId,
       imageUrls,
       id,
       user,
     };
-  }, [name, barcodes, price, costPrice, stock, categoryId, brandId, imageUrls, id, user]);
+  }, [name, barcodes, price, costPrice, stock, variants, categoryId, brandId, imageUrls, id, user]);
 
   const checkIfDirty = () => {
     if (!initialValuesRef.current) return false;
@@ -74,6 +81,7 @@ export default function FormScreen({ navigation, route }) {
       price: latestFormState.current.price,
       costPrice: latestFormState.current.costPrice,
       stock: latestFormState.current.stock,
+      variants: latestFormState.current.variants,
       categoryId: latestFormState.current.categoryId,
       brandId: latestFormState.current.brandId,
       imageUrls: latestFormState.current.imageUrls,
@@ -150,6 +158,7 @@ export default function FormScreen({ navigation, route }) {
           setPrice(draft.price || '');
           setCostPrice(draft.costPrice || '');
           setStock(draft.stock || '');
+          setVariants(draft.variants || []);
           setCategoryId(draft.categoryId || null);
           setBrandId(draft.brandId || null);
           setImageUrls(draft.imageUrls || ['', '', '', '', '']);
@@ -163,6 +172,7 @@ export default function FormScreen({ navigation, route }) {
               price: String(initialData.price || ''),
               costPrice: String(initialData.costPrice ?? initialData.cost_price ?? ''),
               stock: String(initialData.stock || ''),
+              variants: initialData.variants || [],
               categoryId: initialData.category_id || null,
               brandId: initialData.brand_id || null,
               imageUrls: initialData.image_urls && Array.isArray(initialData.image_urls) ? 
@@ -175,6 +185,7 @@ export default function FormScreen({ navigation, route }) {
               price: '',
               costPrice: '',
               stock: '',
+              variants: [],
               categoryId: null,
               brandId: null,
               imageUrls: ['', '', '', '', ''],
@@ -195,6 +206,7 @@ export default function FormScreen({ navigation, route }) {
           price: String(initialData.price || ''),
           costPrice: String(initialData.costPrice ?? initialData.cost_price ?? ''),
           stock: String(initialData.stock || ''),
+          variants: initialData.variants || [],
           categoryId: initialData.category_id || null,
           brandId: initialData.brand_id || null,
           imageUrls: initialData.image_urls && Array.isArray(initialData.image_urls) ? 
@@ -205,6 +217,7 @@ export default function FormScreen({ navigation, route }) {
         setPrice(vals.price);
         setCostPrice(vals.costPrice);
         setStock(vals.stock);
+        setVariants(vals.variants);
         setCategoryId(vals.categoryId);
         setBrandId(vals.brandId);
         setImageUrls(vals.imageUrls);
@@ -216,6 +229,7 @@ export default function FormScreen({ navigation, route }) {
           price: '',
           costPrice: '',
           stock: '',
+          variants: [],
           categoryId: null,
           brandId: null,
           imageUrls: ['', '', '', '', ''],
@@ -238,6 +252,7 @@ export default function FormScreen({ navigation, route }) {
           price,
           costPrice,
           stock,
+          variants,
           categoryId,
           brandId,
           imageUrls,
@@ -248,7 +263,7 @@ export default function FormScreen({ navigation, route }) {
       }
     };
     saveDraft();
-  }, [loading, id, name, barcodes, price, costPrice, stock, categoryId, brandId, imageUrls]);
+  }, [loading, id, name, barcodes, price, costPrice, stock, variants, categoryId, brandId, imageUrls]);
 
   const performAutoSave = async () => {
     if (isSavingRef.current || !latestFormState.current.user?.id) return;
@@ -261,6 +276,7 @@ export default function FormScreen({ navigation, route }) {
       price: currentPrice,
       costPrice: currentCostPrice,
       stock: currentStock,
+      variants: currentVariants,
       categoryId: currentCategoryId,
       brandId: currentBrandId,
       imageUrls: currentImageUrls,
@@ -270,14 +286,27 @@ export default function FormScreen({ navigation, route }) {
     // Minimum requirement for auto-save is a non-empty name
     if (!currentName.trim()) return;
 
+    let finalPrice = Number(currentPrice || 0);
+    let finalCostPrice = Number(currentCostPrice || 0);
+    let finalStock = Number(currentStock || 0);
+
+    if (currentVariants && currentVariants.length > 0) {
+      finalStock = currentVariants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+      const prices = currentVariants.map(v => Number(v.price) || 0);
+      finalPrice = prices.length > 0 ? Math.min(...prices) : finalPrice;
+      const costPrices = currentVariants.map(v => Number(v.costPrice) || 0);
+      finalCostPrice = costPrices.length > 0 ? Math.min(...costPrices) : finalCostPrice;
+    }
+
     isSavingRef.current = true;
     try {
       const payload = {
         name: currentName.trim(),
         barcode: currentBarcodes.filter(b => b.trim()).join(','),
-        price: Number(currentPrice || 0),
-        costPrice: Number(currentCostPrice || 0),
-        stock: Number(currentStock || 0),
+        price: finalPrice,
+        costPrice: finalCostPrice,
+        stock: finalStock,
+        variants: currentVariants,
         image_urls: currentImageUrls.filter(u => u.trim() !== ''),
         category_id: currentCategoryId,
         brand_id: currentBrandId,
@@ -304,6 +333,7 @@ export default function FormScreen({ navigation, route }) {
         price: currentPrice,
         costPrice: currentCostPrice,
         stock: currentStock,
+        variants: currentVariants,
         categoryId: currentCategoryId,
         brandId: currentBrandId,
         imageUrls: currentImageUrls,
@@ -336,6 +366,7 @@ export default function FormScreen({ navigation, route }) {
             price: String(initialData.price || ''),
             costPrice: String(initialData.costPrice ?? initialData.cost_price ?? ''),
             stock: String(initialData.stock || ''),
+            variants: initialData.variants || [],
             categoryId: initialData.category_id || null,
             brandId: initialData.brand_id || null,
             imageUrls: initialData.image_urls && Array.isArray(initialData.image_urls) ? 
@@ -346,6 +377,7 @@ export default function FormScreen({ navigation, route }) {
           setPrice(vals.price);
           setCostPrice(vals.costPrice);
           setStock(vals.stock);
+          setVariants(vals.variants);
           setCategoryId(vals.categoryId);
           setBrandId(vals.brandId);
           setImageUrls(vals.imageUrls);
@@ -357,6 +389,7 @@ export default function FormScreen({ navigation, route }) {
         setPrice('');
         setCostPrice('');
         setStock('');
+        setVariants([]);
         setCategoryId(null);
         setBrandId(null);
         setImageUrls(['', '', '', '', '']);
@@ -366,6 +399,7 @@ export default function FormScreen({ navigation, route }) {
           price: '',
           costPrice: '',
           stock: '',
+          variants: [],
           categoryId: null,
           brandId: null,
           imageUrls: ['', '', '', '', ''],
@@ -413,12 +447,25 @@ export default function FormScreen({ navigation, route }) {
   }, [route?.params?.pickedBarcode]);
 
   const save = async () => {
+    let finalPrice = Number(price || 0);
+    let finalCostPrice = Number(costPrice || 0);
+    let finalStock = Number(stock || 0);
+
+    if (variants && variants.length > 0) {
+      finalStock = variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+      const prices = variants.map(v => Number(v.price) || 0);
+      finalPrice = prices.length > 0 ? Math.min(...prices) : finalPrice;
+      const costPrices = variants.map(v => Number(v.costPrice) || 0);
+      finalCostPrice = costPrices.length > 0 ? Math.min(...costPrices) : finalCostPrice;
+    }
+
     const payload = {
       name: name.trim(),
       barcode: barcodes.filter(b => b.trim()).join(','),
-      price: Number(price || 0),
-      costPrice: Number(costPrice || 0),
-      stock: Number(stock || 0),
+      price: finalPrice,
+      costPrice: finalCostPrice,
+      stock: finalStock,
+      variants: variants,
       image_urls: imageUrls.filter(u => u.trim() !== ''),
       category_id: categoryId,
       brand_id: brandId,
@@ -710,8 +757,20 @@ export default function FormScreen({ navigation, route }) {
           </View>
         </View>
 
-        <View style={styles.row}>
-          <View style={[styles.inputGroup, styles.halfWidth]}>
+        <View style={[styles.row, { gap: 12 }]}>
+          <View style={[styles.inputGroup, { flex: 1, marginBottom: 0 }]}>
+            <Text style={styles.label}>Harga Modal</Text>
+            <TextInput 
+              value={costPrice} 
+              onChangeText={setCostPrice} 
+              keyboardType="numeric" 
+              style={styles.input}
+              placeholder="0"
+              placeholderTextColor={Colors.muted}
+            />
+          </View>
+
+          <View style={[styles.inputGroup, { flex: 1, marginBottom: 0 }]}>
             <Text style={styles.label}>Harga Jual *</Text>
             <TextInput 
               value={price} 
@@ -723,11 +782,11 @@ export default function FormScreen({ navigation, route }) {
             />
           </View>
 
-          <View style={[styles.inputGroup, styles.halfWidth]}>
-            <Text style={styles.label}>Harga Modal</Text>
+          <View style={[styles.inputGroup, { flex: 1, marginBottom: 0 }]}>
+            <Text style={styles.label}>Stok *</Text>
             <TextInput 
-              value={costPrice} 
-              onChangeText={setCostPrice} 
+              value={stock} 
+              onChangeText={setStock} 
               keyboardType="numeric" 
               style={styles.input}
               placeholder="0"
@@ -735,17 +794,98 @@ export default function FormScreen({ navigation, route }) {
             />
           </View>
         </View>
+        <View style={{ marginBottom: 20 }} />
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Stok *</Text>
-          <TextInput 
-            value={stock} 
-            onChangeText={setStock} 
-            keyboardType="numeric" 
-            style={styles.input}
-            placeholder="0"
-            placeholderTextColor={Colors.muted}
-          />
+          <Text style={styles.label}>Varian Produk (Opsional)</Text>
+          <Text style={{ fontSize: 12, color: Colors.muted, marginBottom: 8 }}>
+            Jika produk memiliki varian, tentukan nama, modal, jual, dan stok per varian.
+          </Text>
+          
+          <View style={{ marginBottom: 12 }}>
+            {variants.length > 0 && (
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8, paddingHorizontal: 4 }}>
+                <Text style={{ flex: 2, fontSize: 12, fontWeight: '600', color: Colors.muted }}>Nama Varian</Text>
+                <Text style={{ flex: 1.5, fontSize: 12, fontWeight: '600', color: Colors.muted }}>Modal</Text>
+                <Text style={{ flex: 1.5, fontSize: 12, fontWeight: '600', color: Colors.muted }}>Jual</Text>
+                <Text style={{ flex: 1, fontSize: 12, fontWeight: '600', color: Colors.muted }}>Stok</Text>
+                <View style={{ width: 30 }} />
+              </View>
+            )}
+            
+            {variants.map((v, idx) => (
+              <View key={idx} style={{ flexDirection: 'row', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                <TextInput
+                  style={[styles.input, { flex: 2, paddingVertical: 8, paddingHorizontal: 10, fontSize: 14 }]}
+                  value={v.name}
+                  onChangeText={(val) => {
+                    const newVars = [...variants];
+                    newVars[idx].name = val;
+                    setVariants(newVars);
+                  }}
+                  placeholder="Nama"
+                  placeholderTextColor={Colors.muted}
+                />
+                <TextInput
+                  style={[styles.input, { flex: 1.5, paddingVertical: 8, paddingHorizontal: 10, fontSize: 14 }]}
+                  value={String(v.costPrice !== undefined && v.costPrice !== null ? v.costPrice : '')}
+                  onChangeText={(val) => {
+                    const newVars = [...variants];
+                    newVars[idx].costPrice = val;
+                    setVariants(newVars);
+                  }}
+                  keyboardType="numeric"
+                  placeholder="0"
+                  placeholderTextColor={Colors.muted}
+                />
+                <TextInput
+                  style={[styles.input, { flex: 1.5, paddingVertical: 8, paddingHorizontal: 10, fontSize: 14 }]}
+                  value={String(v.price !== undefined && v.price !== null ? v.price : '')}
+                  onChangeText={(val) => {
+                    const newVars = [...variants];
+                    newVars[idx].price = val;
+                    setVariants(newVars);
+                  }}
+                  keyboardType="numeric"
+                  placeholder="0"
+                  placeholderTextColor={Colors.muted}
+                />
+                <TextInput
+                  style={[styles.input, { flex: 1, paddingVertical: 8, paddingHorizontal: 10, fontSize: 14 }]}
+                  value={String(v.stock !== undefined && v.stock !== null ? v.stock : '')}
+                  onChangeText={(val) => {
+                    const newVars = [...variants];
+                    newVars[idx].stock = val;
+                    setVariants(newVars);
+                  }}
+                  keyboardType="numeric"
+                  placeholder="0"
+                  placeholderTextColor={Colors.muted}
+                />
+                <TouchableOpacity 
+                  onPress={() => setVariants(variants.filter((_, i) => i !== idx))}
+                  style={{ width: 30, alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Ionicons name="trash-outline" size={20} color={Colors.danger} />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+          
+          <TouchableOpacity 
+            style={[styles.smallButton, { backgroundColor: Colors.primary, justifyContent: 'center', alignSelf: 'flex-start' }]} 
+            onPress={() => {
+              setVariants([...variants, {
+                name: '',
+                costPrice: '',
+                price: '',
+                stock: '',
+              }]);
+            }}
+          >
+            <Ionicons name="add" size={16} color="#fff" />
+            <Text style={styles.smallButtonText}>Tambah Baris Varian</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.inputGroup}>
@@ -971,6 +1111,26 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.primary,
     fontWeight: '600',
+  },
+  variantsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+  },
+  variantChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  variantChipText: {
+    color: Colors.white,
+    fontSize: 13,
+    fontWeight: '600',
+    marginRight: 6,
   },
   inlineAddRow: {
     flexDirection: 'row',

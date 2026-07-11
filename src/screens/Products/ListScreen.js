@@ -467,12 +467,33 @@ export default function ListScreen({ navigation, route }) {
                 );
               }
   
-              const margin = Number(item.price || 0) - Number(item.costPrice || item.cost_price || 0);
-              const marginPercentage = item.price ? ((margin / item.price) * 100).toFixed(1) : 0;
+              let margin = Number(item.price || 0) - Number(item.costPrice || item.cost_price || 0);
+              let displayPrice = formatIDR(item.price || 0);
+              let displayCostPrice = formatIDR(item.costPrice || item.cost_price || 0);
+              let basePrice = Number(item.price || 0);
+              let stock = Number(item.stock) || 0;
+              
+              if (Array.isArray(item.variants) && item.variants.length > 0) {
+                const prices = item.variants.map(v => Number(v.price) || 0);
+                const costPrices = item.variants.map(v => Number(v.costPrice) || 0);
+                const stocks = item.variants.map(v => Number(v.stock) || 0);
+                
+                const minPrice = Math.min(...prices);
+                const maxPrice = Math.max(...prices);
+                
+                displayPrice = minPrice === maxPrice ? formatIDR(minPrice) : `${formatIDR(minPrice)} - ${formatIDR(maxPrice)}`;
+                basePrice = minPrice;
+                
+                const minCost = Math.min(...costPrices);
+                margin = minPrice - minCost;
+                
+                stock = stocks.reduce((sum, s) => sum + s, 0);
+                displayCostPrice = formatIDR(minCost);
+              }
+
+              const marginPercentage = basePrice > 0 ? ((margin / basePrice) * 100).toFixed(1) : 0;
               const categoryName = categories.find(c => c.id === item.category_id)?.name;
               const brandName = brands.find(b => b.id === item.brand_id)?.name;
-            
-            const stock = Number(item.stock) || 0;
             let stockBadgeStyle = styles.stockBadgeNormal;
             let stockTextStyle = styles.stockTextNormal;
             let stockLabel = `Stok: ${stock}`;
@@ -522,10 +543,9 @@ export default function ListScreen({ navigation, route }) {
                          {[categoryName, brandName].filter(Boolean).join(' • ')}
                       </Text>
                     )}
-                    
                     {/* Price & Stock Row */}
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
-                      <Text style={styles.productPriceGrid}>{formatIDR(item.price)}</Text>
+                      <Text style={styles.productPriceGrid}>{displayPrice}</Text>
                       <View style={stockBadgeStyle}>
                         <Text style={stockTextStyle}>{stockLabel}</Text>
                       </View>
@@ -535,7 +555,7 @@ export default function ListScreen({ navigation, route }) {
                     
                     {/* Cost & Profit Info */}
                     <View style={{ flexDirection: 'column', gap: 2 }}>
-                      <Text style={styles.marginCostText}>Modal: {formatIDR(item.costPrice ?? item.cost_price ?? 0)}</Text>
+                      <Text style={styles.marginCostText}>Modal: {displayCostPrice}</Text>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Text style={styles.marginProfitText}>Laba: {formatIDR(margin)}</Text>
                         <Text style={[styles.marginProfitText, { fontSize: 9, color: Colors.success, fontWeight: '700' }]}>
@@ -609,7 +629,7 @@ export default function ListScreen({ navigation, route }) {
                   
                   {/* Price & Stock Row */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-                    <Text style={styles.productPriceText}>{formatIDR(item.price)}</Text>
+                    <Text style={styles.productPriceText}>{displayPrice}</Text>
                     <View style={stockBadgeStyle}>
                       <Text style={stockTextStyle}>{stockLabel}</Text>
                     </View>
@@ -620,7 +640,7 @@ export default function ListScreen({ navigation, route }) {
                   {/* Cost, Margin & Barcode */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                      <Text style={styles.marginCostText}>Modal: {formatIDR(item.costPrice ?? item.cost_price ?? 0)}</Text>
+                      <Text style={styles.marginCostText}>Modal: {displayCostPrice}</Text>
                       <Text style={styles.marginProfitText}>Laba: {formatIDR(margin)} ({marginPercentage}%)</Text>
                     </View>
                     {item.barcode ? (

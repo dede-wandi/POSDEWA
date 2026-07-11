@@ -277,6 +277,7 @@ export async function createProduct(payload) {
       price: Number(payload.price || 0),
       cost_price: Number(payload.costPrice || 0), // Gunakan cost_price sesuai schema database
       stock: Number(payload.stock || 0),
+      variants: Array.isArray(payload.variants) ? payload.variants : [],
       image_urls: Array.isArray(payload.image_urls) ? payload.image_urls : [],
       category_id: payload.category_id || null,
       brand_id: payload.brand_id || null,
@@ -429,6 +430,7 @@ export async function updateProduct(userId, id, payload) {
     if (payload.price != null) patch.price = Number(payload.price);
     if (payload.costPrice != null) patch.cost_price = Number(payload.costPrice);
     if (payload.stock != null) patch.stock = Number(payload.stock);
+    if (payload.variants != null) patch.variants = payload.variants;
     if (payload.image_urls != null) patch.image_urls = payload.image_urls;
     if (payload.category_id !== undefined) patch.category_id = payload.category_id;
     if (payload.brand_id !== undefined) patch.brand_id = payload.brand_id;
