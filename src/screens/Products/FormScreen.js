@@ -870,47 +870,46 @@ export default function FormScreen({ navigation, route }) {
                 shadowRadius: 2,
                 elevation: 1,
               }}>
-                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.muted, marginBottom: 4 }}>Nama Varian</Text>
+                <View style={{ marginBottom: 10 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.muted, marginBottom: 4 }}>Nama Varian</Text>
+                  <TextInput
+                    style={[styles.input, { paddingVertical: 8, paddingHorizontal: 10, fontSize: 14 }]}
+                    value={v.name}
+                    onChangeText={(val) => {
+                      const newVars = [...variants];
+                      newVars[idx].name = val;
+                      setVariants(newVars);
+                    }}
+                    placeholder="Contoh: Merah XL"
+                    placeholderTextColor={Colors.muted}
+                  />
+                </View>
+                
+                <View style={{ marginBottom: 10 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.muted, marginBottom: 4 }}>Barcode</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <TextInput
-                      style={[styles.input, { paddingVertical: 8, paddingHorizontal: 10, fontSize: 14 }]}
-                      value={v.name}
+                      style={[styles.input, { paddingVertical: 8, paddingHorizontal: 10, fontSize: 14, flex: 1 }]}
+                      value={v.barcode || ''}
                       onChangeText={(val) => {
                         const newVars = [...variants];
-                        newVars[idx].name = val;
+                        newVars[idx].barcode = val;
                         setVariants(newVars);
                       }}
-                      placeholder="Contoh: Merah XL"
+                      placeholder="Scan/Ketik Barcode"
                       placeholderTextColor={Colors.muted}
                     />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.muted, marginBottom: 4 }}>Barcode</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <TextInput
-                        style={[styles.input, { paddingVertical: 8, paddingHorizontal: 10, fontSize: 14, flex: 1 }]}
-                        value={v.barcode || ''}
-                        onChangeText={(val) => {
-                          const newVars = [...variants];
-                          newVars[idx].barcode = val;
-                          setVariants(newVars);
-                        }}
-                        placeholder="Scan/Ketik Barcode"
-                        placeholderTextColor={Colors.muted}
-                      />
-                      <TouchableOpacity
-                        onPress={() => handleScanBarcode(idx)}
-                        style={{
-                          marginLeft: 6,
-                          backgroundColor: Colors.primary,
-                          padding: 8,
-                          borderRadius: 8,
-                        }}
-                      >
-                        <Ionicons name="scan" size={16} color="#fff" />
-                      </TouchableOpacity>
-                    </View>
+                    <TouchableOpacity
+                      onPress={() => handleScanBarcode(idx)}
+                      style={{
+                        marginLeft: 8,
+                        backgroundColor: Colors.primary,
+                        padding: 10,
+                        borderRadius: 8,
+                      }}
+                    >
+                      <Ionicons name="scan" size={20} color="#fff" />
+                    </TouchableOpacity>
                   </View>
                 </View>
                 
