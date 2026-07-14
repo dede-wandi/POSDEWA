@@ -63,9 +63,9 @@ function ProductsStack() {
       <Stack.Screen name="FormProduk" component={FormScreen} options={{ title: 'From Produk' }} />
       <Stack.Screen name="ProductReport" component={ProductReportScreen} options={{ title: 'Report Produk' }} />
       <Stack.Screen name="ProductChangeLog" component={ProductChangeLogScreen} options={{ headerShown: false }} />
-      <Stack.Screen 
-        name="PublicProductsAdmin" 
-        component={PublicProductsAdminListScreen} 
+      <Stack.Screen
+        name="PublicProductsAdmin"
+        component={PublicProductsAdminListScreen}
         options={({ navigation }) => ({
           title: 'Produk Publik',
           headerLeft: () => (
@@ -96,7 +96,7 @@ function ProductsStack() {
                   Stok
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => navigation.navigate('PublicProductForm')}
                 style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, backgroundColor: Colors.primary, borderRadius: 16, marginRight: 8 }}
               >
@@ -213,8 +213,8 @@ function MainStack() {
           headerShown: false,
         }}
       />
-      <Stack.Screen 
-        name="StockManagement" 
+      <Stack.Screen
+        name="StockManagement"
         component={StockManagementScreen}
         options={{
           presentation: 'modal',
@@ -222,8 +222,8 @@ function MainStack() {
           title: 'Manajemen Stok',
         }}
       />
-      <Stack.Screen 
-        name="Finance" 
+      <Stack.Screen
+        name="Finance"
         component={FinanceScreen}
         options={{
           presentation: 'modal',
@@ -231,104 +231,104 @@ function MainStack() {
           title: 'Keuangan',
         }}
       />
-      <Stack.Screen 
-        name="SalesAnalytics" 
+      <Stack.Screen
+        name="SalesAnalytics"
         component={SalesAnalyticsScreen}
         options={{
           presentation: 'modal',
           headerShown: false,
         }}
       />
-      <Stack.Screen 
-        name="History" 
+      <Stack.Screen
+        name="History"
         component={HistoryScreen}
         options={{
           presentation: 'modal',
           headerShown: false,
         }}
       />
-      <Stack.Screen 
-        name="TransactionHistory" 
+      <Stack.Screen
+        name="TransactionHistory"
         component={TransactionHistoryScreen}
         options={{
           presentation: 'modal',
           headerShown: false,
         }}
       />
-      <Stack.Screen 
-        name="SalesReport" 
+      <Stack.Screen
+        name="SalesReport"
         component={SalesReportScreen}
         options={{
           presentation: 'modal',
           headerShown: false,
         }}
       />
-      <Stack.Screen 
-        name="InvoiceSettings" 
+      <Stack.Screen
+        name="InvoiceSettings"
         component={InvoiceSettingsScreen}
         options={{
           presentation: 'modal',
           headerShown: false,
         }}
       />
-      <Stack.Screen 
-        name="WhatsAppSettings" 
+      <Stack.Screen
+        name="WhatsAppSettings"
         component={WhatsAppSettingsScreen}
         options={{
           presentation: 'modal',
           headerShown: false,
         }}
       />
-      <Stack.Screen 
-        name="MenuSettings" 
+      <Stack.Screen
+        name="MenuSettings"
         component={MenuSettingsScreen}
         options={{
           presentation: 'modal',
           headerShown: false,
         }}
       />
-      <Stack.Screen 
-        name="PaymentChannels" 
+      <Stack.Screen
+        name="PaymentChannels"
         component={PaymentChannelsScreen}
         options={{
           presentation: 'modal',
           headerShown: false,
         }}
       />
-      <Stack.Screen 
-        name="TopSales" 
+      <Stack.Screen
+        name="TopSales"
         component={TopSalesMenuScreen}
         options={{
           presentation: 'modal',
           headerShown: false,
         }}
       />
-      <Stack.Screen 
-        name="TopList" 
+      <Stack.Screen
+        name="TopList"
         component={TopListScreen}
         options={{
           presentation: 'card',
           headerShown: false,
         }}
       />
-      <Stack.Screen 
-        name="SalesAnalyticsDashboard" 
+      <Stack.Screen
+        name="SalesAnalyticsDashboard"
         component={SalesAnalyticsDashboardScreen}
         options={{
           presentation: 'card',
           headerShown: false,
         }}
       />
-      <Stack.Screen 
-        name="AnnualProfitReport" 
+      <Stack.Screen
+        name="AnnualProfitReport"
         component={AnnualProfitReportScreen}
         options={{
           presentation: 'card',
           headerShown: false,
         }}
       />
-      <Stack.Screen 
-        name="AntiGoresStock" 
+      <Stack.Screen
+        name="AntiGoresStock"
         component={AntiGoresStockScreen}
         options={{
           presentation: 'modal',
@@ -336,8 +336,8 @@ function MainStack() {
         }}
       />
 
-      <Stack.Screen 
-        name="ProfileEdit"  
+      <Stack.Screen
+        name="ProfileEdit"
         component={ProfileEditScreen}
         options={{
           presentation: 'modal',

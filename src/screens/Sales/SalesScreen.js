@@ -76,13 +76,13 @@ export default function SalesScreen({ navigation, route }) {
   const [selectedProductForVariant, setSelectedProductForVariant] = useState(null);
 
   const total = useMemo(() => {
-    return cart.reduce((sum, item) => sum + item.lineTotal, 0);
+    return cart.reduce((sum, item) => sum + Number(item.lineTotal || 0), 0);
   }, [cart]);
 
   const profit = useMemo(() => {
     return cart.reduce((sum, item) => {
-      const unitCost = item?.costPrice ?? item?.cost ?? 0;
-      return sum + ((item.price - unitCost) * item.qty);
+      const unitCost = Number(item?.costPrice ?? item?.cost ?? 0);
+      return sum + ((Number(item.price || 0) - unitCost) * Number(item.qty || 1));
     }, 0);
   }, [cart]);
 
@@ -371,10 +371,10 @@ export default function SalesScreen({ navigation, route }) {
     const cartItemId = variant ? `${product.id}-${variant.name}` : product.id;
     const existingItem = cart.find(item => item.id === cartItemId);
     
-    const maxStock = variant ? variant.stock : product.stock;
-    const itemPrice = variant ? variant.price : product.price;
+    const maxStock = variant ? Number(variant.stock) : Number(product.stock);
+    const itemPrice = variant ? Number(variant.price) : Number(product.price);
     const itemName = variant ? `${product.name} - ${variant.name}` : product.name;
-    const itemCostPrice = variant ? variant.costPrice : (product.cost_price || product.costPrice || product.cost || 0);
+    const itemCostPrice = variant ? Number(variant.costPrice || 0) : Number(product.cost_price || product.costPrice || product.cost || 0);
 
     if (existingItem) {
       if (existingItem.qty >= maxStock) {
@@ -429,7 +429,7 @@ export default function SalesScreen({ navigation, route }) {
 
     setCart(cart.map(item =>
       item.id === id
-        ? { ...item, qty: newQty, lineTotal: newQty * item.price }
+        ? { ...item, qty: newQty, lineTotal: newQty * Number(item.price || 0) }
         : item
     ));
   };
