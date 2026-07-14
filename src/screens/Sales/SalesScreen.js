@@ -74,6 +74,11 @@ export default function SalesScreen({ navigation, route }) {
   const [showMobileCart, setShowMobileCart] = useState(false);
   const [showVariantModal, setShowVariantModal] = useState(false);
   const [selectedProductForVariant, setSelectedProductForVariant] = useState(null);
+  
+  // Dynamic Nominal States
+  const [showNominalModal, setShowNominalModal] = useState(false);
+  const [nominalInput, setNominalInput] = useState('');
+  const [selectedVariantForDynamic, setSelectedVariantForDynamic] = useState(null);
 
   const total = useMemo(() => {
     return cart.reduce((sum, item) => sum + Number(item.lineTotal || 0), 0);
@@ -333,10 +338,24 @@ export default function SalesScreen({ navigation, route }) {
     );
   };
 
+  const isDynamicProduct = (productName) => {
+    if (!productName) return false;
+    const keywords = ['transfer', 'tf', 'topup', 'top up', 'dana', 'gopay', 'ovo', 'shopee', 'spay', 'linkaja', 'bri', 'bca', 'bni', 'mandiri', 'bsi', 'bank', 'tarik', 'tunai', 'cash'];
+    const lowerName = productName.toLowerCase();
+    return keywords.some(keyword => lowerName.includes(keyword));
+  };
+
   const addToCart = (product, matchedVariant = null) => {
     if (matchedVariant) {
       if (Number(matchedVariant.stock) <= 0) {
         showToast(`Stok varian ${matchedVariant.name} habis`, 'error');
+        return;
+      }
+      if (isDynamicProduct(product.name)) {
+        setSelectedProductForVariant(product);
+        setSelectedVariantForDynamic(matchedVariant);
+        setNominalInput('');
+        setShowNominalModal(true);
         return;
       }
       addProductToCart(product, null, matchedVariant);
@@ -355,26 +374,28 @@ export default function SalesScreen({ navigation, route }) {
       return;
     }
 
-    // Check if this is a token/electricity product
-    // if (isTokenProduct(product.name)) {
-    //   setSelectedProduct(product);
-    //   setTokenCode('');
-    //   setShowTokenModal(true);
-    //   return;
-    // }
+    // Check if this is a dynamic product without variants
+    if (isDynamicProduct(product.name)) {
+      setSelectedProductForVariant(product);
+      setSelectedVariantForDynamic(null);
+      setNominalInput('');
+      setShowNominalModal(true);
+      return;
+    }
 
     // For non-token products, add directly
     addProductToCart(product);
   };
 
-  const addProductToCart = (product, tokenCode = null, variant = null) => {
-    const cartItemId = variant ? `${product.id}-${variant.name}` : product.id;
+  const addProductToCart = (product, tokenCode = null, variant = null, customCostPrice = null, customPrice = null, customName = null) => {
+    const baseItemId = variant ? `${product.id}-${variant.name}` : product.id;
+    const cartItemId = customCostPrice !== null ? `${baseItemId}-${customCostPrice}` : baseItemId;
     const existingItem = cart.find(item => item.id === cartItemId);
     
     const maxStock = variant ? Number(variant.stock) : Number(product.stock);
-    const itemPrice = variant ? Number(variant.price) : Number(product.price);
-    const itemName = variant ? `${product.name} - ${variant.name}` : product.name;
-    const itemCostPrice = variant ? Number(variant.costPrice || 0) : Number(product.cost_price || product.costPrice || product.cost || 0);
+    const itemCostPrice = customCostPrice !== null ? Number(customCostPrice) : (variant ? Number(variant.costPrice || 0) : Number(product.cost_price || product.costPrice || product.cost || 0));
+    const itemPrice = customPrice !== null ? Number(customPrice) : (variant ? Number(variant.price) : Number(product.price));
+    const itemName = customName !== null ? customName : (variant ? `${product.name} - ${variant.name}` : product.name);
 
     if (existingItem) {
       if (existingItem.qty >= maxStock) {
@@ -413,6 +434,38 @@ export default function SalesScreen({ navigation, route }) {
     setShowTokenModal(false);
     setSelectedProduct(null);
     setTokenCode('');
+  };
+
+  const formatNominalInput = (text) => {
+    const numericOnly = text.replace(/[^0-9]/g, '');
+    if (!numericOnly) {
+      setNominalInput('');
+      return;
+    }
+    const formatted = parseInt(numericOnly, 10).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    setNominalInput(formatted);
+  };
+
+  const handleNominalSubmit = () => {
+    const rawNominal = nominalInput.replace(/\./g, '');
+    const nominal = parseInt(rawNominal, 10);
+    
+    if (isNaN(nominal) || nominal <= 0) {
+      showToast('Nominal harus lebih besar dari 0', 'error');
+      return;
+    }
+
+    const adminFee = selectedVariantForDynamic ? Number(selectedVariantForDynamic.price || 0) : 0;
+    const finalPrice = nominal + adminFee;
+    const formattedNominal = nominal.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    const customName = `${selectedProductForVariant?.name} ${formattedNominal}`;
+
+    addProductToCart(selectedProductForVariant, null, selectedVariantForDynamic, nominal, finalPrice, customName);
+    
+    setShowNominalModal(false);
+    setSelectedProductForVariant(null);
+    setSelectedVariantForDynamic(null);
+    setNominalInput('');
   };
 
   const updateQuantity = (id, newQty) => {
@@ -834,9 +887,16 @@ export default function SalesScreen({ navigation, route }) {
                   disabled={v.stock <= 0}
                   onPress={() => {
                     if (v.stock > 0) {
-                      addProductToCart(selectedProductForVariant, null, v);
-                      setShowVariantModal(false);
-                      setSelectedProductForVariant(null);
+                      if (isDynamicProduct(selectedProductForVariant?.name)) {
+                        setSelectedVariantForDynamic(v);
+                        setNominalInput('');
+                        setShowNominalModal(true);
+                        setShowVariantModal(false);
+                      } else {
+                        addProductToCart(selectedProductForVariant, null, v);
+                        setShowVariantModal(false);
+                        setSelectedProductForVariant(null);
+                      }
                     }
                   }}
                 >
@@ -862,6 +922,52 @@ export default function SalesScreen({ navigation, route }) {
             >
               <Text style={styles.modalCancelText}>Tutup</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Nominal Input Modal */}
+      <Modal
+        visible={showNominalModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowNominalModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Input Nominal Transfer/Topup</Text>
+            <Text style={styles.modalSubtitle}>
+              {selectedProductForVariant?.name} {selectedVariantForDynamic ? `- ${selectedVariantForDynamic.name}` : ''}
+            </Text>
+            
+            <TextInput
+              style={styles.tokenInput}
+              placeholder="Contoh: 100.000"
+              value={nominalInput}
+              onChangeText={formatNominalInput}
+              keyboardType="number-pad"
+              autoFocus={true}
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={styles.modalCancelButton}
+                onPress={() => {
+                  setShowNominalModal(false);
+                  setSelectedProductForVariant(null);
+                  setSelectedVariantForDynamic(null);
+                  setNominalInput('');
+                }}
+              >
+                <Text style={styles.modalCancelText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.modalSubmitButton}
+                onPress={handleNominalSubmit}
+              >
+                <Text style={styles.modalSubmitText}>Tambah</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
