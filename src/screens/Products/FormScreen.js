@@ -184,7 +184,7 @@ export default function FormScreen({ navigation, route }) {
               price: String(initialData.price || ''),
               costPrice: String(initialData.costPrice ?? initialData.cost_price ?? ''),
               stock: String(initialData.stock || ''),
-              variants: initialData.variants || [],
+              variants: initialData.variants ? [...initialData.variants].sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0)) : [],
               categoryId: initialData.category_id || null,
               brandId: initialData.brand_id || null,
               imageUrls: initialData.image_urls && Array.isArray(initialData.image_urls) ?
@@ -223,7 +223,7 @@ export default function FormScreen({ navigation, route }) {
           price: String(initialData.price || ''),
           costPrice: String(initialData.costPrice ?? initialData.cost_price ?? ''),
           stock: String(initialData.stock || ''),
-          variants: initialData.variants || [],
+          variants: initialData.variants ? [...initialData.variants].sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0)) : [],
           categoryId: initialData.category_id || null,
           brandId: initialData.brand_id || null,
           imageUrls: initialData.image_urls && Array.isArray(initialData.image_urls) ?
@@ -383,7 +383,7 @@ export default function FormScreen({ navigation, route }) {
             price: String(initialData.price || ''),
             costPrice: String(initialData.costPrice ?? initialData.cost_price ?? ''),
             stock: String(initialData.stock || ''),
-            variants: initialData.variants || [],
+            variants: initialData.variants ? [...initialData.variants].sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0)) : [],
             categoryId: initialData.category_id || null,
             brandId: initialData.brand_id || null,
             imageUrls: initialData.image_urls && Array.isArray(initialData.image_urls) ?
@@ -521,7 +521,7 @@ export default function FormScreen({ navigation, route }) {
       price: finalPrice,
       costPrice: finalCostPrice,
       stock: finalStock,
-      variants: variants,
+      variants: variants ? [...variants].sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0)) : [],
       image_urls: imageUrls.filter(u => u.trim() !== ''),
       category_id: categoryId,
       brand_id: brandId,

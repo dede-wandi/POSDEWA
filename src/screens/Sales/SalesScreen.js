@@ -873,7 +873,7 @@ export default function SalesScreen({ navigation, route }) {
             </Text>
             
             <ScrollView style={{ marginBottom: 20, maxHeight: 300 }} contentContainerStyle={{ gap: 10 }}>
-              {selectedProductForVariant?.variants?.map((v, idx) => (
+              {selectedProductForVariant?.variants?.slice().sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0)).map((v, idx) => (
                 <TouchableOpacity
                   key={idx}
                   style={[
