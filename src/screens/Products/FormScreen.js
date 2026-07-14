@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, StyleSheet, Image, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../theme';
-import { createProduct, getProductById, updateProduct, getCategories, getBrands, addCategory, addBrand } from '../../services/products';
+import { createProduct, getProductById, updateProduct, getCategories, getBrands, addCategory, addBrand, getProducts } from '../../services/products';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -13,6 +13,8 @@ export default function FormScreen({ navigation, route }) {
   const { showToast } = useToast();
 
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [existingProducts, setExistingProducts] = useState([]);
   const [name, setName] = useState('');
   const [barcodes, setBarcodes] = useState(['']);
   const [price, setPrice] = useState('');
@@ -25,7 +27,7 @@ export default function FormScreen({ navigation, route }) {
   const [newVariantStock, setNewVariantStock] = useState('');
   const [imageUrls, setImageUrls] = useState(['', '', '', '', '']);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  
+
   // Category & Brand State
   const [categoryId, setCategoryId] = useState(null);
   const [brandId, setBrandId] = useState(null);
@@ -98,6 +100,8 @@ export default function FormScreen({ navigation, route }) {
       setCategories(cats || []);
       const brs = await getBrands(user.id);
       setBrands(brs || []);
+      const prods = await getProducts(user.id);
+      setExistingProducts(prods || []);
     } catch (e) {
     }
   };
@@ -164,7 +168,7 @@ export default function FormScreen({ navigation, route }) {
           setCategoryId(draft.categoryId || null);
           setBrandId(draft.brandId || null);
           setImageUrls(draft.imageUrls || ['', '', '', '', '']);
-          
+
           setIsDraftRestored(true);
 
           if (initialData) {
@@ -182,7 +186,7 @@ export default function FormScreen({ navigation, route }) {
               variants: initialData.variants || [],
               categoryId: initialData.category_id || null,
               brandId: initialData.brand_id || null,
-              imageUrls: initialData.image_urls && Array.isArray(initialData.image_urls) ? 
+              imageUrls: initialData.image_urls && Array.isArray(initialData.image_urls) ?
                 [...initialData.image_urls, '', '', '', '', ''].slice(0, 5) : ['', '', '', '', ''],
             };
           } else {
@@ -221,7 +225,7 @@ export default function FormScreen({ navigation, route }) {
           variants: initialData.variants || [],
           categoryId: initialData.category_id || null,
           brandId: initialData.brand_id || null,
-          imageUrls: initialData.image_urls && Array.isArray(initialData.image_urls) ? 
+          imageUrls: initialData.image_urls && Array.isArray(initialData.image_urls) ?
             [...initialData.image_urls, '', '', '', '', ''].slice(0, 5) : ['', '', '', '', ''],
         };
         setName(vals.name);
@@ -367,7 +371,7 @@ export default function FormScreen({ navigation, route }) {
       const draftKey = `product-draft-${id || 'new'}`;
       await AsyncStorage.removeItem(draftKey);
       setIsDraftRestored(false);
-      
+
       // Reload values
       if (id) {
         const initialData = await getProductById(user?.id, id);
@@ -381,7 +385,7 @@ export default function FormScreen({ navigation, route }) {
             variants: initialData.variants || [],
             categoryId: initialData.category_id || null,
             brandId: initialData.brand_id || null,
-            imageUrls: initialData.image_urls && Array.isArray(initialData.image_urls) ? 
+            imageUrls: initialData.image_urls && Array.isArray(initialData.image_urls) ?
               [...initialData.image_urls, '', '', '', '', ''].slice(0, 5) : ['', '', '', '', ''],
           };
           setName(vals.name);
@@ -456,9 +460,9 @@ export default function FormScreen({ navigation, route }) {
           setBarcodes(prev => {
             const last = prev[prev.length - 1];
             if (!last || last.trim() === '') {
-               const newArr = [...prev];
-               newArr[newArr.length - 1] = scanned;
-               return newArr;
+              const newArr = [...prev];
+              newArr[newArr.length - 1] = scanned;
+              return newArr;
             }
             return [...prev, scanned];
           });
@@ -467,7 +471,26 @@ export default function FormScreen({ navigation, route }) {
     });
   };
 
+  const isNameDuplicate = useMemo(() => {
+    if (!name.trim()) return false;
+    return existingProducts.some(p => p.name.toLowerCase() === name.trim().toLowerCase() && p.id !== id);
+  }, [name, existingProducts, id]);
+
   const save = async () => {
+    if (isSubmitting) return;
+
+    if (!name.trim()) {
+      showToast('Nama produk wajib diisi', 'error');
+      return;
+    }
+
+    if (isNameDuplicate) {
+      showToast('Produk dengan nama ini sudah tersedia', 'error');
+      return;
+    }
+
+    setIsSubmitting(true);
+
     let finalPrice = Number(price || 0);
     let finalCostPrice = Number(costPrice || 0);
     let finalStock = Number(stock || 0);
@@ -502,11 +525,6 @@ export default function FormScreen({ navigation, route }) {
       brand_id: brandId,
     };
 
-    if (!payload.name) {
-      showToast('Nama produk wajib diisi', 'error');
-      return;
-    }
-
     try {
       hasSavedRef.current = true; // prevent saveDraft from writing again
       let result;
@@ -515,11 +533,12 @@ export default function FormScreen({ navigation, route }) {
       } else {
         result = await createProduct(user?.id, payload);
       }
-      
+
       // Handle new response format
       if (result && result.success === false) {
         hasSavedRef.current = false; // reset in case of failure
         showToast(result.error || 'Gagal menyimpan produk', 'error');
+        setIsSubmitting(false);
         return;
       }
 
@@ -542,122 +561,124 @@ export default function FormScreen({ navigation, route }) {
         brandId,
         imageUrls,
       };
-      
+
       showToast('Produk tersimpan', 'success');
+      setIsSubmitting(false);
       navigation.goBack();
     } catch (e) {
       hasSavedRef.current = false; // reset in case of failure
       showToast(e.message || 'Gagal menyimpan produk', 'error');
+      setIsSubmitting(false);
     }
   };
 
   const renderBrandOptions = () => {
     const visibleBrands = showAllBrands ? brands : brands.slice(0, 5);
     return (
-    <View style={styles.chipsRow}>
-      {visibleBrands.map((b) => (
-        <TouchableOpacity
-          key={b.id}
-          style={[
-            styles.optionChip,
-            brandId === b.id && styles.optionChipActive,
-          ]}
-          onPress={() => setBrandId(b.id)}
-        >
-          <Text
+      <View style={styles.chipsRow}>
+        {visibleBrands.map((b) => (
+          <TouchableOpacity
+            key={b.id}
             style={[
-              styles.optionChipText,
-              brandId === b.id && styles.optionChipTextActive,
+              styles.optionChip,
+              brandId === b.id && styles.optionChipActive,
             ]}
+            onPress={() => setBrandId(b.id)}
           >
-            {b.name}
-          </Text>
-        </TouchableOpacity>
-      ))}
-      {!showAllBrands && brands.length > 5 && (
-        <TouchableOpacity style={styles.addChip} onPress={() => setShowAllBrands(true)}>
-          <Text style={styles.addChipText}>More (+{brands.length - 5})</Text>
-        </TouchableOpacity>
-      )}
-      <TouchableOpacity style={styles.addChip} onPress={() => setAddingBrand(true)}>
-        <Ionicons name="add" size={14} color={Colors.primary} />
-        <Text style={styles.addChipText}>Brand</Text>
-      </TouchableOpacity>
-      {addingBrand && (
-        <View style={styles.inlineAddRow}>
-          <TextInput
-            style={[styles.input, styles.inlineInput]}
-            value={newBrandName}
-            onChangeText={setNewBrandName}
-            placeholder="Nama brand baru"
-            placeholderTextColor={Colors.muted}
-          />
-          <TouchableOpacity style={styles.smallButton} onPress={handleAddBrand}>
-            <Ionicons name="checkmark" size={16} color="#fff" />
-            <Text style={styles.smallButtonText}>Simpan</Text>
+            <Text
+              style={[
+                styles.optionChipText,
+                brandId === b.id && styles.optionChipTextActive,
+              ]}
+            >
+              {b.name}
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.smallButton, { backgroundColor: Colors.border }]} onPress={() => { setAddingBrand(false); setNewBrandName(''); }}>
-            <Ionicons name="close" size={16} color={Colors.text} />
-            <Text style={[styles.smallButtonText, { color: Colors.text }]}>Batal</Text>
+        ))}
+        {!showAllBrands && brands.length > 5 && (
+          <TouchableOpacity style={styles.addChip} onPress={() => setShowAllBrands(true)}>
+            <Text style={styles.addChipText}>More (+{brands.length - 5})</Text>
           </TouchableOpacity>
-        </View>
-      )}
-    </View>
+        )}
+        <TouchableOpacity style={styles.addChip} onPress={() => setAddingBrand(true)}>
+          <Ionicons name="add" size={14} color={Colors.primary} />
+          <Text style={styles.addChipText}>Brand</Text>
+        </TouchableOpacity>
+        {addingBrand && (
+          <View style={styles.inlineAddRow}>
+            <TextInput
+              style={[styles.input, styles.inlineInput]}
+              value={newBrandName}
+              onChangeText={setNewBrandName}
+              placeholder="Nama brand baru"
+              placeholderTextColor={Colors.muted}
+            />
+            <TouchableOpacity style={styles.smallButton} onPress={handleAddBrand}>
+              <Ionicons name="checkmark" size={16} color="#fff" />
+              <Text style={styles.smallButtonText}>Simpan</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.smallButton, { backgroundColor: Colors.border }]} onPress={() => { setAddingBrand(false); setNewBrandName(''); }}>
+              <Ionicons name="close" size={16} color={Colors.text} />
+              <Text style={[styles.smallButtonText, { color: Colors.text }]}>Batal</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
     );
   };
 
   const renderCategoryOptions = () => {
     const visibleCategories = showAllCategories ? categories : categories.slice(0, 5);
     return (
-    <View style={styles.chipsRow}>
-      {visibleCategories.map((c) => (
-        <TouchableOpacity
-          key={c.id}
-          style={[
-            styles.optionChip,
-            categoryId === c.id && styles.optionChipActive,
-          ]}
-          onPress={() => setCategoryId(c.id)}
-        >
-          <Text
+      <View style={styles.chipsRow}>
+        {visibleCategories.map((c) => (
+          <TouchableOpacity
+            key={c.id}
             style={[
-              styles.optionChipText,
-              categoryId === c.id && styles.optionChipTextActive,
+              styles.optionChip,
+              categoryId === c.id && styles.optionChipActive,
             ]}
+            onPress={() => setCategoryId(c.id)}
           >
-            {c.name}
-          </Text>
-        </TouchableOpacity>
-      ))}
-      {!showAllCategories && categories.length > 5 && (
-        <TouchableOpacity style={styles.addChip} onPress={() => setShowAllCategories(true)}>
-          <Text style={styles.addChipText}>More (+{categories.length - 5})</Text>
-        </TouchableOpacity>
-      )}
-      <TouchableOpacity style={styles.addChip} onPress={() => setAddingCategory(true)}>
-        <Ionicons name="add" size={14} color={Colors.primary} />
-        <Text style={styles.addChipText}>Kategori</Text>
-      </TouchableOpacity>
-      {addingCategory && (
-        <View style={styles.inlineAddRow}>
-          <TextInput
-            style={[styles.input, styles.inlineInput]}
-            value={newCategoryName}
-            onChangeText={setNewCategoryName}
-            placeholder="Nama kategori baru"
-            placeholderTextColor={Colors.muted}
-          />
-          <TouchableOpacity style={styles.smallButton} onPress={handleAddCategory}>
-            <Ionicons name="checkmark" size={16} color="#fff" />
-            <Text style={styles.smallButtonText}>Simpan</Text>
+            <Text
+              style={[
+                styles.optionChipText,
+                categoryId === c.id && styles.optionChipTextActive,
+              ]}
+            >
+              {c.name}
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.smallButton, { backgroundColor: Colors.border }]} onPress={() => { setAddingCategory(false); setNewCategoryName(''); }}>
-            <Ionicons name="close" size={16} color={Colors.text} />
-            <Text style={[styles.smallButtonText, { color: Colors.text }]}>Batal</Text>
+        ))}
+        {!showAllCategories && categories.length > 5 && (
+          <TouchableOpacity style={styles.addChip} onPress={() => setShowAllCategories(true)}>
+            <Text style={styles.addChipText}>More (+{categories.length - 5})</Text>
           </TouchableOpacity>
-        </View>
-      )}
-    </View>
+        )}
+        <TouchableOpacity style={styles.addChip} onPress={() => setAddingCategory(true)}>
+          <Ionicons name="add" size={14} color={Colors.primary} />
+          <Text style={styles.addChipText}>Kategori</Text>
+        </TouchableOpacity>
+        {addingCategory && (
+          <View style={styles.inlineAddRow}>
+            <TextInput
+              style={[styles.input, styles.inlineInput]}
+              value={newCategoryName}
+              onChangeText={setNewCategoryName}
+              placeholder="Nama kategori baru"
+              placeholderTextColor={Colors.muted}
+            />
+            <TouchableOpacity style={styles.smallButton} onPress={handleAddCategory}>
+              <Ionicons name="checkmark" size={16} color="#fff" />
+              <Text style={styles.smallButtonText}>Simpan</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.smallButton, { backgroundColor: Colors.border }]} onPress={() => { setAddingCategory(false); setNewCategoryName(''); }}>
+              <Ionicons name="close" size={16} color={Colors.text} />
+              <Text style={[styles.smallButtonText, { color: Colors.text }]}>Batal</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
     );
   };
 
@@ -722,11 +743,18 @@ export default function FormScreen({ navigation, route }) {
 
       <View style={styles.form}>
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Nama Produk *</Text>
-          <TextInput 
-            value={name} 
-            onChangeText={setName} 
-            style={[styles.input, styles.textArea]}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <Text style={[styles.label, { marginBottom: 0 }]}>Nama Produk *</Text>
+            {isNameDuplicate && (
+              <Text style={{ color: 'red', fontSize: 12, fontWeight: 'bold' }}>
+                ⚠️ Produk dengan Nama ini Sudah tersedia
+              </Text>
+            )}
+          </View>
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            style={[styles.input, styles.textArea, isNameDuplicate && { borderColor: 'red', borderWidth: 1 }]}
             placeholder="Masukkan nama produk"
             placeholderTextColor={Colors.muted}
             multiline
@@ -740,14 +768,14 @@ export default function FormScreen({ navigation, route }) {
             <Text style={styles.label}>Barcode (Bisa lebih dari satu)</Text>
             {barcodes.map((code, index) => (
               <View key={index} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                <TextInput 
-                  value={code} 
+                <TextInput
+                  value={code}
                   onChangeText={(text) => {
                     const newArr = [...barcodes];
                     newArr[index] = text;
                     setBarcodes(newArr);
-                  }} 
-                  placeholder={`Barcode ${index + 1}`} 
+                  }}
+                  placeholder={`Barcode ${index + 1}`}
                   style={[styles.input, { flex: 1 }]}
                   placeholderTextColor={Colors.muted}
                 />
@@ -782,7 +810,7 @@ export default function FormScreen({ navigation, route }) {
                 )}
               </View>
             ))}
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => setBarcodes([...barcodes, ''])}
               style={{ flexDirection: 'row', alignItems: 'center', marginTop: 5 }}
             >
@@ -811,10 +839,10 @@ export default function FormScreen({ navigation, route }) {
             <View style={[styles.row, { gap: 12 }]}>
               <View style={[styles.inputGroup, { flex: 1, marginBottom: 0 }]}>
                 <Text style={styles.label}>Harga Modal</Text>
-                <TextInput 
-                  value={costPrice} 
-                  onChangeText={setCostPrice} 
-                  keyboardType="numeric" 
+                <TextInput
+                  value={costPrice}
+                  onChangeText={setCostPrice}
+                  keyboardType="numeric"
                   style={styles.input}
                   placeholder="0"
                   placeholderTextColor={Colors.muted}
@@ -823,10 +851,10 @@ export default function FormScreen({ navigation, route }) {
 
               <View style={[styles.inputGroup, { flex: 1, marginBottom: 0 }]}>
                 <Text style={styles.label}>Harga Jual *</Text>
-                <TextInput 
-                  value={price} 
-                  onChangeText={setPrice} 
-                  keyboardType="numeric" 
+                <TextInput
+                  value={price}
+                  onChangeText={setPrice}
+                  keyboardType="numeric"
                   style={styles.input}
                   placeholder="0"
                   placeholderTextColor={Colors.muted}
@@ -835,10 +863,10 @@ export default function FormScreen({ navigation, route }) {
 
               <View style={[styles.inputGroup, { flex: 1, marginBottom: 0 }]}>
                 <Text style={styles.label}>Stok *</Text>
-                <TextInput 
-                  value={stock} 
-                  onChangeText={setStock} 
-                  keyboardType="numeric" 
+                <TextInput
+                  value={stock}
+                  onChangeText={setStock}
+                  keyboardType="numeric"
                   style={styles.input}
                   placeholder="0"
                   placeholderTextColor={Colors.muted}
@@ -854,15 +882,15 @@ export default function FormScreen({ navigation, route }) {
           <Text style={{ fontSize: 12, color: Colors.muted, marginBottom: 8 }}>
             Jika produk memiliki varian, tentukan nama, modal, jual, dan stok per varian.
           </Text>
-          
+
           <View style={{ marginBottom: 12 }}>
             {variants.map((v, idx) => (
-              <View key={idx} style={{ 
-                backgroundColor: Colors.card, 
-                padding: 12, 
-                borderRadius: 12, 
-                marginBottom: 12, 
-                borderWidth: 1, 
+              <View key={idx} style={{
+                backgroundColor: Colors.card,
+                padding: 12,
+                borderRadius: 12,
+                marginBottom: 12,
+                borderWidth: 1,
                 borderColor: Colors.borderLight,
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 1 },
@@ -884,7 +912,7 @@ export default function FormScreen({ navigation, route }) {
                     placeholderTextColor={Colors.muted}
                   />
                 </View>
-                
+
                 <View style={{ marginBottom: 10 }}>
                   <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.muted, marginBottom: 4 }}>Barcode</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -912,7 +940,7 @@ export default function FormScreen({ navigation, route }) {
                     </TouchableOpacity>
                   </View>
                 </View>
-                
+
                 <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
                   <View style={{ flex: 1.5 }}>
                     <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.muted, marginBottom: 4 }}>Modal</Text>
@@ -960,7 +988,7 @@ export default function FormScreen({ navigation, route }) {
                     />
                   </View>
                   <View style={{ paddingTop: 20 }}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       onPress={() => setVariants(variants.filter((_, i) => i !== idx))}
                       style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.dangerLight, borderRadius: 8 }}
                     >
@@ -971,9 +999,9 @@ export default function FormScreen({ navigation, route }) {
               </View>
             ))}
           </View>
-          
-          <TouchableOpacity 
-            style={[styles.smallButton, { backgroundColor: Colors.primary, justifyContent: 'center', alignSelf: 'flex-start' }]} 
+
+          <TouchableOpacity
+            style={[styles.smallButton, { backgroundColor: Colors.primary, justifyContent: 'center', alignSelf: 'flex-start' }]}
             onPress={() => {
               setVariants([...variants, {
                 name: '',
@@ -992,14 +1020,14 @@ export default function FormScreen({ navigation, route }) {
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Image URLs (Max 5)</Text>
           {imageUrls.map((url, index) => (
-            <TextInput 
+            <TextInput
               key={index}
-              value={url} 
+              value={url}
               onChangeText={(text) => {
                 const newUrls = [...imageUrls];
                 newUrls[index] = text;
                 setImageUrls(newUrls);
-              }} 
+              }}
               style={[styles.input, { marginBottom: 8 }]}
               placeholder={`URL Image ${index + 1}`}
               placeholderTextColor={Colors.muted}
@@ -1007,11 +1035,15 @@ export default function FormScreen({ navigation, route }) {
           ))}
         </View>
 
-        <TouchableOpacity style={styles.saveButton} onPress={save}>
+        <TouchableOpacity
+          style={[styles.saveButton, isSubmitting && { opacity: 0.7 }]}
+          onPress={save}
+          disabled={isSubmitting}
+        >
           <View style={styles.buttonContent}>
             <Ionicons name={id ? 'save' : 'add-circle'} size={18} color="#ffffff" style={styles.buttonIcon} />
             <Text style={styles.saveButtonText}>
-              {id ? 'Perbarui Produk' : 'Tambah Produk'}
+              {isSubmitting ? 'Menyimpan...' : (id ? 'Perbarui Produk' : 'Tambah Produk')}
             </Text>
           </View>
         </TouchableOpacity>

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, Alert, StyleSheet, Dimensions, RefreshControl, Modal, Image, useWindowDimensions } from 'react-native';
+import { View, Text, TextInput, FlatList, TouchableOpacity, Alert, StyleSheet, Dimensions, RefreshControl, Modal, Image, useWindowDimensions, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -819,7 +819,7 @@ export default function SalesScreen({ navigation, route }) {
               {selectedProductForVariant?.name}
             </Text>
             
-            <View style={{ gap: 10, marginBottom: 20, maxHeight: 300 }}>
+            <ScrollView style={{ marginBottom: 20, maxHeight: 300 }} contentContainerStyle={{ gap: 10 }}>
               {selectedProductForVariant?.variants?.map((v, idx) => (
                 <TouchableOpacity
                   key={idx}
@@ -851,7 +851,7 @@ export default function SalesScreen({ navigation, route }) {
                   </Text>
                 </TouchableOpacity>
               ))}
-            </View>
+            </ScrollView>
 
             <TouchableOpacity 
               style={[styles.modalCancelButton, { marginRight: 0 }]}
