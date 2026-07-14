@@ -356,12 +356,12 @@ export default function SalesScreen({ navigation, route }) {
     }
 
     // Check if this is a token/electricity product
-    if (isTokenProduct(product.name)) {
-      setSelectedProduct(product);
-      setTokenCode('');
-      setShowTokenModal(true);
-      return;
-    }
+    // if (isTokenProduct(product.name)) {
+    //   setSelectedProduct(product);
+    //   setTokenCode('');
+    //   setShowTokenModal(true);
+    //   return;
+    // }
 
     // For non-token products, add directly
     addProductToCart(product);

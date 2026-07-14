@@ -14,6 +14,7 @@ export default function FormScreen({ navigation, route }) {
 
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
   const [existingProducts, setExistingProducts] = useState([]);
   const [name, setName] = useState('');
   const [barcodes, setBarcodes] = useState(['']);
@@ -282,7 +283,7 @@ export default function FormScreen({ navigation, route }) {
   }, [loading, id, name, barcodes, price, costPrice, stock, variants, categoryId, brandId, imageUrls]);
 
   const performAutoSave = async () => {
-    if (isSavingRef.current || !latestFormState.current.user?.id) return;
+    if (isSavingRef.current || hasSavedRef.current || !latestFormState.current.user?.id) return;
     if (!checkIfDirty()) return;
 
     const {
@@ -477,7 +478,7 @@ export default function FormScreen({ navigation, route }) {
   }, [name, existingProducts, id]);
 
   const save = async () => {
-    if (isSubmitting) return;
+    if (isSubmitting || isSubmittingRef.current) return;
 
     if (!name.trim()) {
       showToast('Nama produk wajib diisi', 'error');
@@ -489,6 +490,7 @@ export default function FormScreen({ navigation, route }) {
       return;
     }
 
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
 
     let finalPrice = Number(price || 0);
@@ -538,6 +540,7 @@ export default function FormScreen({ navigation, route }) {
       if (result && result.success === false) {
         hasSavedRef.current = false; // reset in case of failure
         showToast(result.error || 'Gagal menyimpan produk', 'error');
+        isSubmittingRef.current = false;
         setIsSubmitting(false);
         return;
       }
@@ -557,17 +560,20 @@ export default function FormScreen({ navigation, route }) {
         price,
         costPrice,
         stock,
+        variants,
         categoryId,
         brandId,
         imageUrls,
       };
 
       showToast('Produk tersimpan', 'success');
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
       navigation.goBack();
     } catch (e) {
       hasSavedRef.current = false; // reset in case of failure
       showToast(e.message || 'Gagal menyimpan produk', 'error');
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -840,8 +846,8 @@ export default function FormScreen({ navigation, route }) {
               <View style={[styles.inputGroup, { flex: 1, marginBottom: 0 }]}>
                 <Text style={styles.label}>Harga Modal</Text>
                 <TextInput
-                  value={costPrice}
-                  onChangeText={setCostPrice}
+                  value={costPrice !== undefined && costPrice !== null && costPrice !== '' ? String(costPrice).replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.') : ''}
+                  onChangeText={(val) => setCostPrice(val.replace(/\D/g, ''))}
                   keyboardType="numeric"
                   style={styles.input}
                   placeholder="0"
@@ -852,8 +858,8 @@ export default function FormScreen({ navigation, route }) {
               <View style={[styles.inputGroup, { flex: 1, marginBottom: 0 }]}>
                 <Text style={styles.label}>Harga Jual *</Text>
                 <TextInput
-                  value={price}
-                  onChangeText={setPrice}
+                  value={price !== undefined && price !== null && price !== '' ? String(price).replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.') : ''}
+                  onChangeText={(val) => setPrice(val.replace(/\D/g, ''))}
                   keyboardType="numeric"
                   style={styles.input}
                   placeholder="0"
@@ -946,10 +952,10 @@ export default function FormScreen({ navigation, route }) {
                     <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.muted, marginBottom: 4 }}>Modal</Text>
                     <TextInput
                       style={[styles.input, { paddingVertical: 8, paddingHorizontal: 10, fontSize: 14 }]}
-                      value={String(v.costPrice !== undefined && v.costPrice !== null ? v.costPrice : '')}
+                      value={v.costPrice !== undefined && v.costPrice !== null ? String(v.costPrice).replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.') : ''}
                       onChangeText={(val) => {
                         const newVars = [...variants];
-                        newVars[idx].costPrice = val;
+                        newVars[idx].costPrice = val.replace(/\D/g, '');
                         setVariants(newVars);
                       }}
                       keyboardType="numeric"
@@ -961,10 +967,10 @@ export default function FormScreen({ navigation, route }) {
                     <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.muted, marginBottom: 4 }}>Jual</Text>
                     <TextInput
                       style={[styles.input, { paddingVertical: 8, paddingHorizontal: 10, fontSize: 14 }]}
-                      value={String(v.price !== undefined && v.price !== null ? v.price : '')}
+                      value={v.price !== undefined && v.price !== null ? String(v.price).replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.') : ''}
                       onChangeText={(val) => {
                         const newVars = [...variants];
-                        newVars[idx].price = val;
+                        newVars[idx].price = val.replace(/\D/g, '');
                         setVariants(newVars);
                       }}
                       keyboardType="numeric"
