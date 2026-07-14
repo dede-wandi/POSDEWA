@@ -17,11 +17,22 @@ export default function PaymentScreen({ navigation, route }) {
   const { cart = [], total = 0, profit = 0 } = route.params || {};
   
   // Payment states
-  const [cashAmount, setCashAmount] = useState(total ? total.toString() : '');
+  const formatNumberWithDots = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  const [cashAmount, setCashAmount] = useState(total ? formatNumberWithDots(total) : '');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const cashValue = parseFloat(cashAmount) || 0;
+  const cashValue = parseFloat(cashAmount.replace(/\./g, '')) || 0;
   const change = cashValue - total;
+
+  const handleCashAmountChange = (text) => {
+    const numericOnly = text.replace(/[^0-9]/g, '');
+    if (!numericOnly) {
+      setCashAmount('');
+      return;
+    }
+    const formatted = parseInt(numericOnly, 10).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    setCashAmount(formatted);
+  };
 
   const quickAmounts = [
     Math.ceil(total / 1000) * 1000, // Round up to nearest thousand
@@ -170,7 +181,7 @@ export default function PaymentScreen({ navigation, route }) {
             <TextInput
               style={styles.cashInput}
               value={cashAmount}
-              onChangeText={setCashAmount}
+              onChangeText={handleCashAmountChange}
               placeholder="Masukkan jumlah uang"
               placeholderTextColor={Colors.placeholder}
               keyboardType="numeric"
@@ -179,7 +190,7 @@ export default function PaymentScreen({ navigation, route }) {
             {/* Uang Pas Button */}
             <TouchableOpacity
               style={[styles.quickAmountButton, { width: '100%', marginTop: 12, backgroundColor: Colors.primary, borderColor: Colors.primary }]}
-              onPress={() => setCashAmount(total.toString())}
+              onPress={() => setCashAmount(formatNumberWithDots(total))}
             >
               <Text style={[styles.quickAmountText, { color: Colors.white }]}>Uang Pas ({formatIDR(total)})</Text>
             </TouchableOpacity>
@@ -191,7 +202,7 @@ export default function PaymentScreen({ navigation, route }) {
                   <TouchableOpacity
                     key={amount}
                     style={styles.quickAmountButton}
-                    onPress={() => setCashAmount(amount.toString())}
+                    onPress={() => setCashAmount(formatNumberWithDots(amount))}
                   >
                     <Text style={styles.quickAmountText}>{formatIDR(amount)}</Text>
                   </TouchableOpacity>
