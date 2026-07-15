@@ -340,8 +340,15 @@ export default function SalesScreen({ navigation, route }) {
 
   const isDynamicProduct = (productName) => {
     if (!productName) return false;
-    const keywords = ['transfer', 'tf', 'topup', 'top up', 'dana', 'gopay', 'ovo', 'shopee', 'spay', 'linkaja', 'bri', 'bca', 'bni', 'mandiri', 'bsi', 'bank', 'tarik', 'tunai', 'cash'];
     const lowerName = productName.toLowerCase();
+    
+    // Jangan anggap pulsa/token sebagai produk dinamis (yang butuh input nominal)
+    const excludeKeywords = ['pulsa', 'token', 'pln'];
+    if (excludeKeywords.some(keyword => lowerName.includes(keyword))) {
+      return false;
+    }
+
+    const keywords = ['transfer', 'tf', 'topup', 'top up', 'dana', 'gopay', 'ovo', 'shopee', 'spay', 'linkaja', 'bri', 'bca', 'bni', 'mandiri', 'bsi', 'bank', 'tarik', 'tunai', 'cash'];
     return keywords.some(keyword => lowerName.includes(keyword));
   };
 
