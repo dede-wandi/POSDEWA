@@ -148,15 +148,6 @@ export default function MoreMenuScreen({ navigation }) {
         <View style={styles.grid}>
           {mainItems.map(renderMenuItem)}
         </View>
-
-        {isSuperAdmin && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Management</Text>
-            <View style={styles.grid}>
-              {managementItems.map((item, index) => renderMenuItem(item, `mgmt-${index}`))}
-            </View>
-          </View>
-        )}
       </ScrollView>
     </SafeAreaView>
   );

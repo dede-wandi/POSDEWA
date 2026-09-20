@@ -18,32 +18,10 @@ export class BaseShortcut {
     this.badgeText = badgeText;
   }
 
-  /**
-   * Polymorphically render the shortcut icon.
-   * Checks for custom Supabase URLs first, falling back to Ionicons.
-   */
   renderIcon(menuConfigs, menuErrors, setMenuErrors) {
-    const customUrl = menuConfigs[this.key]?.trim();
-    const hasError = menuErrors[this.key];
-
-    if (customUrl && customUrl.startsWith('http') && !hasError) {
-      return (
-        <View style={styles.imageContainer}>
-          <Image
-            source={{ uri: customUrl }}
-            style={styles.image}
-            onError={() => {
-              setMenuErrors(prev => ({ ...prev, [this.key]: true }));
-            }}
-            resizeMode="cover"
-          />
-        </View>
-      );
-    }
-
     return (
       <View style={[styles.defaultCircle, { backgroundColor: this.defaultBg, borderColor: this.defaultBorder }]}>
-        <Ionicons name={this.defaultIcon} size={22} color={this.defaultColor} />
+        <Ionicons name={this.defaultIcon} size={24} color={this.defaultColor} />
       </View>
     );
   }
@@ -96,7 +74,7 @@ export const DEFAULT_MENUS_METADATA = [
   {
     key: 'kasir',
     label: 'Kasir',
-    defaultIcon: 'cart',
+    defaultIcon: 'cart-outline',
     defaultColor: '#3B82F6',
     defaultBg: '#EFF6FF',
     defaultBorder: '#DBEAFE',
@@ -104,7 +82,7 @@ export const DEFAULT_MENUS_METADATA = [
   {
     key: 'produk',
     label: 'Produk',
-    defaultIcon: 'cube',
+    defaultIcon: 'cube-outline',
     defaultColor: TOKO_GREEN,
     defaultBg: '#E8F5E9',
     defaultBorder: '#C8E6C9',
@@ -112,7 +90,7 @@ export const DEFAULT_MENUS_METADATA = [
   {
     key: 'annual_profit',
     label: 'Laporan Profit',
-    defaultIcon: 'trending-up',
+    defaultIcon: 'pie-chart-outline',
     defaultColor: '#8B5CF6',
     defaultBg: '#F5F3FF',
     defaultBorder: '#EDE9FE',
@@ -120,7 +98,7 @@ export const DEFAULT_MENUS_METADATA = [
   {
     key: 'riwayat',
     label: 'Riwayat',
-    defaultIcon: 'time',
+    defaultIcon: 'time-outline',
     defaultColor: '#F59E0B',
     defaultBg: '#FFFBEB',
     defaultBorder: '#FEF3C7',
@@ -128,7 +106,7 @@ export const DEFAULT_MENUS_METADATA = [
   {
     key: 'barcode',
     label: 'Barcode',
-    defaultIcon: 'scan',
+    defaultIcon: 'barcode-outline',
     defaultColor: '#475569',
     defaultBg: '#F8FAFC',
     defaultBorder: '#E2E8F0',
@@ -136,7 +114,7 @@ export const DEFAULT_MENUS_METADATA = [
   {
     key: 'stok',
     label: 'Stok',
-    defaultIcon: 'layers',
+    defaultIcon: 'layers-outline',
     defaultColor: '#EF4444',
     defaultBg: '#FEF2F2',
     defaultBorder: '#FEE2E2',
@@ -144,7 +122,7 @@ export const DEFAULT_MENUS_METADATA = [
   {
     key: 'laporan',
     label: 'Penjualan',
-    defaultIcon: 'clipboard',
+    defaultIcon: 'document-text-outline',
     defaultColor: '#0D9488',
     defaultBg: '#F0FDFA',
     defaultBorder: '#CCFBF1',
@@ -152,7 +130,7 @@ export const DEFAULT_MENUS_METADATA = [
   {
     key: 'more',
     label: 'More',
-    defaultIcon: 'grid',
+    defaultIcon: 'grid-outline',
     defaultColor: '#4F46E5',
     defaultBg: '#EEF2FF',
     defaultBorder: '#E0E7FF',
@@ -164,39 +142,38 @@ export const DEFAULT_MENUS_METADATA = [
  */
 export const getDashboardShortcuts = () => {
   return [
-    new NavigationShortcut('kasir', 'Kasir', 'cart', '#3B82F6', '#EFF6FF', '#DBEAFE', 'Penjualan', {}, 'HOT'),
-    new NavigationShortcut('produk', 'Produk', 'cube', TOKO_GREEN, '#E8F5E9', '#C8E6C9', 'Produk', { screen: 'DaftarProduk' }),
-    new NavigationShortcut('annual_profit', 'Laporan Profit', 'trending-up', '#8B5CF6', '#F5F3FF', '#EDE9FE', 'AnnualProfitReport', {}, 'NEW'),
-    new NavigationShortcut('riwayat', 'Riwayat', 'time', '#F59E0B', '#FFFBEB', '#FEF3C7', 'History'),
-    new NavigationShortcut('barcode', 'Barcode', 'scan', '#475569', '#F8FAFC', '#E2E8F0', 'Scan'),
-    new NavigationShortcut('stok', 'Stok', 'layers', '#EF4444', '#FEF2F2', '#FEE2E2', 'StockManagement'),
-    new NavigationShortcut('laporan', 'Penjualan', 'clipboard', '#0D9488', '#F0FDFA', '#CCFBF1', 'SalesReport'),
-    new NavigationShortcut('more', 'More', 'grid', '#4F46E5', '#EEF2FF', '#E0E7FF', 'MoreMenu')
+    new NavigationShortcut('kasir', 'Kasir', 'cart-outline', '#3B82F6', '#EFF6FF', '#DBEAFE', 'Penjualan', {}, 'HOT'),
+    new NavigationShortcut('produk', 'Produk', 'cube-outline', TOKO_GREEN, '#E8F5E9', '#C8E6C9', 'Produk', { screen: 'DaftarProduk' }),
+    new NavigationShortcut('annual_profit', 'Laporan Profit', 'pie-chart-outline', '#8B5CF6', '#F5F3FF', '#EDE9FE', 'AnnualProfitReport', {}, 'NEW'),
+    new NavigationShortcut('riwayat', 'Riwayat', 'time-outline', '#F59E0B', '#FFFBEB', '#FEF3C7', 'History'),
+    new NavigationShortcut('barcode', 'Barcode', 'barcode-outline', '#475569', '#F8FAFC', '#E2E8F0', 'Scan'),
+    new NavigationShortcut('stok', 'Stok', 'layers-outline', '#EF4444', '#FEF2F2', '#FEE2E2', 'StockManagement'),
+    new NavigationShortcut('laporan', 'Penjualan', 'document-text-outline', '#0D9488', '#F0FDFA', '#CCFBF1', 'SalesReport'),
+    new NavigationShortcut('more', 'More', 'grid-outline', '#4F46E5', '#EEF2FF', '#E0E7FF', 'MoreMenu')
   ];
 };
 
 const styles = StyleSheet.create({
   imageContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     overflow: 'hidden',
     backgroundColor: '#F8FAFC',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderWidth: 0,
   },
   image: {
     width: '100%',
     height: '100%',
   },
   defaultCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1.5,
+    borderWidth: 0,
   }
 });

@@ -40,7 +40,7 @@ import MoreMenuScreen from './src/screens/MoreMenuScreen';
 
 import StockManagementScreen from './src/screens/StockManagementScreen';
 import SalesAnalyticsScreen from './src/screens/SalesAnalyticsScreen';
-import FinanceScreen from './src/screens/FinanceScreen';
+
 import TransactionHistoryScreen from './src/screens/TransactionHistoryScreen';
 import SalesReportScreen from './src/screens/SalesReportScreen';
 import SplashScreen from './src/screens/SplashScreen';
@@ -223,15 +223,6 @@ function MainStack() {
         }}
       />
       <Stack.Screen
-        name="Finance"
-        component={FinanceScreen}
-        options={{
-          presentation: 'modal',
-          headerShown: true,
-          title: 'Keuangan',
-        }}
-      />
-      <Stack.Screen
         name="SalesAnalytics"
         component={SalesAnalyticsScreen}
         options={{
@@ -375,9 +366,7 @@ function AppNavigator() {
     config: {
       screens: {
         // Not logged-in stack
-        PublicProducts: '',
-        PublicProductDetail: 'produk/:id',
-        Auth: 'admin',
+        Auth: '',
         // Logged-in stack and nested tabs
         MainTabs: {
           screens: {
@@ -399,7 +388,6 @@ function AppNavigator() {
         // Modals/routes accessible when logged-in
         Scan: 'scan',
         StockManagement: 'stok',
-        Finance: 'keuangan',
         SalesAnalytics: 'analitik',
         History: 'riwayat',
         AnnualProfitReport: 'laporan-profit-tahunan',
@@ -419,23 +407,6 @@ function AppNavigator() {
         <MainStack />
       ) : (
         <Stack.Navigator>
-          <Stack.Screen
-            name="PublicProducts"
-            component={PublicProductsPublicListScreen}
-            options={{
-              title: 'Katalog Produk',
-            }}
-          />
-          <Stack.Screen
-            name="PublicProductDetail"
-            component={PublicDetailScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="Cart"
-            component={CartScreen}
-            options={{ headerShown: false }}
-          />
           <Stack.Screen
             name="Auth"
             component={AuthScreen}

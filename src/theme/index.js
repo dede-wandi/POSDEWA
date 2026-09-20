@@ -6,9 +6,9 @@
 // ── Colors ──────────────────────────────────────────────────
 export const Colors = {
   // Brand
-  primary: '#03AC0E',         // Tokopedia Green
-  primaryDark: '#028A0B',     // Pressed / active state
-  primaryLight: '#E8F5E9',    // Chip / tag background
+  primary: '#5B58F5',         // Soft Modern Blue
+  primaryDark: '#4338CA',     // Pressed / active state
+  primaryLight: '#EEF2FF',    // Chip / tag background
   secondary: '#0A84FF',       // Blue – links, info actions
   secondaryLight: '#E3F2FD',  // Light blue tint
 
@@ -85,7 +85,7 @@ export const Shadows = {
   },
   // Strong – FABs, primary CTAs
   strong: {
-    shadowColor: '#03AC0E',
+    shadowColor: '#FF1493',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 10,

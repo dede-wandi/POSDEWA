@@ -279,6 +279,7 @@ export default function SalesScreen({ navigation, route }) {
       // Convert ProductListScreen cart format to SalesScreen cart format
       const convertedCart = route.params.updatedCart.map(item => ({
         id: item.productId,
+        originalProductId: item.productId,
         name: item.name,
         price: item.price,
         costPrice: item.costPrice || 0,

@@ -6,10 +6,8 @@ import {
   ScrollView,
   RefreshControl,
   TouchableOpacity,
-  Alert,
   Dimensions,
   ActivityIndicator,
-  Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,949 +16,331 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { getDashboardStats, getRecentSales } from '../services/dashboardSupabase';
 import { getMenuConfigs } from '../services/menuConfigSupabase';
-import { getDashboardShortcuts } from '../models/Shortcut';
-import { Colors, Spacing, Radii, Shadows, FontSize, FontWeight, TextStyles } from '../theme';
+import { Colors, Spacing, Radii, FontSize, FontWeight } from '../theme';
 
 const { width } = Dimensions.get('window');
+
+const PRIMARY   = '#5B58F5';
+const BG        = '#F4F6FB';
+const WHITE     = '#FFFFFF';
+const TEXT_DARK = '#0F172A';
+const TEXT_GREY = '#94A3B8';
+const TEXT_MID  = '#475569';
+const SUCCESS   = '#22C55E';
+const DANGER    = '#EF4444';
+
+const MENU_ITEMS = [
+  { key: 'kasir',     label: 'Kasir',     icon: 'cart-outline',          color: '#3B82F6', bg: '#EFF6FF', screen: 'Penjualan',        params: {} },
+  { key: 'produk',    label: 'Produk',    icon: 'cube-outline',          color: '#10B981', bg: '#ECFDF5', screen: 'Produk',           params: { screen: 'DaftarProduk' } },
+  { key: 'laporan',   label: 'Laporan',   icon: 'pie-chart-outline',     color: '#8B5CF6', bg: '#F5F3FF', screen: 'AnnualProfitReport', params: {} },
+  { key: 'riwayat',   label: 'Riwayat',   icon: 'time-outline',          color: '#F59E0B', bg: '#FFFBEB', screen: 'History',           params: {} },
+  { key: 'stok',      label: 'Stok',      icon: 'layers-outline',        color: '#EF4444', bg: '#FEF2F2', screen: 'StockManagement',   params: {} },
+  { key: 'barcode',   label: 'Scan',      icon: 'barcode-outline',       color: '#64748B', bg: '#F8FAFC', screen: 'Scan',              params: {} },
+  { key: 'penjualan', label: 'Penjualan', icon: 'document-text-outline', color: '#0D9488', bg: '#F0FDFA', screen: 'SalesReport',       params: {} },
+  { key: 'more',      label: 'Lainnya',   icon: 'grid-outline',          color: '#6366F1', bg: '#EEF2FF', screen: 'MoreMenu',          params: {} },
+];
 
 export default function DashboardScreen({ navigation }) {
   const { user, getBusinessName } = useAuth();
   const { showToast } = useToast();
-  const [stats, setStats] = useState(null);
+
+  const [stats, setStats]             = useState(null);
   const [recentSales, setRecentSales] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [currentDateTime, setCurrentDateTime] = useState(new Date());
+  const [loading, setLoading]         = useState(true);
+  const [refreshing, setRefreshing]   = useState(false);
   const [menuConfigs, setMenuConfigs] = useState({});
-  const [menuErrors, setMenuErrors] = useState({});
-
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentDateTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const formatDashboardDate = (date) => {
-    return date.toLocaleDateString('id-ID', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
-  };
-
-  const formatDashboardTime = (date) => {
-    return date.toLocaleTimeString('id-ID', {
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZoneName: 'short'
-    });
-  };
+  const [menuErrors, setMenuErrors]   = useState({});
 
   const getDynamicGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 11) return 'Selamat Pagi';
-    if (hour < 15) return 'Selamat Siang';
-    if (hour < 18) return 'Selamat Sore';
-    return 'Selamat Malam';
+    const h = new Date().getHours();
+    if (h < 11) return 'Selamat Pagi 👋';
+    if (h < 15) return 'Selamat Siang 👋';
+    if (h < 18) return 'Selamat Sore 👋';
+    return 'Selamat Malam 👋';
   };
 
-  const loadDashboardData = async () => {
+  const fmt = (v) =>
+    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v || 0);
+
+  const fmtDate = (s) =>
+    new Date(s).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+  const loadData = async () => {
     try {
-
-      // Load dashboard stats
-      const statsResult = await getDashboardStats(user?.id);
-      if (statsResult.success) {
-        setStats(statsResult.data);
-      } else {
-        showToast('Gagal memuat statistik: ' + statsResult.error, 'error');
-      }
-
-      // Load recent sales
-      const salesResult = await getRecentSales(user?.id, 5);
-      if (salesResult.success) {
-        setRecentSales(salesResult.data);
-      } else {
-      }
-
-      // Load menu configurations
-      if (user?.id) {
-        const configResult = await getMenuConfigs(user.id);
-        if (configResult.success && configResult.data) {
-          setMenuConfigs(configResult.data);
-          setMenuErrors({}); // Reset error states on reload
-        }
-      }
-
-    } catch (error) {
-      showToast('Terjadi kesalahan saat memuat data', 'error');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+      const [sRes, rRes, cRes] = await Promise.all([
+        getDashboardStats(user?.id),
+        getRecentSales(user?.id, 5),
+        user?.id ? getMenuConfigs(user.id) : Promise.resolve({ success: false }),
+      ]);
+      if (sRes.success) setStats(sRes.data); else showToast('Gagal memuat statistik', 'error');
+      if (rRes.success) setRecentSales(rRes.data);
+      if (cRes.success && cRes.data) { setMenuConfigs(cRes.data); setMenuErrors({}); }
+    } catch { showToast('Terjadi kesalahan', 'error'); }
+    finally { setLoading(false); setRefreshing(false); }
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      loadDashboardData();
-    }, [user?.id])
-  );
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    loadDashboardData();
-  };
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-    }).format(amount || 0);
-  };
-
-  const formatDateString = (dateString) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-
-
-  const StatCard = ({ title, value, subtitle, icon, color = Colors.primary, onPress, comparison }) => (
-    <TouchableOpacity
-      style={styles.statCard}
-      onPress={onPress}
-      disabled={!onPress}
-      activeOpacity={0.7}
-    >
-      <View style={styles.statCardHeader}>
-        <View style={[styles.iconBadge, { backgroundColor: `${color}15` }]}>
-          <Ionicons name={icon} size={18} color={color} />
-        </View>
-        <Text style={styles.statCardTitle}>{title}</Text>
-      </View>
-      <Text style={styles.statCardValue}>{value}</Text>
-      {subtitle && <Text style={styles.statCardSubtitle}>{subtitle}</Text>}
-      {comparison && (
-        <View style={styles.comparisonContainer}>
-          <Text style={styles.comparisonLabel}>
-            {comparison.label}: {comparison.value}
-          </Text>
-          <View style={[styles.comparisonBadge, { backgroundColor: comparison.isUp ? '#E8F5E9' : '#FFEBEE' }]}>
-            <Ionicons
-              name={comparison.isUp ? "arrow-up" : "arrow-down"}
-              size={10}
-              color={comparison.isUp ? '#03AC0E' : '#F44336'}
-            />
-            <Text style={[styles.comparisonText, { color: comparison.isUp ? '#03AC0E' : '#F44336' }]}>
-              {comparison.diff}
-            </Text>
-          </View>
-        </View>
-      )}
-    </TouchableOpacity>
-  );
-
-  const SaleItem = ({ sale }) => (
-    <TouchableOpacity
-      style={styles.saleItem}
-      onPress={() => navigation.navigate('History')}
-      activeOpacity={0.7}
-    >
-      <View style={styles.saleItemHeader}>
-        <View style={styles.invoiceBadge}>
-          <Ionicons name="receipt-outline" size={12} color="#4B5563" style={{ marginRight: 4 }} />
-          <Text style={styles.saleItemInvoice}>
-            {sale.no_invoice || `#${sale.id.substring(0, 8)}`}
-          </Text>
-        </View>
-        <Text style={styles.saleItemDate}>{formatDateString(sale.created_at)}</Text>
-      </View>
-
-      <View style={styles.saleItemDetails}>
-        <View>
-          <Text style={styles.saleItemLabel}>Total Transaksi</Text>
-          <Text style={styles.saleItemTotal}>{formatCurrency(sale.total)}</Text>
-        </View>
-        <View style={styles.profitBadgeContainer}>
-          <Text style={styles.saleItemLabelProfit}>Profit</Text>
-          <Text style={styles.saleItemProfit}>
-            {formatCurrency(sale.profit)}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.dividerLine} />
-
-      <View style={styles.saleItemsList}>
-        {(() => {
-          const items = sale.sale_items || [];
-          if (items.length === 0) return <Text style={styles.saleItemCount}>Tidak ada item</Text>;
-
-          if (items.length === 1) {
-            return (
-              <Text style={styles.saleItemCount} numberOfLines={1}>
-                1 Item: {items[0].qty}x {items[0].product_name} ({formatCurrency(items[0].price)})
-              </Text>
-            );
-          }
-
-          return (
-            <View>
-              <Text style={styles.saleItemCountHeader}>{items.length} Item Terjual:</Text>
-              {items.slice(0, 2).map((prod, idx) => (
-                <Text key={idx} style={styles.saleItemCount} numberOfLines={1}>
-                  • {prod.qty}x {prod.product_name} ({formatCurrency(prod.price)})
-                </Text>
-              ))}
-              {items.length > 2 && (
-                <Text style={[styles.saleItemCount, { fontStyle: 'italic', color: '#9CA3AF' }]}>
-                  ... dan {items.length - 2} item lainnya
-                </Text>
-              )}
-            </View>
-          );
-        })()}
-      </View>
-    </TouchableOpacity>
-  );
+  useFocusEffect(useCallback(() => { loadData(); }, [user?.id]));
+  const onRefresh = () => { setRefreshing(true); loadData(); };
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-        </View>
+      <SafeAreaView style={s.container} edges={['top']}>
+        <View style={s.loadingBox}><ActivityIndicator size="large" color={PRIMARY} /></View>
       </SafeAreaView>
     );
   }
 
+  const todayTotal    = stats?.today?.total        || 0;
+  const todayProfit   = stats?.today?.profit       || 0;
+  const todayTrx      = stats?.today?.transactions || 0;
+  const monthTotal    = stats?.month?.total        || 0;
+  const monthProfit   = stats?.month?.profit       || 0;
+  const lowStockCount = stats?.products?.lowStock?.length || 0;
+
+  const STAT_CARDS = [
+    { label: 'Total Penjualan', value: fmt(monthTotal),  icon: 'cash-outline',        color: PRIMARY,   bg: '#EEF2FF', onPress: () => navigation.navigate('SalesAnalytics', { type: 'sales',  period: 'month' }) },
+    { label: 'Profit Bulan',    value: fmt(monthProfit), icon: 'bar-chart-outline',   color: '#8B5CF6', bg: '#F5F3FF', onPress: () => navigation.navigate('SalesAnalytics', { type: 'profit', period: 'month' }) },
+    { label: 'Total Produk',    value: (stats?.products?.total || 0).toString(), icon: 'cube-outline',  color: '#10B981', bg: '#ECFDF5', onPress: () => navigation.navigate('Produk', { screen: 'DaftarProduk' }) },
+    { label: 'Stock Menipis',   value: lowStockCount.toString(), icon: 'warning-outline', color: DANGER, bg: '#FEF2F2', onPress: () => navigation.navigate('StockManagement') },
+  ];
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Premium Header */}
-      <View style={styles.header}>
-        {/* Profile Row */}
-        <View style={styles.profileHeaderRow}>
-          <TouchableOpacity
-            style={styles.profileInfoBlock}
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('Akun')}
-          >
-            <View style={styles.headerAvatar}>
-              <Text style={styles.headerAvatarText}>
-                {getBusinessName()?.charAt(0).toUpperCase() || 'M'}
-              </Text>
+    <SafeAreaView style={s.container} edges={['top']}>
+      <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PRIMARY} />}>
+
+        {/* ── HEADER ──────────────────────────────── */}
+        <View style={s.header}>
+          <TouchableOpacity style={s.profileRow} onPress={() => navigation.navigate('Akun')} activeOpacity={0.8}>
+            <View style={s.avatar}>
+              <Text style={s.avatarTxt}>{getBusinessName()?.charAt(0)?.toUpperCase() || 'P'}</Text>
             </View>
-            <View style={styles.greetingColumn}>
-              <Text style={styles.greetingSub}>{getDynamicGreeting()}</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={styles.businessNameTitle} numberOfLines={1}>
-                  {getBusinessName()}
-                </Text>
-              </View>
+            <View>
+              <Text style={s.greeting}>{getDynamicGreeting()}</Text>
+              <Text style={s.bizName} numberOfLines={1}>{getBusinessName()}</Text>
             </View>
           </TouchableOpacity>
-
-          <View style={styles.headerIcons}>
-
-            <TouchableOpacity
-              style={styles.headerIconButton}
-              activeOpacity={0.7}
-              onPress={() => navigation.navigate('History')}
-            >
-              <View>
-                <Ionicons name="notifications-outline" size={22} color="#4B5563" />
-                {(stats?.today?.transactions || 0) > 0 && (
-                  <View style={styles.notiBadge} />
-                )}
-              </View>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Search Bar Row */}
-        <View style={styles.searchBarRow}>
-          <TouchableOpacity
-            style={styles.searchBar}
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('Produk', { screen: 'DaftarProduk' })}
-          >
-            <Ionicons name="search-outline" size={16} color="#9CA3AF" style={{ marginRight: 8 }} />
-            <Text style={styles.searchBarText}>Cari produk, transaksi, atau fitur...</Text>
+          <TouchableOpacity style={s.notifBtn} onPress={() => navigation.navigate('History')} activeOpacity={0.8}>
+            <Ionicons name="notifications-outline" size={22} color={TEXT_DARK} />
+            {todayTrx > 0 && <View style={s.notifDot} />}
           </TouchableOpacity>
         </View>
-      </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {/* GoFood/GoPay Wallet Style Financial Card */}
-        <View style={styles.walletCard}>
-          {/* Left Section: Balance Info */}
-          <TouchableOpacity
-            style={styles.walletBalanceSection}
-            activeOpacity={0.85}
-            onPress={() => navigation.navigate('SalesAnalyticsDashboard', { initialTab: 'profit' })}
-          >
-            <View style={styles.walletBrandRow}>
-              <Ionicons name="wallet-outline" size={14} color={Colors.white} style={{ marginRight: 4 }} />
-              <Text style={styles.walletBrandName}>{getBusinessName()}</Text>
+        {/* ── SEARCH ──────────────────────────────── */}
+        <TouchableOpacity style={s.search} onPress={() => navigation.navigate('Produk', { screen: 'DaftarProduk' })} activeOpacity={0.8}>
+          <Ionicons name="search-outline" size={17} color={TEXT_GREY} style={{ marginRight: 8 }} />
+          <Text style={s.searchTxt}>Cari produk, transaksi, fitur…</Text>
+        </TouchableOpacity>
+
+        {/* ── HERO CARD ───────────────────────────── */}
+        <TouchableOpacity style={s.hero} onPress={() => navigation.navigate('SalesAnalyticsDashboard', { initialTab: 'profit' })} activeOpacity={0.9}>
+          <View style={s.b1} /><View style={s.b2} /><View style={s.b3} />
+          <View style={{ position: 'relative', zIndex: 1 }}>
+            {/* top badge row */}
+            <View style={s.heroTop}>
+              <View style={s.badge}>
+                <Ionicons name="wallet-outline" size={11} color={WHITE} style={{ marginRight: 3 }} />
+                <Text style={s.badgeTxt}>Hari Ini</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={15} color="rgba(255,255,255,0.4)" />
             </View>
-            <Text style={styles.walletBalanceLabel}>Hari Ini</Text>
-            <Text style={styles.walletBalanceValue}>{formatCurrency(stats?.today?.profit)}</Text>
-            <View style={styles.walletProfitBadge}>
-              <Text style={styles.walletProfitLabel}>Bulan Ini: </Text>
-              <Text style={styles.walletProfitValue}>{formatCurrency(stats?.month?.profit)}</Text>
+            <Text style={s.heroLbl}>Total Profit Hari Ini</Text>
+            <Text style={s.heroAmt}>{fmt(todayProfit)}</Text>
+            <View style={s.heroDivider} />
+            {/* bottom stats row */}
+            <View style={s.heroStats}>
+              {[
+                { l: 'Penjualan', v: fmt(todayTotal) },
+                { l: 'Transaksi', v: `${todayTrx}x` },
+                { l: 'Bln Ini',   v: fmt(monthProfit) },
+              ].map((stat, i) => (
+                <React.Fragment key={stat.l}>
+                  {i > 0 && <View style={s.heroSep} />}
+                  <View style={s.heroStat}>
+                    <Text style={s.heroStatLbl}>{stat.l}</Text>
+                    <Text style={s.heroStatVal}>{stat.v}</Text>
+                  </View>
+                </React.Fragment>
+              ))}
             </View>
+          </View>
+        </TouchableOpacity>
+
+        {/* ── QUICK ACTIONS ───────────────────────── */}
+        <View style={s.qaRow}>
+          {[
+            { l: 'Kasir',     ic: 'cart-outline',        c: PRIMARY,   sc: 'Penjualan' },
+            { l: 'Keuangan',  ic: 'trending-up-outline', c: '#8B5CF6', sc: 'AnnualProfitReport' },
+            { l: 'Riwayat',   ic: 'time-outline',        c: '#F59E0B', sc: 'History' },
+            { l: 'Produk',    ic: 'cube-outline',        c: '#10B981', sc: 'Produk', p: { screen: 'DaftarProduk' } },
+          ].map(btn => (
+            <TouchableOpacity key={btn.l} style={s.qaBtn} onPress={() => navigation.navigate(btn.sc, btn.p || {})} activeOpacity={0.75}>
+              <View style={[s.qaIcon, { backgroundColor: btn.c + '15' }]}>
+                <Ionicons name={btn.ic} size={22} color={btn.c} />
+              </View>
+              <Text style={s.qaLbl}>{btn.l}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* ── MENU SHORTCUTS (horizontal scroll) ─── */}
+        <View style={s.secRow}>
+          <Text style={s.secTitle}>Menu</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('MoreMenu')}><Text style={s.seeAll}>Lihat Semua</Text></TouchableOpacity>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.menuScroll}>
+          {MENU_ITEMS.map(item => (
+            <TouchableOpacity key={item.key} style={s.menuItem} onPress={() => navigation.navigate(item.screen, item.params)} activeOpacity={0.75}>
+              <View style={[s.menuCircle, { backgroundColor: item.bg }]}>
+                <Ionicons name={item.icon} size={24} color={item.color} />
+              </View>
+              <Text style={s.menuLbl}>{item.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* ── STAT MINI CARDS (horizontal scroll) ── */}
+        <View style={s.secRow}>
+          <Text style={s.secTitle}>Bulan Ini</Text>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.statsScroll}>
+          {STAT_CARDS.map(c => (
+            <TouchableOpacity key={c.label} style={s.statCard} onPress={c.onPress} activeOpacity={0.8}>
+              <View style={[s.statIcon, { backgroundColor: c.bg }]}>
+                <Ionicons name={c.icon} size={18} color={c.color} />
+              </View>
+              <Text style={s.statVal}>{c.value}</Text>
+              <Text style={s.statLbl}>{c.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* ── LOW STOCK ALERT ─────────────────────── */}
+        {lowStockCount > 0 && (
+          <TouchableOpacity style={s.alertBanner} onPress={() => navigation.navigate('StockManagement')} activeOpacity={0.85}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="warning" size={18} color={DANGER} />
+              <Text style={s.alertTxt}> {lowStockCount} produk stock menipis</Text>
+            </View>
+            <View style={s.alertBtn}><Text style={s.alertBtnTxt}>Kelola →</Text></View>
           </TouchableOpacity>
-
-          {/* Vertical Divider */}
-          <View style={styles.walletDivider} />
-
-          {/* Right Section: Action Buttons */}
-          <View style={styles.walletActionsSection}>
-            <TouchableOpacity
-              style={styles.walletActionItem}
-              activeOpacity={0.7}
-              onPress={() => navigation.navigate('Penjualan')}
-            >
-              <View style={styles.walletActionIconBg}>
-                <Ionicons name="cart" size={18} color={Colors.primary} />
-              </View>
-              <Text style={styles.walletActionLabel}>Kasir</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.walletActionItem}
-              activeOpacity={0.7}
-              onPress={() => navigation.navigate('AnnualProfitReport')}
-            >
-              <View style={styles.walletActionIconBg}>
-                <Ionicons name="trending-up" size={18} color={Colors.primary} />
-              </View>
-              <Text style={styles.walletActionLabel}>Keuangan</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.walletActionItem}
-              activeOpacity={0.7}
-              onPress={() => navigation.navigate('History')}
-            >
-              <View style={styles.walletActionIconBg}>
-                <Ionicons name="time" size={18} color={Colors.primary} />
-              </View>
-              <Text style={styles.walletActionLabel}>Riwayat</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Menu Grid (Tokopedia Style Shortcuts) */}
-        <View style={styles.menuContainer}>
-          <View style={styles.menuGrid}>
-            {getDashboardShortcuts().map((item) => (
-              <TouchableOpacity
-                key={item.key}
-                style={styles.menuItem}
-                onPress={() => item.onPress(navigation)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.menuIconWrapper}>
-                  {item.renderIcon(menuConfigs, menuErrors, setMenuErrors)}
-                  {item.badgeText && (
-                    <View style={[
-                      styles.badgeContainer,
-                      { backgroundColor: item.badgeText === 'HOT' ? '#FF3B30' : '#FF9500' }
-                    ]}>
-                      <Text style={styles.badgeText}>{item.badgeText}</Text>
-                    </View>
-                  )}
-                </View>
-                <Text style={styles.menuLabel}>{item.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Monthly Stats */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Bulan Ini</Text>
-          <View style={styles.statsGrid}>
-            <StatCard
-              title="Total Penjualan"
-              value={formatCurrency(stats?.month?.total)}
-              subtitle={`${stats?.month?.transactions || 0} transaksi`}
-              icon="calendar-outline"
-              color={Colors.primary}
-              onPress={() => navigation.navigate('SalesAnalytics', { type: 'sales', period: 'month' })}
-              comparison={{
-                label: 'Bulan Lalu',
-                value: formatCurrency(stats?.month?.lastMonthTotal),
-                isUp: (stats?.month?.total || 0) >= (stats?.month?.lastMonthTotal || 0),
-                diff: (stats?.month?.lastMonthTotal || 0) > 0
-                  ? `${Math.abs(((stats?.month?.total - stats.month.lastMonthTotal) / stats.month.lastMonthTotal) * 100).toFixed(1)}%`
-                  : stats?.month?.total > 0 ? '100%' : '0%'
-              }}
-            />
-            <StatCard
-              title="Profit"
-              value={formatCurrency(stats?.month?.profit)}
-              subtitle="Keuntungan bulan ini"
-              icon="bar-chart-outline"
-              color="#5856D6"
-              onPress={() => navigation.navigate('SalesAnalytics', { type: 'profit', period: 'month' })}
-              comparison={{
-                label: 'Bulan Lalu',
-                value: formatCurrency(stats?.month?.lastMonthProfit),
-                isUp: (stats?.month?.profit || 0) >= (stats?.month?.lastMonthProfit || 0),
-                diff: (stats?.month?.lastMonthProfit || 0) > 0
-                  ? `${Math.abs(((stats?.month?.profit - stats.month.lastMonthProfit) / stats.month.lastMonthProfit) * 100).toFixed(1)}%`
-                  : stats?.month?.profit > 0 ? '100%' : '0%'
-              }}
-            />
-          </View>
-        </View>
-
-        {/* Products Stats */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Produk</Text>
-          <View style={styles.statsGrid}>
-            <StatCard
-              title="Total Produk"
-              value={stats?.products?.total?.toString() || '0'}
-              subtitle="Produk terdaftar"
-              icon="cube-outline"
-              color="#32D74B"
-              onPress={() => navigation.navigate('Produk', { screen: 'DaftarProduk' })}
-            />
-            <StatCard
-              title="Stock Menipis"
-              value={stats?.products?.lowStock?.length?.toString() || '0'}
-              subtitle="Stock ≤ 5"
-              icon="warning-outline"
-              color="#FF3B30"
-              onPress={() => navigation.navigate('StockManagement')}
-            />
-          </View>
-        </View>
-
-        {/* Low Stock Alert */}
-        {stats?.products?.lowStock?.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.alertCard}>
-              <View style={styles.alertHeader}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="warning" size={20} color="#FF3B30" />
-                  <Text style={styles.alertTitle}>Peringatan Stock</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.alertButton}
-                  onPress={() => navigation.navigate('StockManagement')}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.alertButtonText}>Kelola Stock</Text>
-                </TouchableOpacity>
-              </View>
-              <Text style={styles.alertText}>
-                {stats.products.lowStock.length} produk memiliki stock menipis
-              </Text>
-            </View>
-          </View>
         )}
 
-        {/* Recent Sales */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Penjualan Terbaru</Text>
+        {/* ── RECENT SALES ────────────────────────── */}
+        <View style={[s.secRow, { marginTop: 24 }]}>
+          <Text style={s.secTitle}>Penjualan Terbaru</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('History')}><Text style={s.seeAll}>Lihat Semua</Text></TouchableOpacity>
+        </View>
+
+        <View style={s.salesCard}>
+          {recentSales.length > 0 ? recentSales.map((sale, idx) => (
             <TouchableOpacity
+              key={sale.id}
+              style={[s.saleRow, idx < recentSales.length - 1 && s.saleRowBorder]}
               onPress={() => navigation.navigate('History')}
               activeOpacity={0.7}
             >
-              <Text style={styles.seeAllText}>Lihat Semua</Text>
+              <View style={s.saleIcon}>
+                <Ionicons name="receipt-outline" size={18} color={PRIMARY} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.saleInv} numberOfLines={1}>{sale.no_invoice || `#${sale.id.substring(0, 8)}`}</Text>
+                <Text style={s.saleDate}>{fmtDate(sale.created_at)}</Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={s.saleTot}>{fmt(sale.total)}</Text>
+                <Text style={s.saleProfit}>+{fmt(sale.profit)}</Text>
+              </View>
             </TouchableOpacity>
-          </View>
-
-          {recentSales.length > 0 ? (
-            recentSales.map((sale) => (
-              <SaleItem key={sale.id} sale={sale} />
-            ))
-          ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="receipt-outline" size={48} color="#C7C7CC" />
-              <Text style={styles.emptyStateText}>Belum ada penjualan hari ini</Text>
+          )) : (
+            <View style={s.empty}>
+              <Ionicons name="receipt-outline" size={44} color="#CBD5E1" />
+              <Text style={s.emptyTxt}>Belum ada penjualan hari ini</Text>
             </View>
           )}
         </View>
+
+        <View style={{ height: 32 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    backgroundColor: Colors.card,
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
-  },
-  profileHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  profileInfoBlock: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 16,
-  },
-  headerAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-  headerAvatarText: {
-    color: Colors.white,
-    fontSize: FontSize.subtitle,
-    fontWeight: FontWeight.bold,
-  },
-  greetingColumn: {
-    flex: 1,
-  },
-  greetingSub: {
-    fontSize: FontSize.sm,
-    color: Colors.muted,
-    fontWeight: FontWeight.medium,
-    marginBottom: 1,
-  },
-  businessNameTitle: {
-    fontSize: FontSize.body,
-    fontWeight: FontWeight.bold,
-    color: Colors.textPrimary,
-    marginRight: 6,
-  },
-  searchBarRow: {
-    width: '100%',
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.lightBg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radii.sm,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-  },
-  searchBarText: {
-    fontSize: FontSize.caption,
-    color: Colors.placeholder,
-  },
-  headerIcons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerIconButton: {
-    paddingHorizontal: Spacing.sm,
-    position: 'relative',
-  },
-  notiBadge: {
-    position: 'absolute',
-    top: -1,
-    right: 2,
-    backgroundColor: Colors.danger,
-    borderRadius: 4,
-    width: 8,
-    height: 8,
-    borderWidth: 1,
-    borderColor: Colors.white,
-  },
-  memberBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.primaryLight,
-    borderRadius: Radii.xs,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginLeft: 6,
-  },
-  memberBadgeText: {
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.bold,
-    color: Colors.primary,
-  },
-  comparisonContainer: {
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: Colors.borderLight,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  comparisonLabel: {
-    fontSize: FontSize.xs,
-    color: Colors.placeholder,
-  },
-  comparisonBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: Radii.sm,
-  },
-  comparisonText: {
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.bold,
-    marginLeft: 2,
-  },
-  section: {
-    marginTop: Spacing.lg,
-    paddingHorizontal: Spacing.lg,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  sectionTitle: {
-    fontSize: FontSize.body,
-    fontWeight: FontWeight.bold,
-    color: Colors.textPrimary,
-    marginBottom: 8,
-  },
-  seeAllText: {
-    fontSize: FontSize.caption,
-    color: Colors.primary,
-    fontWeight: FontWeight.semibold,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: Colors.card,
-    borderRadius: Radii.md,
-    padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    ...Shadows.card,
-  },
-  statCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  iconBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statCardTitle: {
-    fontSize: FontSize.caption,
-    color: Colors.muted,
-    marginLeft: 6,
-    fontWeight: FontWeight.semibold,
-  },
-  statCardValue: {
-    fontSize: FontSize.body,
-    fontWeight: FontWeight.bold,
-    color: Colors.textPrimary,
-    marginTop: 8,
-    marginBottom: 2,
-  },
-  statCardSubtitle: {
-    fontSize: FontSize.sm,
-    color: Colors.muted,
-  },
-  alertCard: {
-    backgroundColor: Colors.dangerLight,
-    borderRadius: Radii.md,
-    padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: '#FED7D7',
-  },
-  alertHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  alertTitle: {
-    fontSize: FontSize.body,
-    fontWeight: FontWeight.semibold,
-    color: '#E53E3E',
-    marginLeft: 6,
-  },
-  alertText: {
-    fontSize: FontSize.caption,
-    color: '#C53030',
-  },
-  alertButton: {
-    backgroundColor: '#E53E3E',
-    borderRadius: Radii.xs,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-  },
-  alertButtonText: {
-    color: Colors.white,
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
-  },
-  saleItem: {
-    backgroundColor: Colors.card,
-    borderRadius: Radii.md,
-    padding: 10,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    ...Shadows.card,
-  },
-  saleItemHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  invoiceBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.lightBg,
-    borderRadius: Radii.xs,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  saleItemInvoice: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
-    color: Colors.textSecondary,
-  },
-  saleItemDate: {
-    fontSize: FontSize.xs,
-    color: Colors.muted,
-  },
-  saleItemDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  saleItemLabel: {
-    fontSize: FontSize.xxs,
-    color: Colors.muted,
-    marginBottom: 1,
-  },
-  saleItemTotal: {
-    fontSize: FontSize.body,
-    fontWeight: FontWeight.bold,
-    color: Colors.primary,
-  },
-  profitBadgeContainer: {
-    alignItems: 'flex-end',
-  },
-  saleItemLabelProfit: {
-    fontSize: FontSize.xxs,
-    color: Colors.muted,
-    marginBottom: 1,
-    textAlign: 'right',
-  },
-  saleItemProfit: {
-    fontSize: FontSize.caption,
-    color: Colors.warning,
-    fontWeight: FontWeight.semibold,
-  },
-  dividerLine: {
-    height: 1,
-    backgroundColor: Colors.borderLight,
-    marginVertical: 6,
-  },
-  saleItemsList: {
-    marginTop: 1,
-  },
-  saleItemCountHeader: {
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
-    color: Colors.textSecondary,
-    marginBottom: 2,
-  },
-  saleItemCount: {
-    fontSize: FontSize.xs,
-    color: Colors.muted,
-    marginTop: 1,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 30,
-  },
-  emptyStateText: {
-    fontSize: FontSize.body,
-    color: Colors.muted,
-    marginTop: 8,
-  },
-  menuContainer: {
-    paddingHorizontal: Spacing.lg,
-    marginTop: 14,
-  },
-  menuGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    backgroundColor: Colors.card,
-    borderRadius: Radii.lg,
-    paddingTop: 18,
-    paddingBottom: 4,
-    paddingHorizontal: 8,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-    ...Shadows.card,
-  },
-  menuItem: {
-    width: '25%',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  menuLabel: {
-    fontSize: FontSize.caption,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    fontWeight: FontWeight.semibold,
-    marginTop: 2,
-  },
-  walletCard: {
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    padding: 16,
-    marginHorizontal: Spacing.lg,
-    marginTop: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.primaryDark,
-  },
-  walletBalanceSection: {
-    flex: 1.2,
-  },
-  walletBrandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  walletBrandName: {
-    color: Colors.white,
-    fontSize: FontSize.caption,
-    fontWeight: FontWeight.bold,
-    fontFamily: 'Poppins',
-  },
-  walletBalanceLabel: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: FontSize.sm,
-    fontFamily: 'Poppins',
-    marginBottom: 2,
-  },
-  walletBalanceValue: {
-    color: Colors.white,
-    fontSize: FontSize.h3,
-    fontWeight: FontWeight.extrabold,
-    fontFamily: 'Poppins',
-    lineHeight: 24,
-  },
-  walletProfitBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  walletProfitLabel: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: FontSize.xs,
-    fontFamily: 'Poppins',
-  },
-  walletProfitValue: {
-    color: '#FFE082',
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.bold,
-    fontFamily: 'Poppins',
-  },
-  walletDivider: {
-    width: 1,
-    height: 55,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    marginHorizontal: 10,
-  },
-  walletActionsSection: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  walletActionItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  walletActionIconBg: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: Colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  walletActionLabel: {
-    color: Colors.white,
-    fontSize: 10,
-    fontWeight: FontWeight.bold,
-    fontFamily: 'Poppins',
-    textAlign: 'center',
-  },
-  menuIconWrapper: {
-    position: 'relative',
-    marginBottom: 6,
-  },
-  badgeContainer: {
-    position: 'absolute',
-    top: -6,
-    right: -10,
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    zIndex: 10,
-    borderWidth: 1.5,
-    borderColor: Colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: {
-    color: Colors.white,
-    fontSize: 8,
-    fontWeight: FontWeight.extrabold,
-  },
+const s = StyleSheet.create({
+  container:  { flex: 1, backgroundColor: BG },
+  scroll:     { flex: 1 },
+  loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+
+  // header
+  header:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 4 },
+  profileRow:{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 12 },
+  avatar:    { width: 44, height: 44, borderRadius: 22, backgroundColor: PRIMARY, alignItems: 'center', justifyContent: 'center', marginRight: 12, shadowColor: PRIMARY, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 },
+  avatarTxt: { color: WHITE, fontSize: FontSize.subtitle, fontWeight: FontWeight.bold },
+  greeting:  { fontSize: FontSize.caption, color: TEXT_GREY, marginBottom: 1 },
+  bizName:   { fontSize: FontSize.body, fontWeight: FontWeight.bold, color: TEXT_DARK },
+  notifBtn:  { width: 42, height: 42, borderRadius: 21, backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
+  notifDot:  { position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: 4, backgroundColor: DANGER, borderWidth: 1.5, borderColor: WHITE },
+
+  // search
+  search:    { flexDirection: 'row', alignItems: 'center', backgroundColor: WHITE, marginHorizontal: 20, marginTop: 16, borderRadius: 99, paddingHorizontal: 18, paddingVertical: 13, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
+  searchTxt: { fontSize: FontSize.caption, color: TEXT_GREY },
+
+  // hero
+  hero:      { marginHorizontal: 20, marginTop: 20, backgroundColor: PRIMARY, borderRadius: 28, padding: 24, overflow: 'hidden', shadowColor: PRIMARY, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.35, shadowRadius: 20, elevation: 10 },
+  b1:        { position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(255,255,255,0.08)', top: -60, right: -60 },
+  b2:        { position: 'absolute', width: 130, height: 130, borderRadius: 65,  backgroundColor: 'rgba(255,255,255,0.06)', bottom: -30, left: -30 },
+  b3:        { position: 'absolute', width: 80,  height: 80,  borderRadius: 40,  backgroundColor: 'rgba(255,255,255,0.05)', top: 60, right: 80 },
+  heroTop:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  badge:     { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.18)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99 },
+  badgeTxt:  { color: WHITE, fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
+  heroLbl:   { color: 'rgba(255,255,255,0.75)', fontSize: FontSize.caption, marginBottom: 4 },
+  heroAmt:   { color: WHITE, fontSize: 30, fontWeight: FontWeight.extrabold, letterSpacing: -0.5, marginBottom: 20 },
+  heroDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.15)', marginBottom: 16 },
+  heroStats: { flexDirection: 'row', alignItems: 'center' },
+  heroStat:  { flex: 1, alignItems: 'center' },
+  heroSep:   { width: 1, height: 28, backgroundColor: 'rgba(255,255,255,0.2)' },
+  heroStatLbl: { color: 'rgba(255,255,255,0.65)', fontSize: FontSize.xs, marginBottom: 3 },
+  heroStatVal: { color: WHITE, fontSize: FontSize.caption, fontWeight: FontWeight.bold },
+
+  // quick actions
+  qaRow:  { flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: 20, marginTop: 20, backgroundColor: WHITE, borderRadius: 20, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 14, elevation: 4 },
+  qaBtn:  { alignItems: 'center', flex: 1 },
+  qaIcon: { width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  qaLbl:  { fontSize: FontSize.xs, color: TEXT_MID, fontWeight: FontWeight.semibold },
+
+  // section header
+  secRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginTop: 28, marginBottom: 14 },
+  secTitle: { fontSize: FontSize.body, fontWeight: FontWeight.bold, color: TEXT_DARK },
+  seeAll:   { fontSize: FontSize.caption, color: PRIMARY, fontWeight: FontWeight.semibold },
+
+  // menu shortcuts
+  menuScroll:  { paddingHorizontal: 20, gap: 16 },
+  menuItem:    { alignItems: 'center', width: 64 },
+  menuCircle:  { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  menuLbl:     { fontSize: FontSize.xs, color: TEXT_MID, fontWeight: FontWeight.semibold, textAlign: 'center' },
+
+  // stat mini cards
+  statsScroll: { paddingHorizontal: 20, gap: 12 },
+  statCard:    { backgroundColor: WHITE, borderRadius: 20, padding: 16, width: 148, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3 },
+  statIcon:    { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  statVal:     { fontSize: FontSize.body, fontWeight: FontWeight.extrabold, color: TEXT_DARK, marginBottom: 4 },
+  statLbl:     { fontSize: FontSize.xs, color: TEXT_GREY, fontWeight: FontWeight.medium },
+
+  // alert
+  alertBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFF5F5', marginHorizontal: 20, marginTop: 12, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#FEE2E2' },
+  alertTxt:    { fontSize: FontSize.caption, color: DANGER, fontWeight: FontWeight.semibold },
+  alertBtn:    { backgroundColor: DANGER, borderRadius: 99, paddingHorizontal: 12, paddingVertical: 5 },
+  alertBtnTxt: { color: WHITE, fontSize: FontSize.xs, fontWeight: FontWeight.bold },
+
+  // recent sales
+  salesCard:     { backgroundColor: WHITE, marginHorizontal: 20, borderRadius: 20, paddingHorizontal: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 14, elevation: 4 },
+  saleRow:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 14 },
+  saleRowBorder: { borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  saleIcon:      { width: 44, height: 44, borderRadius: 22, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  saleInv:       { fontSize: FontSize.caption, fontWeight: FontWeight.bold, color: TEXT_DARK, marginBottom: 3 },
+  saleDate:      { fontSize: FontSize.xs, color: TEXT_GREY },
+  saleTot:       { fontSize: FontSize.caption, fontWeight: FontWeight.bold, color: TEXT_DARK, marginBottom: 3 },
+  saleProfit:    { fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: SUCCESS },
+  empty:         { alignItems: 'center', paddingVertical: 32 },
+  emptyTxt:      { fontSize: FontSize.caption, color: TEXT_GREY, marginTop: 10 },
 });
