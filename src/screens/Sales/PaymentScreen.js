@@ -84,11 +84,17 @@ export default function PaymentScreen({ navigation, route }) {
       }
 
       // 3. Adjust stock
-      const cartForStock = cart.map(item => ({
-        productId: item.originalProductId || item.id, // Use originalProductId if available, fallback to id
-        qty: item.qty,
-        variantName: item.variantName
-      }));
+      const cartForStock = cart.map(item => {
+        let pId = item.originalProductId || item.id;
+        if (!item.originalProductId && item.id.length > 36) {
+          pId = item.id.substring(0, 36);
+        }
+        return {
+          productId: pId,
+          qty: item.qty,
+          variantName: item.variantName
+        };
+      });
       const stockResult = await adjustStockOnSale(user?.id, cartForStock);
       
       if (!stockResult.success) {

@@ -560,6 +560,8 @@ export async function adjustStockOnSale(userId, cartItems) {
           return v;
         });
         updateData.variants = updatedVariants;
+        // Also update the main stock to be the sum of variants' stocks
+        updateData.stock = updatedVariants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
       } else {
         const currentStock = product.stock || 0;
         updateData.stock = Math.max(0, currentStock - item.qty);
