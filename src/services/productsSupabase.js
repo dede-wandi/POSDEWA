@@ -538,10 +538,10 @@ export async function adjustStockOnSale(userId, cartItems) {
     // Process each cart item
     for (const item of cartItems) {
       
-      // Get current product stock
+      // Get current product stock and variants
       const { data: product, error: getError } = await supabase
         .from('products')
-        .select('stock')
+        .select('stock, variants')
         .eq('id', item.productId)
         .eq('owner_id', session.user.id)
         .single();
@@ -550,14 +550,25 @@ export async function adjustStockOnSale(userId, cartItems) {
         continue;
       }
 
-      // Calculate new stock
-      const currentStock = product.stock || 0;
-      const newStock = Math.max(0, currentStock - item.qty);
+      let updateData = { last_change_reason: 'penjualan' };
+      
+      if (item.variantName && Array.isArray(product.variants) && product.variants.length > 0) {
+        const updatedVariants = product.variants.map(v => {
+          if (v.name === item.variantName) {
+            return { ...v, stock: Math.max(0, (Number(v.stock) || 0) - item.qty) };
+          }
+          return v;
+        });
+        updateData.variants = updatedVariants;
+      } else {
+        const currentStock = product.stock || 0;
+        updateData.stock = Math.max(0, currentStock - item.qty);
+      }
 
       // Update stock
       const { error: updateError } = await supabase
         .from('products')
-        .update({ stock: newStock, last_change_reason: 'penjualan' })
+        .update(updateData)
         .eq('id', item.productId)
         .eq('owner_id', session.user.id);
 

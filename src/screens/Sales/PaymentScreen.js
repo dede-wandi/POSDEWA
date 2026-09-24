@@ -86,7 +86,8 @@ export default function PaymentScreen({ navigation, route }) {
       // 3. Adjust stock
       const cartForStock = cart.map(item => ({
         productId: item.originalProductId || item.id, // Use originalProductId if available, fallback to id
-        qty: item.qty
+        qty: item.qty,
+        variantName: item.variantName
       }));
       const stockResult = await adjustStockOnSale(user?.id, cartForStock);
       
