@@ -44,8 +44,13 @@ export default function ProductListScreen({ navigation, route }) {
   }, [query, user]);
 
   const addToCart = (product) => {
-    if (product.stock <= 0) {
+    if (product.stock <= 0 && (!Array.isArray(product.variants) || product.variants.length === 0)) {
       showToast('Stok Habis', 'error');
+      return;
+    }
+
+    if (Array.isArray(product.variants) && product.variants.length > 0) {
+      showToast('Produk ini memiliki varian. Silakan kembali dan tambahkan dari layar utama.', 'error');
       return;
     }
 

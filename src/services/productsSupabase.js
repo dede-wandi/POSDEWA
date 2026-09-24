@@ -547,24 +547,31 @@ export async function adjustStockOnSale(userId, cartItems) {
         .single();
 
       if (getError) {
-        continue;
+        return { success: false, error: `Gagal mengambil produk (${item.productId}): ${getError.message}` };
       }
 
       let updateData = { last_change_reason: 'penjualan' };
       
       if (item.variantName && Array.isArray(product.variants) && product.variants.length > 0) {
+        let variantFound = false;
         const updatedVariants = product.variants.map(v => {
-          if (v.name === item.variantName) {
-            return { ...v, stock: Math.max(0, (Number(v.stock) || 0) - item.qty) };
+          if (String(v.name).trim() === String(item.variantName).trim()) {
+            variantFound = true;
+            return { ...v, stock: Math.max(0, (Number(v.stock) || 0) - Number(item.qty)) };
           }
           return v;
         });
+        
+        if (!variantFound) {
+          return { success: false, error: `Varian "${item.variantName}" tidak ditemukan pada produk (${item.productId})` };
+        }
+        
         updateData.variants = updatedVariants;
         // Also update the main stock to be the sum of variants' stocks
         updateData.stock = updatedVariants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
       } else {
         const currentStock = product.stock || 0;
-        updateData.stock = Math.max(0, currentStock - item.qty);
+        updateData.stock = Math.max(0, currentStock - Number(item.qty));
       }
 
       // Update stock
@@ -575,7 +582,7 @@ export async function adjustStockOnSale(userId, cartItems) {
         .eq('owner_id', session.user.id);
 
       if (updateError) {
-      } else {
+        return { success: false, error: `Gagal update stok (${item.productId}): ${updateError.message}` };
       }
     }
 
