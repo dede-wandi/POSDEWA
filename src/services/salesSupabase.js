@@ -302,6 +302,12 @@ export const deleteSale = async (saleId) => {
       // Continue anyway to try deleting the parent
     }
 
+    // Step 1.5: Delete wallet_transactions (This will trigger balance reversal via DB trigger)
+    const { error: walletError } = await supabase
+      .from('wallet_transactions')
+      .delete()
+      .eq('reference_id', saleId);
+
     // Step 2: Delete the sale record
     const { error } = await supabase
       .from('sales')

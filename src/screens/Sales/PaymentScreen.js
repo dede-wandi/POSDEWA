@@ -9,6 +9,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { adjustStockOnSale } from '../../services/productsSupabase';
 import { createSale } from '../../services/sales';
 import { sendWhatsAppNotification } from '../../services/whatsappService';
+import { getWallets, addWalletTransaction } from '../../services/walletSupabase';
 import { Colors, Spacing, Radii, Shadows, Typography } from '../../theme';
 
 export default function PaymentScreen({ navigation, route }) {
@@ -20,6 +21,32 @@ export default function PaymentScreen({ navigation, route }) {
   const formatNumberWithDots = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   const [cashAmount, setCashAmount] = useState(total ? formatNumberWithDots(total) : '');
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Wallet States
+  const [wallets, setWallets] = useState([]);
+  const [selectedWalletId, setSelectedWalletId] = useState(null); // Dompet tujuan uang masuk
+  const [digitalWalletId, setDigitalWalletId] = useState(null); // Dompet sumber HPP dipotong (jika ada barang digital)
+
+  useEffect(() => {
+    const fetchWallets = async () => {
+      if (!user?.id) return;
+      const { data } = await getWallets(user.id);
+      if (data && data.length > 0) {
+        setWallets(data);
+        // Auto-select CASH wallet sebagai penerima (tidak ditampilkan ke user)
+        const cashWallet = data.find(w => w.type === 'CASH') || data[0];
+        if (cashWallet) setSelectedWalletId(cashWallet.id);
+        // Channel default = null (tidak ada), user pilih manual
+        setDigitalWalletId(null);
+      }
+    };
+    fetchWallets();
+  }, [user?.id]);
+
+  // Semua wallet bisa jadi channel pemrosesan (sumber modal → OUT)
+
+  // Total modal (HPP) seluruh item di cart — ini yang dipotong dari platform (QGROW/Digipos)
+  const totalCartCost = cart.reduce((sum, item) => sum + (item.costPrice || 0) * item.qty, 0);
 
   const cashValue = parseFloat(cashAmount.replace(/\./g, '')) || 0;
   const change = cashValue - total;
@@ -82,6 +109,32 @@ export default function PaymentScreen({ navigation, route }) {
       if (!saleResult.success) {
         throw new Error(saleResult.error || 'Gagal menyimpan transaksi');
       }
+      
+      // 2. INTEGRASI WALLET: Catat uang masuk (Pendapatan) sesuai dompet terpilih
+      if (selectedWalletId) {
+        const selectedWallet = wallets.find(w => w.id === selectedWalletId);
+        await addWalletTransaction({
+          wallet_id: selectedWalletId,
+          type: 'IN',
+          amount: total, // Uang yang diterima pelanggan
+          reference_type: 'SALE',
+          reference_id: saleResult.data?.sale?.id || null,
+          description: `Penjualan #${saleResult.data?.sale?.no_invoice || ''} via ${selectedWallet?.name || 'Kas'}`
+        });
+      }
+
+      // 2b. INTEGRASI WALLET: Potong saldo platform (QGROW/Digipos) sebesar total HPP
+      if (digitalWalletId && totalCartCost > 0) {
+        const digitalWallet = wallets.find(w => w.id === digitalWalletId);
+        await addWalletTransaction({
+          wallet_id: digitalWalletId,
+          type: 'OUT',
+          amount: totalCartCost,
+          reference_type: 'PURCHASE',
+          reference_id: saleResult.data?.sale?.id || null,
+          description: `Modal trx #${saleResult.data?.sale?.no_invoice || ''} via ${digitalWallet?.name || 'Platform'}`
+        });
+      }
 
       // 3. Adjust stock
       const cartForStock = cart.map(item => {
@@ -116,15 +169,15 @@ export default function PaymentScreen({ navigation, route }) {
 
       // 5. Show success and navigate to invoice
       
-      // Ensure all navigation parameters are valid
+      const selectedWallet = wallets.find(w => w.id === selectedWalletId);
       const navigationParams = {
         saleData: saleResult?.data || saleResult || {},
         cart: cart || [],
         total: total || 0,
         cashAmount: cashValue,
         change: change || 0,
-        paymentMethod: 'cash',
-        paymentChannel: null
+        paymentMethod: selectedWallet?.type === 'CASH' ? 'cash' : selectedWallet?.type === 'BANK' ? 'bank_transfer' : 'digital',
+        paymentChannel: selectedWallet?.name || null
       };
       
       
@@ -155,373 +208,420 @@ export default function PaymentScreen({ navigation, route }) {
     }
   };
 
+  // Helper untuk warna & ikon berdasarkan tipe dompet
+  const getWalletStyle = (type) => {
+    switch(type) {
+      case 'CASH': return { icon: 'cash', color: '#16a34a', bg: '#f0fdf4', label: 'Tunai' };
+      case 'BANK': return { icon: 'card', color: '#2563eb', bg: '#eff6ff', label: 'Transfer' };
+      case 'APP_BALANCE': return { icon: 'phone-portrait', color: '#d97706', bg: '#fffbeb', label: 'E-Wallet / Aplikasi' };
+      default: return { icon: 'wallet', color: '#6b7280', bg: '#f9fafb', label: 'Lainnya' };
+    }
+  };
+
+  const selectedWallet = wallets.find(w => w.id === selectedWalletId);
+  const selectedWalletStyle = selectedWallet ? getWalletStyle(selectedWallet.type) : null;
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <ScrollView style={styles.container}>
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 32 }}>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Ringkasan Pesanan</Text>
-          {cart.map((item, index) => (
-            <View
-              key={index}
-              style={[
-                styles.summaryRow,
-                { borderBottomWidth: 1, borderBottomColor: Colors.borderLight, paddingBottom: 10, marginBottom: 10 }
-              ]}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: Colors.darkText, marginBottom: 2 }}>{item.name}</Text>
-                <Text style={styles.summaryLabel}>{item.qty} x {formatIDR(item.price)}</Text>
+        {/* === HEADER TOTAL === */}
+        <View style={styles.headerCard}>
+          <Text style={styles.headerCardLabel}>Total Pembayaran</Text>
+          <Text style={styles.headerCardAmount}>{formatIDR(total)}</Text>
+          <View style={styles.headerCardItems}>
+            {cart.map((item, i) => (
+              <View key={i} style={styles.headerCartRow}>
+                <Text style={styles.headerCartName} numberOfLines={1}>{item.name} ×{item.qty}</Text>
+                <Text style={styles.headerCartPrice}>{formatIDR(item.price * item.qty)}</Text>
               </View>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: Colors.darkText }}>{formatIDR(item.price * item.qty)}</Text>
-            </View>
-          ))}
-          <View style={[styles.summaryRow, { marginTop: 4, paddingTop: 10, alignItems: 'center' }]}>
-            <Text style={{ fontSize: 15, fontWeight: '700', color: Colors.darkText }}>Total Bayar:</Text>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: Colors.primary }}>{formatIDR(total)}</Text>
+            ))}
           </View>
         </View>
 
-        {/* Cash Payment Input */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Jumlah Uang Tunai</Text>
-            <TextInput
-              style={styles.cashInput}
-              value={cashAmount}
-              onChangeText={handleCashAmountChange}
-              placeholder="Masukkan jumlah uang"
-              placeholderTextColor={Colors.placeholder}
-              keyboardType="numeric"
-            />
+        {/* === CHANNEL PEMROSESAN === */}
+        {wallets.length > 0 && (
+          <View style={[styles.card, { borderColor: '#f59e0b', borderWidth: 1.5 }]}>
+            <View style={styles.cardTitleRow}>
+              <Ionicons name="swap-vertical" size={18} color="#d97706" />
+              <Text style={[styles.cardTitle, { color: '#92400e' }]}>Channel Pemrosesan</Text>
+            </View>
+            <Text style={styles.cardSubtitle}>
+              {digitalWalletId
+                ? `HPP ${formatIDR(totalCartCost)} dipotong dari channel → Laci Kasir bertambah`
+                : 'Pilih channel jika ada biaya modal. Kosongkan untuk produk fisik biasa.'}
+            </Text>
 
-            {/* Uang Pas Button */}
+            {/* Opsi: Tidak ada / Skip */}
             <TouchableOpacity
-              style={[styles.quickAmountButton, { width: '100%', marginTop: 12, backgroundColor: Colors.primary, borderColor: Colors.primary }]}
-              onPress={() => setCashAmount(formatNumberWithDots(total))}
+              style={[
+                styles.walletCard,
+                !digitalWalletId && { borderColor: '#64748b', backgroundColor: '#f1f5f9' }
+              ]}
+              onPress={() => setDigitalWalletId(null)}
+              activeOpacity={0.8}
             >
-              <Text style={[styles.quickAmountText, { color: Colors.white }]}>Uang Pas ({formatIDR(total)})</Text>
+              <View style={[styles.walletCardIcon, { backgroundColor: !digitalWalletId ? '#64748b' : '#F1F5F9' }]}>
+                <Ionicons name="close-circle" size={20} color={!digitalWalletId ? '#FFF' : '#94a3b8'} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.walletCardName, !digitalWalletId && { color: '#334155' }]}>Tidak ada / Produk Fisik</Text>
+                <Text style={styles.walletCardBalance}>Laci kasir saja yang bertambah</Text>
+              </View>
+              {!digitalWalletId && <View style={[styles.inBadge, { backgroundColor: '#64748b' }]}><Text style={styles.inBadgeText}>SKIP</Text></View>}
             </TouchableOpacity>
-            
-            {/* Quick Amount Buttons */}
-            {quickAmounts.length > 0 && (
-              <View style={styles.quickAmounts}>
-                {quickAmounts.slice(0, 4).map((amount) => (
-                  <TouchableOpacity
-                    key={amount}
-                    style={styles.quickAmountButton}
-                    onPress={() => setCashAmount(formatNumberWithDots(amount))}
-                  >
-                    <Text style={styles.quickAmountText}>{formatIDR(amount)}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
 
-            {/* Change Display */}
-            {cashValue > 0 && (
-              <View style={styles.changeContainer}>
-                <Text style={styles.changeLabel}>Kembalian:</Text>
-                <Text style={[
-                  styles.changeAmount,
-                  change < 0 ? styles.negativeChange : styles.positiveChange
-                ]}>
-                  {formatIDR(Math.abs(change))}
-                </Text>
-              </View>
-            )}
+            {/* Semua wallet sebagai pilihan channel */}
+            {wallets.filter(w => w.type !== 'PROFIT').map(w => {
+              const ws = getWalletStyle(w.type);
+              const isActive = digitalWalletId === w.id;
+              return (
+                <TouchableOpacity
+                  key={w.id}
+                  style={[styles.walletCard, isActive && { borderColor: ws.color, backgroundColor: ws.bg }]}
+                  onPress={() => setDigitalWalletId(w.id)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.walletCardIcon, { backgroundColor: isActive ? ws.color : '#F1F5F9' }]}>
+                    <Ionicons name={ws.icon} size={20} color={isActive ? '#FFF' : ws.color} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.walletCardName, isActive && { color: ws.color }]}>{w.name}</Text>
+                    <Text style={styles.walletCardBalance}>{formatIDR(w.balance)}</Text>
+                  </View>
+                  {isActive && <View style={[styles.inBadge, { backgroundColor: '#dc2626' }]}><Text style={styles.inBadgeText}>-HPP</Text></View>}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+
+        {/* === JUMLAH YANG DIBAYAR === */}
+        <View style={styles.card}>
+          <View style={styles.cardTitleRow}>
+            <Ionicons name="cash" size={18} color={Colors.primary} />
+            <Text style={styles.cardTitle}>Jumlah Diterima</Text>
           </View>
 
-        {/* Process Payment Button */}
-        <View style={[styles.section, { backgroundColor: 'transparent', borderWidth: 0, shadowOpacity: 0, elevation: 0, marginTop: 4, marginBottom: 20 }]}>
+          <TextInput
+            style={styles.cashInput}
+            value={cashAmount}
+            onChangeText={handleCashAmountChange}
+            placeholder={formatIDR(total)}
+            placeholderTextColor={Colors.placeholder}
+            keyboardType="numeric"
+          />
+
+          {/* Uang Pas */}
+          <TouchableOpacity
+            style={[styles.quickAmountButton, { backgroundColor: Colors.primary, borderColor: Colors.primary, marginTop: 10 }]}
+            onPress={() => setCashAmount(formatNumberWithDots(total))}
+          >
+            <Text style={[styles.quickAmountText, { color: '#FFF' }]}>Uang Pas  {formatIDR(total)}</Text>
+          </TouchableOpacity>
+
+          {/* Quick Amounts */}
+          {quickAmounts.length > 0 && (
+            <View style={styles.quickAmounts}>
+              {quickAmounts.slice(0, 4).map((amount) => (
+                <TouchableOpacity
+                  key={amount}
+                  style={styles.quickAmountButton}
+                  onPress={() => setCashAmount(formatNumberWithDots(amount))}
+                >
+                  <Text style={styles.quickAmountText}>{formatIDR(amount)}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {/* Kembalian */}
+          {cashValue >= total && (
+            <View style={[styles.changeContainer, { backgroundColor: change > 0 ? '#f0fdf4' : '#f0f9ff' }]}>
+              <Text style={styles.changeLabel}>Kembalian</Text>
+              <Text style={[styles.changeAmount, { color: change >= 0 ? '#16a34a' : '#dc2626' }]}>
+                {formatIDR(Math.abs(change))}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Hapus section lama Sumber Modal karena sudah digabung di atas */}
+
+
+
+        {/* === TOMBOL BAYAR === */}
+        <View style={{ marginHorizontal: 16, marginTop: 8 }}>
           <TouchableOpacity
             style={[
               styles.processButton,
+              { backgroundColor: selectedWalletStyle?.color || Colors.primary },
               (isProcessing || cashValue < total) && styles.disabledButton
             ]}
             onPress={processPaymentTransaction}
             disabled={isProcessing || cashValue < total}
           >
             {isProcessing ? (
-              <ActivityIndicator color={Colors.white} />
+              <ActivityIndicator color="#FFF" />
             ) : (
-              <Text style={styles.processButtonText}>
-                Proses Pembayaran Tunai
-              </Text>
+              <View style={{ alignItems: 'center', gap: 2 }}>
+                <Text style={styles.processButtonText}>
+                  Konfirmasi Pembayaran
+                </Text>
+                <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13 }}>
+                  {formatIDR(total)} via {selectedWallet?.name || '—'}
+                </Text>
+              </View>
             )}
           </TouchableOpacity>
         </View>
+
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.card,
+  container: { flex: 1, backgroundColor: '#F1F5F9' },
+
+  inBadge: {
+    backgroundColor: '#16a34a',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  inBadgeText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: Colors.muted,
+
+  // Header total atas
+  headerCard: {
+    backgroundColor: Colors.primary,
+    margin: 16,
+    marginBottom: 8,
+    borderRadius: 16,
+    padding: 20,
   },
-  header: {
+  headerCardLabel: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 13,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  headerCardAmount: {
+    color: '#FFF',
+    fontSize: 30,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    marginBottom: 12,
+  },
+  headerCardItems: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.2)',
+    paddingTop: 10,
+    gap: 4,
+  },
+  headerCartRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: Colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
   },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
+  headerCartName: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13,
+    flex: 1,
+    marginRight: 8,
   },
-  section: {
-    backgroundColor: Colors.card,
+  headerCartPrice: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  // Card umum
+  card: {
+    backgroundColor: '#FFF',
     marginHorizontal: 16,
-    marginTop: 12,
-    borderRadius: 12,
+    marginBottom: 10,
+    borderRadius: 14,
     padding: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
-    ...Shadows.card,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  sectionTitle: {
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  cardTitle: {
     fontSize: 15,
     fontWeight: '700',
-    marginBottom: 12,
-    color: Colors.darkText,
+    color: '#0F172A',
   },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  summaryLabel: {
+  cardSubtitle: {
     fontSize: 12,
-    color: Colors.muted,
+    color: '#94A3B8',
+    marginBottom: 14,
   },
-  summaryValue: {
-    fontSize: 14,
-    color: Colors.text,
+
+  // Grid dompet
+  walletGrid: {
+    gap: 8,
   },
-  paymentMethods: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  paymentMethodButton: {
-    flex: 1,
+  walletCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
+    gap: 12,
+    padding: 12,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: Colors.border,
-    backgroundColor: Colors.card,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FAFAFA',
   },
-  selectedPaymentMethod: {
-    backgroundColor: Colors.primaryLight,
-    borderColor: Colors.primary,
-  },
-  paymentMethodText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.muted,
-  },
-  selectedPaymentMethodText: {
-    color: Colors.primary,
-  },
-  selectedChannelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    backgroundColor: Colors.lightBg,
+  walletCardIcon: {
+    width: 40,
+    height: 40,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  selectedChannelInfo: {
-    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    flex: 1,
   },
-  selectedChannelDetails: {
-    marginLeft: 12,
-    flex: 1,
+  walletCardName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 2,
   },
-  selectedChannelName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: Colors.darkText,
+  walletCardBalance: {
+    fontSize: 12,
+    color: '#94A3B8',
   },
-  selectedChannelBalance: {
-    fontSize: 13,
-    color: Colors.muted,
-    marginTop: 2,
-  },
+
+  // Input jumlah
   cashInput: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    borderRadius: 10,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.darkText,
-    backgroundColor: Colors.lightBg,
+    paddingVertical: 14,
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#0F172A',
+    backgroundColor: '#F8FAFC',
+    letterSpacing: -0.5,
   },
   quickAmounts: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 12,
+    gap: 8,
+    marginTop: 10,
   },
   quickAmountButton: {
     flex: 1,
     minWidth: '45%',
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.card,
-    borderRadius: 8,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   quickAmountText: {
     fontSize: 14,
-    color: Colors.text,
+    color: '#475569',
     fontWeight: '600',
   },
   changeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 15,
-    paddingTop: 15,
-    borderTopWidth: 1,
-    borderTopColor: Colors.borderLight,
+    marginTop: 12,
+    borderRadius: 10,
+    padding: 12,
   },
   changeLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: Colors.darkText,
-  },
-  changeAmount: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  positiveChange: {
-    color: Colors.success,
-  },
-  negativeChange: {
-    color: Colors.danger,
-  },
-  processButton: {
-    backgroundColor: Colors.primary,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 52,
-    ...Shadows.card,
-  },
-  disabledButton: {
-    backgroundColor: '#D1D5DB', // Light gray disabled state
-  },
-  processButtonText: {
-    color: Colors.white,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: Colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: Colors.darkText,
-  },
-  modalCancelButton: {
-    fontSize: 16,
-    color: Colors.primary,
-    fontWeight: '600',
-  },
-  channelList: {
-    padding: 16,
-  },
-  channelItem: {
-    backgroundColor: Colors.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-  },
-  selectedChannelItem: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primaryLight,
-  },
-  channelItemHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  channelItemInfo: {
-    flex: 1,
-  },
-  channelItemTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  channelItemName: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginLeft: 8,
-    color: Colors.darkText,
-  },
-  channelItemType: {
-    fontSize: 11,
-    color: Colors.muted,
-    textTransform: 'uppercase',
-    fontWeight: '600',
-  },
-  channelItemBalance: {
-    alignItems: 'flex-end',
-  },
-  channelItemBalanceLabel: {
-    fontSize: 11,
-    color: Colors.muted,
-  },
-  channelItemBalanceAmount: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.darkText,
+    color: '#475569',
   },
-  selectedIndicator: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
+  changeAmount: {
+    fontSize: 20,
+    fontWeight: '800',
   },
+
+  // Ringkasan akhir
+  summaryFinalCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginBottom: 10,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    backgroundColor: '#FFF',
+  },
+  summaryFinalLabel: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  summaryFinalValue: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  summaryFinalBalance: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+
+  // Tombol proses
+  processButton: {
+    paddingVertical: 18,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 60,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  disabledButton: {
+    backgroundColor: '#CBD5E1',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  processButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+
+  // Legacy (jaga kompatibilitas)
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { marginTop: 10, fontSize: 16, color: Colors.muted },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  summaryLabel: { fontSize: 12, color: Colors.muted },
+  walletBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, marginRight: 8, backgroundColor: '#FFF' },
+  walletBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  walletBtnText: { marginLeft: 6, fontWeight: '600', color: Colors.text },
+  positiveChange: { color: Colors.success },
+  negativeChange: { color: Colors.danger },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: Colors.darkText },
+  section: { backgroundColor: Colors.card, marginHorizontal: 16, marginTop: 12, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: Colors.border },
 });

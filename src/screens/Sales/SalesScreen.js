@@ -1030,20 +1030,24 @@ export default function SalesScreen({ navigation, route }) {
             </Text>
             
             <ScrollView style={{ marginBottom: 20, maxHeight: 300 }} contentContainerStyle={{ gap: 10 }}>
-              {selectedProductForVariant?.variants?.slice().sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0)).map((v, idx) => (
+              {selectedProductForVariant?.variants?.slice().sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0)).map((v, idx) => {
+                const isUnlimited = selectedProductForVariant?.product_type === 'digital' || selectedProductForVariant?.product_type === 'service';
+                const isDisabled = !isUnlimited && v.stock <= 0;
+                
+                return (
                 <TouchableOpacity
                   key={idx}
                   style={[
                     styles.tokenInput,
                     { 
                       marginBottom: 0, 
-                      backgroundColor: v.stock <= 0 ? Colors.background : Colors.white,
-                      opacity: v.stock <= 0 ? 0.5 : 1
+                      backgroundColor: isDisabled ? Colors.background : Colors.white,
+                      opacity: isDisabled ? 0.5 : 1
                     }
                   ]}
-                  disabled={v.stock <= 0}
+                  disabled={isDisabled}
                   onPress={() => {
-                    if (v.stock > 0) {
+                    if (isUnlimited || v.stock > 0) {
                       if (isDynamicProduct(selectedProductForVariant?.name)) {
                         setSelectedVariantForDynamic(v);
                         setNominalInput('');
@@ -1065,7 +1069,7 @@ export default function SalesScreen({ navigation, route }) {
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
                     <Text style={{ fontSize: 12, color: Colors.muted }}>
-                      Sisa Stok: {v.stock}
+                      {isUnlimited ? '∞ Unlimited' : `Sisa Stok: ${v.stock}`}
                     </Text>
                     {v.costPrice > 0 && (
                       <Text style={{ fontSize: 11, color: Colors.danger, fontWeight: '700' }}>
@@ -1074,7 +1078,8 @@ export default function SalesScreen({ navigation, route }) {
                     )}
                   </View>
                 </TouchableOpacity>
-              ))}
+                );
+              })}
             </ScrollView>
 
             <TouchableOpacity 

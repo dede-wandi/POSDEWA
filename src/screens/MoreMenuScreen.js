@@ -56,6 +56,13 @@ export default function MoreMenuScreen({ navigation }) {
       onPress: () => navigation.navigate('SalesReport'),
     },
     {
+      label: 'Laporan Profit / Laba',
+      icon: 'bar-chart',
+      iconColor: '#8B5CF6',
+      bgColor: '#F5F3FF',
+      onPress: () => navigation.navigate('AnnualProfitReport'),
+    },
+    {
       label: 'Stok',
       icon: 'layers',
       iconColor: '#F44336',
@@ -139,9 +146,13 @@ export default function MoreMenuScreen({ navigation }) {
     }
   ];
 
-  const renderMenuItem = (item, index) => (
-    <TouchableOpacity
-      key={index}
+  const renderMenuItem = (item, index) => {
+    if (item.isEmpty) {
+      return <View key={item.id} style={styles.menuItem} />; // Invisible filler
+    }
+    return (
+      <TouchableOpacity
+        key={index}
       style={styles.menuItem}
       onPress={item.onPress}
       activeOpacity={0.85}
@@ -151,7 +162,23 @@ export default function MoreMenuScreen({ navigation }) {
       </View>
       <Text style={styles.menuLabel}>{item.label}</Text>
     </TouchableOpacity>
-  );
+    );
+  };
+
+  // Fill empty slots so the last row aligns correctly with space-between
+  const fillEmptySlots = (items, columns = 4) => {
+    const filledItems = [...items];
+    const remainder = filledItems.length % columns;
+    if (remainder > 0) {
+      const emptyCount = columns - remainder;
+      for (let i = 0; i < emptyCount; i++) {
+        filledItems.push({ isEmpty: true, id: `empty-${i}` });
+      }
+    }
+    return filledItems;
+  };
+
+  const filledMainItems = fillEmptySlots(mainItems);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -167,7 +194,7 @@ export default function MoreMenuScreen({ navigation }) {
       </View>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.grid}>
-          {mainItems.map(renderMenuItem)}
+          {filledMainItems.map(renderMenuItem)}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -221,22 +248,28 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   menuItem: {
-    width: '30%',
+    width: '22%',
     alignItems: 'center',
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.xl,
   },
   menuIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Spacing.xs,
-    ...Shadows.card,
+    marginBottom: Spacing.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   menuLabel: {
-    fontSize: 13,
+    fontSize: 11.5,
     color: Colors.text,
     textAlign: 'center',
+    fontWeight: '500',
+    lineHeight: 14,
   },
 });

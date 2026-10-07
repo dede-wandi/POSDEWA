@@ -40,6 +40,7 @@ import MoreMenuScreen from './src/screens/MoreMenuScreen';
 
 import StockManagementScreen from './src/screens/StockManagementScreen';
 import SalesAnalyticsScreen from './src/screens/SalesAnalyticsScreen';
+import WalletManagementScreen from './src/screens/Wallets/WalletManagementScreen'; // IMPORT WALLETS
 
 import TransactionHistoryScreen from './src/screens/TransactionHistoryScreen';
 import SalesReportScreen from './src/screens/SalesReportScreen';
@@ -266,6 +267,14 @@ function MainStack() {
       <Stack.Screen
         name="TransactionHistory"
         component={TransactionHistoryScreen}
+        options={{
+          presentation: 'modal',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="WalletManagement"
+        component={WalletManagementScreen}
         options={{
           presentation: 'modal',
           headerShown: false,

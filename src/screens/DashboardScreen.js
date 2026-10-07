@@ -18,6 +18,7 @@ import { getDashboardStats, getRecentSales } from '../services/dashboardSupabase
 import { getMenuConfigs } from '../services/menuConfigSupabase';
 import { getProductValuation } from '../services/productValuationService';
 import { getExpenseSummary } from '../services/expenseSupabase';
+import { getWallets } from '../services/walletSupabase';
 import { Colors, Spacing, Radii, FontSize, FontWeight } from '../theme';
 
 const PRIMARY   = '#5B58F5';
@@ -32,9 +33,9 @@ const DANGER    = '#EF4444';
 const MENU_ITEMS = [
   { key: 'kasir',       label: 'Kasir',       icon: 'cart-outline',          color: '#3B82F6', bg: '#EFF6FF', screen: 'Penjualan',               params: {} },
   { key: 'produk',      label: 'Produk',      icon: 'cube-outline',          color: '#10B981', bg: '#ECFDF5', screen: 'Produk',                  params: { screen: 'DaftarProduk' } },
+  { key: 'wallet',      label: 'Kas & Saldo', icon: 'wallet',                color: '#8B5CF6', bg: '#F3E8FF', screen: 'WalletManagement',        params: {} },
   { key: 'valuasi',     label: 'Valuasi',     icon: 'pie-chart-outline',     color: '#4338CA', bg: '#EEF2FF', screen: 'ProductAssetValuation',   params: {} },
-  { key: 'pengeluaran', label: 'Beban',       icon: 'wallet-outline',        color: '#DC2626', bg: '#FEF2F2', screen: 'Expenses',                params: {} },
-  { key: 'reconcile',   label: 'Saldo Kas',   icon: 'calculator-outline',    color: '#0284C7', bg: '#F0F9FF', screen: 'CashReconciliation',       params: {} },
+  { key: 'pengeluaran', label: 'Beban',       icon: 'cash-outline',          color: '#DC2626', bg: '#FEF2F2', screen: 'Expenses',                params: {} },
   { key: 'stok',        label: 'Stok',        icon: 'layers-outline',        color: '#EF4444', bg: '#FEF2F2', screen: 'StockManagement',          params: {} },
   { key: 'penjualan',   label: 'Laporan',     icon: 'document-text-outline', color: '#0D9488', bg: '#F0FDFA', screen: 'SalesReport',              params: {} },
   { key: 'more',        label: 'Lainnya',     icon: 'grid-outline',          color: '#6366F1', bg: '#EEF2FF', screen: 'MoreMenu',                 params: {} },
@@ -49,6 +50,7 @@ export default function DashboardScreen({ navigation }) {
   const [recentSales, setRecentSales] = useState([]);
   const [valuationData, setValuationData] = useState(null);
   const [expenseData, setExpenseData]     = useState(null);
+  const [wallets, setWallets]             = useState([]);
   const [loading, setLoading]             = useState(true);
   const [refreshing, setRefreshing]       = useState(false);
   const [menuConfigs, setMenuConfigs]     = useState({});
@@ -59,7 +61,7 @@ export default function DashboardScreen({ navigation }) {
   const isDesktop  = width >= 1024;
   const PAD        = isDesktop ? 28 : isTablet ? 20 : 16;
   const MAX_W      = isDesktop ? 1040 : isTablet ? 760 : '100%';
-  const HERO_R     = isDesktop ? 24 : 20;
+  const HERO_R     = isDesktop ? 20 : 16;
 
   // Actual usable container width
   const containerW = isDesktop ? 1040 : isTablet ? Math.min(width, 760) : width;
@@ -96,19 +98,24 @@ export default function DashboardScreen({ navigation }) {
 
   const loadData = async () => {
     try {
-      const [sRes, rRes, cRes, vRes, eRes] = await Promise.all([
+      const [sRes, rRes, cRes, vRes, eRes, wRes] = await Promise.all([
         getDashboardStats(user?.id),
         getRecentSales(user?.id, 5),
         user?.id ? getMenuConfigs(user.id) : Promise.resolve({ success: false }),
         user?.id ? getProductValuation(user.id) : Promise.resolve({ success: false }),
         user?.id ? getExpenseSummary(user.id, 'month') : Promise.resolve({ success: false }),
+        user?.id ? getWallets(user.id) : Promise.resolve({ data: [] })
       ]);
       if (sRes.success) setStats(sRes.data); else showToast('Gagal memuat statistik', 'error');
       if (rRes.success) setRecentSales(rRes.data);
       if (cRes.success && cRes.data) { setMenuConfigs(cRes.data); setMenuErrors({}); }
       if (vRes?.success) setValuationData(vRes.data);
       if (eRes?.success) setExpenseData(eRes.data);
-    } catch { showToast('Terjadi kesalahan', 'error'); }
+      if (wRes?.data) setWallets(wRes.data);
+    } catch (e) {
+      console.error('Error loading dashboard data:', e);
+      showToast('Terjadi kesalahan', 'error');
+    }
     finally { setLoading(false); setRefreshing(false); }
   };
 
@@ -131,6 +138,7 @@ export default function DashboardScreen({ navigation }) {
   const lowStockCount     = stats?.products?.lowStock?.length || 0;
   const totalCostValue    = valuationData?.totalCostValue || 0;
   const monthExpenseTotal = expenseData?.totalAmount || 0;
+  const totalSaldoKas     = wallets?.reduce((sum, w) => sum + (Number(w.balance) || 0), 0) || 0;
 
   const STAT_CARDS = [
     { label: 'Total Penjualan', value: fmt(monthTotal),  icon: 'cash-outline',        color: PRIMARY,   bg: '#EEF2FF', onPress: () => navigation.navigate('SalesAnalytics', { type: 'sales',  period: 'month' }) },
@@ -192,8 +200,16 @@ export default function DashboardScreen({ navigation }) {
                 </View>
                 <Ionicons name="chevron-forward" size={15} color="rgba(255,255,255,0.4)" />
               </View>
-              <Text style={styles.heroLbl}>Total Profit Hari Ini</Text>
-              <Text style={[styles.heroAmt, isTablet && { fontSize: 38 }]}>{fmt(todayProfit)}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <View>
+                  <Text style={styles.heroLbl}>Total Profit Hari Ini</Text>
+                  <Text style={[styles.heroAmt, isTablet && { fontSize: 28 }]}>{fmt(todayProfit)}</Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={styles.heroLbl}>Total Saldo Kas</Text>
+                  <Text style={[styles.heroAmt, isTablet && { fontSize: 28 }]}>{fmt(totalSaldoKas)}</Text>
+                </View>
+              </View>
               <View style={styles.heroDivider} />
               <View style={styles.heroStats}>
                 {[
@@ -210,6 +226,21 @@ export default function DashboardScreen({ navigation }) {
                   </React.Fragment>
                 ))}
               </View>
+
+              {/* DOMPET SALDO DIDALAM HERO CARD */}
+              {wallets && wallets.length > 0 && (
+                <>
+                  <View style={[styles.heroDivider, { marginTop: 14 }]} />
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                    {wallets.map((w, index) => (
+                      <View key={w.id} style={{ alignItems: index === 0 ? 'flex-start' : index === wallets.length - 1 ? 'flex-end' : 'center', flex: 1 }}>
+                        <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 10, marginBottom: 2, fontWeight: '500' }} numberOfLines={1}>{w.name}</Text>
+                        <Text style={{ color: '#FFF', fontSize: 11, fontWeight: 'bold' }} numberOfLines={1}>{fmt(w.balance)}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </>
+              )}
             </View>
           </TouchableOpacity>
 
@@ -219,7 +250,7 @@ export default function DashboardScreen({ navigation }) {
               { l: 'Kasir',       ic: 'cart-outline',        c: PRIMARY,   sc: 'Penjualan' },
               { l: 'Valuasi',     ic: 'pie-chart-outline',   c: '#4338CA', sc: 'ProductAssetValuation' },
               { l: 'Pengeluaran', ic: 'wallet-outline',      c: '#DC2626', sc: 'Expenses' },
-              { l: 'Saldo Kas',   ic: 'calculator-outline',  c: '#0284C7', sc: 'CashReconciliation' },
+              { l: 'Kas & Saldo', ic: 'wallet',              c: '#8B5CF6', sc: 'WalletManagement' },
             ].map(btn => (
               <TouchableOpacity key={btn.l} style={styles.qaBtn} onPress={() => navigation.navigate(btn.sc, btn.p || {})} activeOpacity={0.75}>
                 <View style={[styles.qaIcon, { backgroundColor: btn.c + '15' }]}>
@@ -389,8 +420,8 @@ const styles = StyleSheet.create({
   heroTop:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
   badge:     { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.18)', paddingHorizontal: 9, paddingVertical: 3, borderRadius: 99 },
   badgeTxt:  { color: WHITE, fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
-  heroLbl:   { color: 'rgba(255,255,255,0.75)', fontSize: FontSize.caption, marginBottom: 4 },
-  heroAmt:   { color: WHITE, fontSize: 30, fontWeight: FontWeight.extrabold, letterSpacing: -0.5, marginBottom: 16 },
+  heroLbl:   { color: 'rgba(255,255,255,0.75)', fontSize: 11, marginBottom: 4 },
+  heroAmt:   { color: WHITE, fontSize: 24, fontWeight: FontWeight.extrabold, letterSpacing: -0.5, marginBottom: 16 },
   heroDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.15)', marginBottom: 14 },
   heroStats: { flexDirection: 'row', alignItems: 'center' },
   heroStat:  { flex: 1, alignItems: 'center' },
@@ -398,7 +429,7 @@ const styles = StyleSheet.create({
   heroStatLbl: { color: 'rgba(255,255,255,0.65)', fontSize: FontSize.xs, marginBottom: 3 },
   heroStatVal: { color: WHITE, fontSize: FontSize.caption, fontWeight: FontWeight.bold },
 
-  qaRow:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, backgroundColor: WHITE, borderRadius: 18, paddingVertical: 14, paddingHorizontal: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 3 },
+  qaRow:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, backgroundColor: WHITE, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 3 },
   qaBtn:  { alignItems: 'center', flex: 1, maxWidth: 140 },
   qaIcon: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
   qaLbl:  { fontSize: 11.5, color: TEXT_MID, fontWeight: FontWeight.semibold },
@@ -419,12 +450,12 @@ const styles = StyleSheet.create({
   statsScroll: { gap: 12, paddingBottom: 4 },
   // Stat cards – tablet/desktop (grid)
   statsGrid:   { flexDirection: 'row', gap: 12, flexWrap: 'wrap', marginBottom: 4 },
-  statCard:    { backgroundColor: WHITE, borderRadius: 16, padding: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
+  statCard:    { backgroundColor: WHITE, borderRadius: 12, padding: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
   statIcon:    { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   statVal:     { fontSize: 14.5, fontWeight: FontWeight.extrabold, color: TEXT_DARK, marginBottom: 3 },
   statLbl:     { fontSize: 10.5, color: TEXT_GREY, fontWeight: FontWeight.medium },
 
-  alertBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFF5F5', marginTop: 14, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 16, borderWidth: 1, borderColor: '#FEE2E2' },
+  alertBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFF5F5', marginTop: 14, borderRadius: 10, paddingVertical: 12, paddingHorizontal: 16, borderWidth: 1, borderColor: '#FEE2E2' },
   alertTxt:    { fontSize: FontSize.caption, color: DANGER, fontWeight: FontWeight.semibold },
   alertBtn:    { backgroundColor: DANGER, borderRadius: 99, paddingHorizontal: 12, paddingVertical: 5 },
   alertBtnTxt: { color: WHITE, fontSize: FontSize.xs, fontWeight: FontWeight.bold },
