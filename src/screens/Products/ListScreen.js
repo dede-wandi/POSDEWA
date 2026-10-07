@@ -86,6 +86,8 @@ export default function ListScreen({ navigation, route }) {
   const { showToast } = useToast();
   const [products, setProducts] = useState([]);
   const [query, setQuery] = useState('');
+  const queryRef = React.useRef(query);
+  useEffect(() => { queryRef.current = query; }, [query]);
   const [refreshing, setRefreshing] = useState(false);
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
@@ -170,7 +172,7 @@ export default function ListScreen({ navigation, route }) {
 
   const activeRequestRef = React.useRef(0);
 
-  const load = async (searchQuery = query) => {
+  const load = async (searchQuery = queryRef.current) => {
     const requestId = ++activeRequestRef.current;
     try {
       const all = searchQuery.trim() ? await findProducts(user?.id, searchQuery) : await getProducts(user?.id);

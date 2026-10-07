@@ -562,6 +562,11 @@ export default function SalesScreen({ navigation, route }) {
                 <Text style={styles.cartItemPrice}>
                   {item.qty}x {formatIDR(item.price)} = {formatIDR(item.lineTotal)}
                 </Text>
+                {item.costPrice > 0 && (
+                  <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 2, fontWeight: '500' }}>
+                    Modal: {formatIDR(item.costPrice)}
+                  </Text>
+                )}
               </View>
               <View style={styles.cartItemActions}>
                 <TouchableOpacity
@@ -975,9 +980,16 @@ export default function SalesScreen({ navigation, route }) {
                       {formatIDR(v.price)}
                     </Text>
                   </View>
-                  <Text style={{ fontSize: 12, color: Colors.muted, marginTop: 4 }}>
-                    Sisa Stok: {v.stock}
-                  </Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                    <Text style={{ fontSize: 12, color: Colors.muted }}>
+                      Sisa Stok: {v.stock}
+                    </Text>
+                    {v.costPrice > 0 && (
+                      <Text style={{ fontSize: 11, color: '#94A3B8', fontWeight: '500' }}>
+                        Modal: {formatIDR(v.costPrice)}
+                      </Text>
+                    )}
+                  </View>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -1561,7 +1573,7 @@ const styles = StyleSheet.create({
   checkoutButton: {
     backgroundColor: Colors.primary,
     paddingVertical: 14,
-    borderRadius: 16,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 48,
