@@ -14,7 +14,27 @@ export class EditableProduct {
     this.brand_id = raw.brand_id || null;
     this.created_at = raw.created_at || null;
     this.image_urls = raw.image_urls || [];
-    this.variants = raw.variants || [];
+    let parsedVariants = raw.variants || [];
+    if (typeof parsedVariants === 'string') {
+      try {
+        parsedVariants = JSON.parse(parsedVariants);
+      } catch (e) {
+        parsedVariants = [];
+      }
+    }
+    if (parsedVariants && typeof parsedVariants === 'object' && !Array.isArray(parsedVariants)) {
+      parsedVariants = Object.values(parsedVariants);
+    }
+    this.variants = Array.isArray(parsedVariants) ? parsedVariants : [];
+
+    const hasExplicitFlag = typeof raw.is_unlimited === 'boolean' || typeof raw.isUnlimited === 'boolean';
+    const isUnlim = hasExplicitFlag
+      ? Boolean(raw.is_unlimited ?? raw.isUnlimited)
+      : Boolean(
+          raw.track_stock === false ||
+          raw.product_type === 'digital' ||
+          raw.product_type === 'financial_service'
+        );
 
     // Snapshot of original data
     this.original = {
@@ -23,15 +43,20 @@ export class EditableProduct {
       costPrice: Number(raw.cost_price || raw.costPrice || 0),
       price: Number(raw.price || 0),
       stock: Number(raw.stock || 0),
-      productType: raw.product_type || raw.productType || 'physical',
+      variants: JSON.parse(JSON.stringify(this.variants)),
+      productType: raw.product_type || raw.productType || (isUnlim ? 'digital' : 'physical'),
       categoryId: raw.category_id || raw.categoryId || null,
       brandId: raw.brand_id || raw.brandId || null,
       consignorName: String(raw.consignor_name || raw.consignorName || '').trim(),
       consignorPhone: String(raw.consignor_phone || raw.consignorPhone || '').trim(),
+      isUnlimited: isUnlim,
     };
 
     // Active mutable draft during table editing
-    this.draft = { ...this.original };
+    this.draft = {
+      ...this.original,
+      variants: JSON.parse(JSON.stringify(this.variants)),
+    };
 
     this.saving = false;
     this.savedJustNow = false;
@@ -46,18 +71,52 @@ export class EditableProduct {
     } else {
       this.draft[field] = value;
     }
+    if (field === 'productType' && (value === 'digital' || value === 'financial_service')) {
+      this.draft.isUnlimited = true;
+    }
     this.savedJustNow = false;
     this.errorMessage = null;
   }
 
+  updateVariant(vIdx, field, value) {
+    if (!this.draft.variants || !this.draft.variants[vIdx]) return;
+    const v = this.draft.variants[vIdx];
+    if (field === 'price' || field === 'costPrice' || field === 'stock') {
+      const numVal = value === '' ? 0 : Number(value);
+      v[field] = isNaN(numVal) ? 0 : numVal;
+    } else {
+      v[field] = value;
+    }
+
+    if (field === 'stock') {
+      this.draft.stock = this.draft.variants.reduce((sum, item) => sum + (Number(item.stock) || 0), 0);
+    }
+    this.savedJustNow = false;
+    this.errorMessage = null;
+  }
+
+  stepVariantStock(vIdx, delta) {
+    if (!this.draft.variants || !this.draft.variants[vIdx]) return;
+    const current = Number(this.draft.variants[vIdx].stock || 0);
+    const next = Math.max(0, current + delta);
+    this.updateVariant(vIdx, 'stock', next);
+  }
+
   revert() {
-    this.draft = { ...this.original };
+    this.draft = {
+      ...this.original,
+      variants: JSON.parse(JSON.stringify(this.original.variants || [])),
+    };
     this.errorMessage = null;
     this.savedJustNow = false;
   }
 
   commit() {
-    this.original = { ...this.draft };
+    this.original = {
+      ...this.draft,
+      variants: JSON.parse(JSON.stringify(this.draft.variants || [])),
+    };
+    this.variants = JSON.parse(JSON.stringify(this.draft.variants || []));
     this.saving = false;
     this.savedJustNow = true;
     this.errorMessage = null;
@@ -66,6 +125,9 @@ export class EditableProduct {
   // --- Dirty State Detection ---
   isDirty(field = null) {
     if (field) {
+      if (field === 'variants') {
+        return JSON.stringify(this.draft.variants) !== JSON.stringify(this.original.variants);
+      }
       return this.draft[field] !== this.original[field];
     }
     return (
@@ -77,7 +139,9 @@ export class EditableProduct {
       this.draft.productType !== this.original.productType ||
       this.draft.categoryId !== this.original.categoryId ||
       this.draft.brandId !== this.original.brandId ||
-      this.draft.consignorName !== this.original.consignorName
+      this.draft.consignorName !== this.original.consignorName ||
+      this.draft.isUnlimited !== this.original.isUnlimited ||
+      JSON.stringify(this.draft.variants) !== JSON.stringify(this.original.variants)
     );
   }
 
@@ -92,6 +156,10 @@ export class EditableProduct {
     if (this.draft.categoryId !== this.original.categoryId) changes.category_id = this.draft.categoryId;
     if (this.draft.brandId !== this.original.brandId) changes.brand_id = this.draft.brandId;
     if (this.draft.consignorName !== this.original.consignorName) changes.consignor_name = this.draft.consignorName;
+    if (this.draft.isUnlimited !== this.original.isUnlimited) {
+      changes.is_unlimited = this.draft.isUnlimited;
+      changes.track_stock = !this.draft.isUnlimited;
+    }
     return changes;
   }
 
@@ -177,7 +245,21 @@ export class EditableProduct {
     const types = ['physical', 'consignment', 'voucher', 'digital', 'financial_service'];
     const currentIdx = types.indexOf(this.productType);
     const nextIdx = (currentIdx + 1) % types.length;
-    this.updateField('productType', types[nextIdx]);
+    const nextType = types[nextIdx];
+    this.updateField('productType', nextType);
+    // Paket data & jasa otomatis unlimited
+    if (nextType === 'digital' || nextType === 'financial_service') {
+      this.updateField('isUnlimited', true);
+    }
+  }
+
+  // --- Unlimited Stock ---
+  get isUnlimited() {
+    return Boolean(this.draft.isUnlimited);
+  }
+
+  toggleUnlimited() {
+    this.updateField('isUnlimited', !this.draft.isUnlimited);
   }
 
   toPayload() {
@@ -187,10 +269,13 @@ export class EditableProduct {
       price: Number(this.draft.price),
       costPrice: Number(this.draft.costPrice),
       stock: Number(this.draft.stock),
+      variants: this.draft.variants && this.draft.variants.length > 0 ? this.draft.variants : (this.variants || []),
       product_type: this.draft.productType,
       category_id: this.draft.categoryId || null,
       brand_id: this.draft.brandId || null,
       consignor_name: this.draft.consignorName.trim() || null,
+      is_unlimited: this.isUnlimited,
+      track_stock: !this.isUnlimited,
       changeReason: 'edit_manual',
     };
   }
@@ -213,6 +298,7 @@ export class EditableProduct {
       await setProductTypeMeta(userId, this.id, {
         type: this.draft.productType,
         consignorName: this.draft.consignorName,
+        isUnlimited: this.isUnlimited,
       });
 
       this.commit();

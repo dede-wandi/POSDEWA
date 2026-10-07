@@ -1,4 +1,5 @@
 import { getSupabaseClient } from './supabase';
+import { isUnlimitedProduct } from './productTypeService';
 
 export async function listProducts(userId) {
   const supabase = getSupabaseClient();
@@ -450,6 +451,8 @@ export async function updateProduct(userId, id, payload) {
     if (payload.product_type !== undefined) patch.product_type = payload.product_type;
     if (payload.consignor_name !== undefined) patch.consignor_name = payload.consignor_name;
     if (payload.consignor_phone !== undefined) patch.consignor_phone = payload.consignor_phone;
+    if (payload.is_unlimited !== undefined) patch.is_unlimited = Boolean(payload.is_unlimited);
+    if (payload.track_stock !== undefined) patch.track_stock = Boolean(payload.track_stock);
 
     // Sertakan alasan perubahan agar trigger product_change_log mencatatnya dengan benar
     // Nilai: 'edit_manual' | 'penjualan' | 'restock' | 'koreksi' | 'import'
@@ -467,10 +470,12 @@ export async function updateProduct(userId, id, payload) {
       .select()
       .single();
 
-    if (error && (error.message?.includes('product_type') || error.message?.includes('consignor_name'))) {
+    if (error && (error.message?.includes('product_type') || error.message?.includes('consignor_name') || error.message?.includes('is_unlimited') || error.message?.includes('track_stock'))) {
       delete patch.product_type;
       delete patch.consignor_name;
       delete patch.consignor_phone;
+      delete patch.is_unlimited;
+      delete patch.track_stock;
       const retry = await supabase
         .from('products')
         .update(patch)
@@ -569,10 +574,10 @@ export async function adjustStockOnSale(userId, cartItems) {
     // Process each cart item
     for (const item of cartItems) {
 
-      // Get current product stock and variants
+      // Get current product stock, variants, and unlimited flags
       const { data: product, error: getError } = await supabase
         .from('products')
-        .select('stock, variants')
+        .select('*')
         .eq('id', item.productId)
         .eq('owner_id', session.user.id)
         .single();
@@ -581,11 +586,22 @@ export async function adjustStockOnSale(userId, cartItems) {
         return { success: false, error: `Gagal mengambil produk (${item.productId}): ${getError.message}` };
       }
 
+      // Jika produk berstatus Unlimited (Paket Data, Pulsa, Jasa, dsb), lewati pengurangan stok & riwayat mutasi
+      if (isUnlimitedProduct(product)) {
+        continue;
+      }
+
       let updateData = { last_change_reason: 'penjualan' };
 
-      if (item.variantName && Array.isArray(product.variants) && product.variants.length > 0) {
+      let parsedVariants = product.variants;
+      if (typeof parsedVariants === 'string') {
+        try { parsedVariants = JSON.parse(parsedVariants); } catch (e) { parsedVariants = []; }
+      }
+      if (!Array.isArray(parsedVariants)) parsedVariants = [];
+
+      if (item.variantName && parsedVariants.length > 0) {
         let variantFound = false;
-        const updatedVariants = product.variants.map(v => {
+        const updatedVariants = parsedVariants.map(v => {
           if (String(v.name).trim() === String(item.variantName).trim()) {
             variantFound = true;
             return { ...v, stock: Math.max(0, (Number(v.stock) || 0) - Number(item.qty)) };

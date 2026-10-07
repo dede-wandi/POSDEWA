@@ -197,6 +197,38 @@ export function ProductEditableTable({
     triggerAutoSave(id, false);
   };
 
+  // Toggle Unlimited (tanpa stok) vs Stok terhitung
+  const handleToggleUnlimited = (id) => {
+    const item = modelMap[id];
+    if (!item) return;
+    item.toggleUnlimited();
+    triggerRender();
+    triggerAutoSave(id, true);
+  };
+
+  // Variant field change handler
+  const handleVariantFieldChange = (id, vIdx, field, value, shouldAutoSave = true) => {
+    const item = modelMap[id];
+    if (!item) return;
+
+    item.updateVariant(vIdx, field, value);
+    triggerRender();
+
+    if (shouldAutoSave) {
+      triggerAutoSave(id, false);
+    }
+  };
+
+  // Adjust variant stock via +/- stepper
+  const handleVariantStockStep = (id, vIdx, delta) => {
+    const item = modelMap[id];
+    if (!item) return;
+
+    item.stepVariantStock(vIdx, delta);
+    triggerRender();
+    triggerAutoSave(id, false);
+  };
+
   // Open native selection modal
   const openPickerModal = (type, productId, title) => {
     setPickerModal({
@@ -317,291 +349,538 @@ export function ProductEditableTable({
               const item = modelMap[raw.id] || new EditableProduct(raw);
               const isEven = idx % 2 === 0;
 
+              const rawVariants = item.draft?.variants || item.variants || raw.variants || [];
+              let variants = rawVariants;
+              if (typeof variants === 'string') {
+                try {
+                  variants = JSON.parse(variants);
+                } catch (e) {
+                  variants = [];
+                }
+              }
+              if (variants && typeof variants === 'object' && !Array.isArray(variants)) {
+                variants = Object.values(variants);
+              }
+              const hasVariants = Array.isArray(variants) && variants.length > 0;
+
               return (
-                <View
-                  key={item.id || idx}
-                  style={[
-                    styles.tableRow,
-                    isEven ? styles.rowEven : styles.rowOdd,
-                    item.isDirty() && styles.rowDirty,
-                    item.savedJustNow && styles.rowSaved,
-                  ]}
-                >
-                  {/* 1. No */}
-                  <View style={[styles.cell, styles.colNo]}>
-                    <Text style={styles.noText}>{idx + 1}</Text>
-                  </View>
-
-                  {/* 2. Barcode / SKU (Editable) */}
-                  <View style={[styles.cell, styles.colBarcode]}>
-                    <TextInput
-                      style={[
-                        styles.cellInput,
-                        focusedCell === `${item.id}-barcode` && styles.cellInputFocused,
-                      ]}
-                      value={item.barcode}
-                      placeholder="SKU / Barcode"
-                      placeholderTextColor="#94A3B8"
-                      selectTextOnFocus={true}
-                      onFocus={() => setFocusedCell(`${item.id}-barcode`)}
-                      onBlur={() => {
-                        setFocusedCell(null);
-                        triggerAutoSave(item.id, true);
-                      }}
-                      onChangeText={val => handleFieldChange(item.id, 'barcode', val)}
-                    />
-                  </View>
-
-                  {/* 3. Nama Produk (Editable) */}
-                  <View style={[styles.cell, styles.colName]}>
-                    <TextInput
-                      style={[
-                        styles.cellInput,
-                        styles.nameInput,
-                        focusedCell === `${item.id}-name` && styles.cellInputFocused,
-                      ]}
-                      value={item.name}
-                      placeholder="Nama produk..."
-                      placeholderTextColor="#94A3B8"
-                      onFocus={() => setFocusedCell(`${item.id}-name`)}
-                      onBlur={() => {
-                        setFocusedCell(null);
-                        triggerAutoSave(item.id, true);
-                      }}
-                      onChangeText={val => handleFieldChange(item.id, 'name', val)}
-                    />
-                    {item.errorMessage && (
-                      <Text style={styles.errorSubText}>{item.errorMessage}</Text>
-                    )}
-                  </View>
-
-                  {/* 4. Modal (HPP) (Editable) */}
-                  <View style={[styles.cell, styles.colCost]}>
-                    <View
-                      style={[
-                        styles.moneyInputWrap,
-                        focusedCell === `${item.id}-cost` && styles.cellInputFocused,
-                      ]}
-                    >
-                      <Text style={styles.rpPrefix}>Rp</Text>
-                      <TextInput
-                        style={styles.moneyInput}
-                        keyboardType="numeric"
-                        selectTextOnFocus={true}
-                        value={String(item.costPrice ?? 0)}
-                        placeholder="0"
-                        placeholderTextColor="#94A3B8"
-                        onFocus={() => setFocusedCell(`${item.id}-cost`)}
-                        onBlur={() => {
-                          setFocusedCell(null);
-                          triggerAutoSave(item.id, true);
-                        }}
-                        onChangeText={val => handleFieldChange(item.id, 'costPrice', val)}
-                      />
+                <React.Fragment key={item.id || idx}>
+                  <View
+                    style={[
+                      styles.tableRow,
+                      isEven ? styles.rowEven : styles.rowOdd,
+                      item.isDirty() && styles.rowDirty,
+                      item.savedJustNow && styles.rowSaved,
+                      hasVariants && styles.tableRowParent,
+                    ]}
+                  >
+                    {/* 1. No */}
+                    <View style={[styles.cell, styles.colNo]}>
+                      <Text style={styles.noText}>{idx + 1}</Text>
                     </View>
-                  </View>
 
-                  {/* 5. Harga Jual (Editable) */}
-                  <View style={[styles.cell, styles.colPrice]}>
-                    <View
-                      style={[
-                        styles.moneyInputWrap,
-                        focusedCell === `${item.id}-price` && styles.cellInputFocused,
-                      ]}
-                    >
-                      <Text style={styles.rpPrefix}>Rp</Text>
-                      <TextInput
-                        style={styles.moneyInput}
-                        keyboardType="numeric"
-                        selectTextOnFocus={true}
-                        value={String(item.price ?? 0)}
-                        placeholder="0"
-                        placeholderTextColor="#94A3B8"
-                        onFocus={() => setFocusedCell(`${item.id}-price`)}
-                        onBlur={() => {
-                          setFocusedCell(null);
-                          triggerAutoSave(item.id, true);
-                        }}
-                        onChangeText={val => handleFieldChange(item.id, 'price', val)}
-                      />
-                    </View>
-                  </View>
-
-                  {/* 6. Laba / Margin (Reactive Auto Calculation) */}
-                  <View style={[styles.cell, styles.colMargin]}>
-                    <Text style={styles.marginText}>{item.formattedProfit}</Text>
-                    <Text style={styles.marginPercentText}>
-                      ({item.marginPercent.toFixed(1)}%)
-                    </Text>
-                  </View>
-
-                  {/* 7. Stok (Editable + Steppers) */}
-                  <View style={[styles.cell, styles.colStock]}>
-                    <View style={styles.stockStepperWrap}>
-                      <TouchableOpacity
-                        style={styles.stepBtn}
-                        onPress={() => handleStockStep(item.id, -1)}
-                      >
-                        <Text style={styles.stepBtnText}>-</Text>
-                      </TouchableOpacity>
-
+                    {/* 2. Barcode / SKU (Editable) */}
+                    <View style={[styles.cell, styles.colBarcode]}>
                       <TextInput
                         style={[
-                          styles.stockInput,
-                          focusedCell === `${item.id}-stock` && styles.cellInputFocused,
+                          styles.cellInput,
+                          focusedCell === `${item.id}-barcode` && styles.cellInputFocused,
                         ]}
-                        keyboardType="numeric"
+                        value={item.barcode}
+                        placeholder="SKU / Barcode"
+                        placeholderTextColor="#94A3B8"
                         selectTextOnFocus={true}
-                        value={String(item.stock ?? 0)}
-                        onFocus={() => setFocusedCell(`${item.id}-stock`)}
+                        onFocus={() => setFocusedCell(`${item.id}-barcode`)}
                         onBlur={() => {
                           setFocusedCell(null);
                           triggerAutoSave(item.id, true);
                         }}
-                        onChangeText={val => handleFieldChange(item.id, 'stock', val)}
+                        onChangeText={val => handleFieldChange(item.id, 'barcode', val)}
                       />
-
-                      <TouchableOpacity
-                        style={styles.stepBtn}
-                        onPress={() => handleStockStep(item.id, 1)}
-                      >
-                        <Text style={styles.stepBtnText}>+</Text>
-                      </TouchableOpacity>
                     </View>
-                  </View>
 
-                  {/* 8. Tipe Produk (Dropdown Selector) */}
-                  <View style={[styles.cell, styles.colType]}>
-                    {Platform.OS === 'web' ? (
-                      <select
-                        value={item.productType}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          handleFieldChange(item.id, 'productType', val, false);
-                          triggerAutoSave(item.id, true);
-                        }}
-                        style={webSelectStyle}
-                      >
-                        {PRODUCT_TYPES.map(t => (
-                          <option key={t.id} value={t.id}>
-                            {t.label.split(' ')[0]} {t.label.split(' ')[1] || ''}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <TouchableOpacity
-                        style={[styles.dropdownButton, { backgroundColor: item.typeInfo.bg }]}
-                        onPress={() => openPickerModal('productType', item.id, 'Pilih Tipe Produk')}
-                        activeOpacity={0.7}
-                      >
-                        <Text
-                          style={[styles.dropdownButtonText, { color: item.typeInfo.color }]}
-                          numberOfLines={1}
-                        >
-                          {item.typeInfo.label.split(' ')[0]}
-                        </Text>
-                        <Ionicons name="chevron-down" size={12} color={item.typeInfo.color} />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-
-                  {/* 9. Brand (Dropdown Selector) */}
-                  <View style={[styles.cell, styles.colBrand]}>
-                    {Platform.OS === 'web' ? (
-                      <select
-                        value={item.brandId || ''}
-                        onChange={(e) => {
-                          const val = e.target.value || null;
-                          handleFieldChange(item.id, 'brandId', val, false);
-                          triggerAutoSave(item.id, true);
-                        }}
-                        style={webSelectStyle}
-                      >
-                        <option value="">- Brand -</option>
-                        {brands.map(b => (
-                          <option key={b.id} value={b.id}>
-                            {b.name}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <TouchableOpacity
-                        style={styles.dropdownButton}
-                        onPress={() => openPickerModal('brand', item.id, 'Pilih Brand Produk')}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.categoryDropdownText} numberOfLines={1}>
-                          {brands.find(b => b.id === item.brandId)?.name || 'Pilih...'}
-                        </Text>
-                        <Ionicons name="chevron-down" size={12} color="#64748B" />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-
-                  {/* 10. Kategori (Dropdown Selector) */}
-                  <View style={[styles.cell, styles.colCategory]}>
-                    {Platform.OS === 'web' ? (
-                      <select
-                        value={item.categoryId || ''}
-                        onChange={(e) => {
-                          const val = e.target.value || null;
-                          handleFieldChange(item.id, 'categoryId', val, false);
-                          triggerAutoSave(item.id, true);
-                        }}
-                        style={webSelectStyle}
-                      >
-                        <option value="">- Kategori -</option>
-                        {categories.map(c => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <TouchableOpacity
-                        style={styles.dropdownButton}
-                        onPress={() => openPickerModal('category', item.id, 'Pilih Kategori Produk')}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.categoryDropdownText} numberOfLines={1}>
-                          {categories.find(c => c.id === item.categoryId)?.name || 'Pilih...'}
-                        </Text>
-                        <Ionicons name="chevron-down" size={12} color="#64748B" />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-
-                  {/* 11. Status / Aksi */}
-                  <View style={[styles.cell, styles.colStatus]}>
-                    <View style={styles.statusActionWrap}>
-                      {item.saving ? (
-                        <ActivityIndicator size="small" color="#059669" />
-                      ) : item.savedJustNow ? (
-                        <View style={styles.savedChip}>
-                          <Ionicons name="checkmark" size={12} color="#047857" />
-                          <Text style={styles.savedChipText}>Ok</Text>
-                        </View>
-                      ) : (
-                        <View style={styles.actionBtnGroup}>
-                          <TouchableOpacity
-                            style={styles.detailBtn}
-                            onPress={() => navigation?.navigate('FormProduk', { id: item.id })}
-                            accessibilityLabel="Edit Lengkap"
-                          >
-                            <Ionicons name="open-outline" size={14} color="#64748B" />
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={styles.deleteBtn}
-                            onPress={() => handleDeleteClick(item.id, item.name)}
-                            accessibilityLabel="Hapus Produk"
-                          >
-                            <Ionicons name="trash-outline" size={14} color="#EF4444" />
-                          </TouchableOpacity>
-                        </View>
+                    {/* 3. Nama Produk (Editable) */}
+                    <View style={[styles.cell, styles.colName]}>
+                      <View style={styles.productNameCellWrap}>
+                        <TextInput
+                          style={[
+                            styles.cellInput,
+                            styles.nameInput,
+                            { flex: 1 },
+                            focusedCell === `${item.id}-name` && styles.cellInputFocused,
+                          ]}
+                          value={item.name}
+                          placeholder="Nama produk..."
+                          placeholderTextColor="#94A3B8"
+                          onFocus={() => setFocusedCell(`${item.id}-name`)}
+                          onBlur={() => {
+                            setFocusedCell(null);
+                            triggerAutoSave(item.id, true);
+                          }}
+                          onChangeText={val => handleFieldChange(item.id, 'name', val)}
+                        />
+                        {hasVariants && (
+                          <View style={styles.parentVariantBadge}>
+                            <Text style={styles.parentVariantBadgeText}>Total {variants.length} Varian</Text>
+                          </View>
+                        )}
+                      </View>
+                      {item.errorMessage && (
+                        <Text style={styles.errorSubText}>{item.errorMessage}</Text>
                       )}
                     </View>
+
+                    {/* 4. Modal (HPP) (Editable) */}
+                    <View style={[styles.cell, styles.colCost]}>
+                      <View
+                        style={[
+                          styles.moneyInputWrap,
+                          focusedCell === `${item.id}-cost` && styles.cellInputFocused,
+                        ]}
+                      >
+                        <Text style={styles.rpPrefix}>Rp</Text>
+                        <TextInput
+                          style={styles.moneyInput}
+                          keyboardType="numeric"
+                          selectTextOnFocus={true}
+                          value={String(item.costPrice ?? 0)}
+                          placeholder="0"
+                          placeholderTextColor="#94A3B8"
+                          onFocus={() => setFocusedCell(`${item.id}-cost`)}
+                          onBlur={() => {
+                            setFocusedCell(null);
+                            triggerAutoSave(item.id, true);
+                          }}
+                          onChangeText={val => handleFieldChange(item.id, 'costPrice', val)}
+                        />
+                      </View>
+                    </View>
+
+                    {/* 5. Harga Jual (Editable) */}
+                    <View style={[styles.cell, styles.colPrice]}>
+                      <View
+                        style={[
+                          styles.moneyInputWrap,
+                          focusedCell === `${item.id}-price` && styles.cellInputFocused,
+                        ]}
+                      >
+                        <Text style={styles.rpPrefix}>Rp</Text>
+                        <TextInput
+                          style={styles.moneyInput}
+                          keyboardType="numeric"
+                          selectTextOnFocus={true}
+                          value={String(item.price ?? 0)}
+                          placeholder="0"
+                          placeholderTextColor="#94A3B8"
+                          onFocus={() => setFocusedCell(`${item.id}-price`)}
+                          onBlur={() => {
+                            setFocusedCell(null);
+                            triggerAutoSave(item.id, true);
+                          }}
+                          onChangeText={val => handleFieldChange(item.id, 'price', val)}
+                        />
+                      </View>
+                    </View>
+
+                    {/* 6. Laba / Margin (Reactive Auto Calculation) */}
+                    <View style={[styles.cell, styles.colMargin]}>
+                      <Text style={styles.marginText}>{item.formattedProfit}</Text>
+                      <Text style={styles.marginPercentText}>
+                        ({item.marginPercent.toFixed(1)}%)
+                      </Text>
+                    </View>
+
+                    {/* 7. Stok (Editable + Steppers) / Unlimited Toggle */}
+                    <View style={[styles.cell, styles.colStock]}>
+                      {item.isUnlimited ? (
+                        <View style={styles.unlimitedBadge}>
+                          <Text style={styles.unlimitedBadgeText}>∞ Unlimited</Text>
+                        </View>
+                      ) : (
+                      <View style={styles.stockStepperWrap}>
+                        <TouchableOpacity
+                          style={styles.stepBtn}
+                          onPress={() => handleStockStep(item.id, -1)}
+                        >
+                          <Text style={styles.stepBtnText}>-</Text>
+                        </TouchableOpacity>
+
+                        <TextInput
+                          style={[
+                            styles.stockInput,
+                            focusedCell === `${item.id}-stock` && styles.cellInputFocused,
+                          ]}
+                          keyboardType="numeric"
+                          selectTextOnFocus={true}
+                          value={String(item.stock ?? 0)}
+                          onFocus={() => setFocusedCell(`${item.id}-stock`)}
+                          onBlur={() => {
+                            setFocusedCell(null);
+                            triggerAutoSave(item.id, true);
+                          }}
+                          onChangeText={val => handleFieldChange(item.id, 'stock', val)}
+                        />
+
+                        <TouchableOpacity
+                          style={styles.stepBtn}
+                          onPress={() => handleStockStep(item.id, 1)}
+                        >
+                          <Text style={styles.stepBtnText}>+</Text>
+                        </TouchableOpacity>
+                      </View>
+                      )}
+                      <TouchableOpacity
+                        style={styles.unlimitedToggle}
+                        onPress={() => handleToggleUnlimited(item.id)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.unlimitedToggleText}>
+                          {item.isUnlimited ? '↺ Pakai Stok' : '∞ Set Unlimited'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* 8. Tipe Produk (Dropdown Selector) */}
+                    <View style={[styles.cell, styles.colType]}>
+                      {Platform.OS === 'web' ? (
+                        <select
+                          value={item.productType}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            handleFieldChange(item.id, 'productType', val, false);
+                            triggerAutoSave(item.id, true);
+                          }}
+                          style={webSelectStyle}
+                        >
+                          {PRODUCT_TYPES.map(t => (
+                            <option key={t.id} value={t.id}>
+                              {t.label.split(' ')[0]} {t.label.split(' ')[1] || ''}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <TouchableOpacity
+                          style={[styles.dropdownButton, { backgroundColor: item.typeInfo.bg }]}
+                          onPress={() => openPickerModal('productType', item.id, 'Pilih Tipe Produk')}
+                          activeOpacity={0.7}
+                        >
+                          <Text
+                            style={[styles.dropdownButtonText, { color: item.typeInfo.color }]}
+                            numberOfLines={1}
+                          >
+                            {item.typeInfo.label.split(' ')[0]}
+                          </Text>
+                          <Ionicons name="chevron-down" size={12} color={item.typeInfo.color} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+
+                    {/* 9. Brand (Dropdown Selector) */}
+                    <View style={[styles.cell, styles.colBrand]}>
+                      {Platform.OS === 'web' ? (
+                        <select
+                          value={item.brandId || ''}
+                          onChange={(e) => {
+                            const val = e.target.value || null;
+                            handleFieldChange(item.id, 'brandId', val, false);
+                            triggerAutoSave(item.id, true);
+                          }}
+                          style={webSelectStyle}
+                        >
+                          <option value="">- Brand -</option>
+                          {brands.map(b => (
+                            <option key={b.id} value={b.id}>
+                              {b.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <TouchableOpacity
+                          style={styles.dropdownButton}
+                          onPress={() => openPickerModal('brand', item.id, 'Pilih Brand Produk')}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.categoryDropdownText} numberOfLines={1}>
+                            {brands.find(b => b.id === item.brandId)?.name || 'Pilih...'}
+                          </Text>
+                          <Ionicons name="chevron-down" size={12} color="#64748B" />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+
+                    {/* 10. Kategori (Dropdown Selector) */}
+                    <View style={[styles.cell, styles.colCategory]}>
+                      {Platform.OS === 'web' ? (
+                        <select
+                          value={item.categoryId || ''}
+                          onChange={(e) => {
+                            const val = e.target.value || null;
+                            handleFieldChange(item.id, 'categoryId', val, false);
+                            triggerAutoSave(item.id, true);
+                          }}
+                          style={webSelectStyle}
+                        >
+                          <option value="">- Kategori -</option>
+                          {categories.map(c => (
+                            <option key={c.id} value={c.id}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <TouchableOpacity
+                          style={styles.dropdownButton}
+                          onPress={() => openPickerModal('category', item.id, 'Pilih Kategori Produk')}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.categoryDropdownText} numberOfLines={1}>
+                            {categories.find(c => c.id === item.categoryId)?.name || 'Pilih...'}
+                          </Text>
+                          <Ionicons name="chevron-down" size={12} color="#64748B" />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+
+                    {/* 11. Status / Aksi */}
+                    <View style={[styles.cell, styles.colStatus]}>
+                      <View style={styles.statusActionWrap}>
+                        {item.saving ? (
+                          <ActivityIndicator size="small" color="#059669" />
+                        ) : item.savedJustNow ? (
+                          <View style={styles.savedChip}>
+                            <Ionicons name="checkmark" size={12} color="#047857" />
+                            <Text style={styles.savedChipText}>Ok</Text>
+                          </View>
+                        ) : (
+                          <View style={styles.actionBtnGroup}>
+                            <TouchableOpacity
+                              style={styles.detailBtn}
+                              onPress={() => navigation?.navigate('FormProduk', { id: item.id })}
+                              accessibilityLabel="Edit Lengkap"
+                            >
+                              <Ionicons name="open-outline" size={14} color="#64748B" />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.deleteBtn}
+                              onPress={() => handleDeleteClick(item.id, item.name)}
+                              accessibilityLabel="Hapus Produk"
+                            >
+                              <Ionicons name="trash-outline" size={14} color="#EF4444" />
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                      </View>
+                    </View>
                   </View>
-                </View>
+
+                  {/* SUB TABLE: VARIANT SUB-ROWS (MENJOROK) */}
+                  {hasVariants &&
+                    variants.map((v, vIdx) => {
+                      const vCost = Number(v.costPrice ?? v.cost_price ?? 0);
+                      const vPrice = Number(v.price ?? 0);
+                      const vStock = Number(v.stock ?? 0);
+                      const vMarginRp = Math.max(0, vPrice - vCost);
+                      const vMarginPercent = vPrice > 0 ? (vMarginRp / vPrice) * 100 : 0;
+                      const cellKey = `${item.id}-var-${vIdx}`;
+
+                      return (
+                        <View
+                          key={v.id || `${item.id}-var-${vIdx}`}
+                          style={[
+                            styles.tableRow,
+                            styles.tableRowVariant,
+                            vStock === 0 && styles.rowVariantEmpty,
+                          ]}
+                        >
+                          {/* 1. Sub No: e.g. 1.1, 1.2 */}
+                          <View style={[styles.cell, styles.colNo, styles.variantCell]}>
+                            <Text style={styles.variantSubIndexText}>
+                              {idx + 1}.{vIdx + 1}
+                            </Text>
+                          </View>
+
+                          {/* 2. Variant Barcode / SKU (Editable) */}
+                          <View style={[styles.cell, styles.colBarcode, styles.variantCell]}>
+                            <TextInput
+                              style={[
+                                styles.cellInput,
+                                styles.variantInput,
+                                focusedCell === `${cellKey}-barcode` && styles.cellInputFocused,
+                              ]}
+                              value={v.barcode || ''}
+                              placeholder="SKU Varian"
+                              placeholderTextColor="#94A3B8"
+                              selectTextOnFocus={true}
+                              onFocus={() => setFocusedCell(`${cellKey}-barcode`)}
+                              onBlur={() => {
+                                setFocusedCell(null);
+                                triggerAutoSave(item.id, true);
+                              }}
+                              onChangeText={val => handleVariantFieldChange(item.id, vIdx, 'barcode', val)}
+                            />
+                          </View>
+
+                          {/* 3. Variant Name (Menjorok dengan ↳ icon & Editable Name) */}
+                          <View style={[styles.cell, styles.colName, styles.variantCell]}>
+                            <View style={styles.variantNameRow}>
+                              <Text style={styles.variantTreeIcon}>↳</Text>
+                              <View style={styles.variantLabelBadge}>
+                                <Text style={styles.variantLabelBadgeText}>Varian</Text>
+                              </View>
+                              <TextInput
+                                style={[
+                                  styles.cellInput,
+                                  styles.nameInput,
+                                  styles.variantInput,
+                                  { flex: 1 },
+                                  focusedCell === `${cellKey}-name` && styles.cellInputFocused,
+                                ]}
+                                value={v.name || v.variantName || ''}
+                                placeholder="Nama varian..."
+                                placeholderTextColor="#94A3B8"
+                                onFocus={() => setFocusedCell(`${cellKey}-name`)}
+                                onBlur={() => {
+                                  setFocusedCell(null);
+                                  triggerAutoSave(item.id, true);
+                                }}
+                                onChangeText={val => handleVariantFieldChange(item.id, vIdx, 'name', val)}
+                              />
+                            </View>
+                          </View>
+
+                          {/* 4. Variant Modal (HPP) (Editable) */}
+                          <View style={[styles.cell, styles.colCost, styles.variantCell]}>
+                            <View
+                              style={[
+                                styles.moneyInputWrap,
+                                styles.variantMoneyWrap,
+                                focusedCell === `${cellKey}-cost` && styles.cellInputFocused,
+                              ]}
+                            >
+                              <Text style={styles.rpPrefixSmall}>Rp</Text>
+                              <TextInput
+                                style={[styles.moneyInput, styles.variantMoneyInput]}
+                                keyboardType="numeric"
+                                selectTextOnFocus={true}
+                                value={String(vCost)}
+                                placeholder="0"
+                                placeholderTextColor="#94A3B8"
+                                onFocus={() => setFocusedCell(`${cellKey}-cost`)}
+                                onBlur={() => {
+                                  setFocusedCell(null);
+                                  triggerAutoSave(item.id, true);
+                                }}
+                                onChangeText={val => handleVariantFieldChange(item.id, vIdx, 'costPrice', val)}
+                              />
+                            </View>
+                          </View>
+
+                          {/* 5. Variant Harga Jual (Editable) */}
+                          <View style={[styles.cell, styles.colPrice, styles.variantCell]}>
+                            <View
+                              style={[
+                                styles.moneyInputWrap,
+                                styles.variantMoneyWrap,
+                                focusedCell === `${cellKey}-price` && styles.cellInputFocused,
+                              ]}
+                            >
+                              <Text style={styles.rpPrefixSmall}>Rp</Text>
+                              <TextInput
+                                style={[styles.moneyInput, styles.variantMoneyInput]}
+                                keyboardType="numeric"
+                                selectTextOnFocus={true}
+                                value={String(vPrice)}
+                                placeholder="0"
+                                placeholderTextColor="#94A3B8"
+                                onFocus={() => setFocusedCell(`${cellKey}-price`)}
+                                onBlur={() => {
+                                  setFocusedCell(null);
+                                  triggerAutoSave(item.id, true);
+                                }}
+                                onChangeText={val => handleVariantFieldChange(item.id, vIdx, 'price', val)}
+                              />
+                            </View>
+                          </View>
+
+                          {/* 6. Variant Laba / Margin (Auto-calc) */}
+                          <View style={[styles.cell, styles.colMargin, styles.variantCell]}>
+                            <Text style={styles.variantMarginText}>+{formatIDR(vMarginRp)}</Text>
+                            <Text style={styles.variantMarginPercentText}>
+                              ({vMarginPercent.toFixed(1)}%)
+                            </Text>
+                          </View>
+
+                          {/* 7. Variant Stok (Editable + Steppers) */}
+                          <View style={[styles.cell, styles.colStock, styles.variantCell]}>
+                            <View style={[styles.stockStepperWrap, styles.variantStepperWrap]}>
+                              <TouchableOpacity
+                                style={[styles.stepBtn, styles.variantStepBtn]}
+                                onPress={() => handleVariantStockStep(item.id, vIdx, -1)}
+                              >
+                                <Text style={styles.stepBtnText}>-</Text>
+                              </TouchableOpacity>
+
+                              <TextInput
+                                style={[
+                                  styles.stockInput,
+                                  styles.variantStockInput,
+                                  focusedCell === `${cellKey}-stock` && styles.cellInputFocused,
+                                ]}
+                                keyboardType="numeric"
+                                selectTextOnFocus={true}
+                                value={String(vStock)}
+                                onFocus={() => setFocusedCell(`${cellKey}-stock`)}
+                                onBlur={() => {
+                                  setFocusedCell(null);
+                                  triggerAutoSave(item.id, true);
+                                }}
+                                onChangeText={val => handleVariantFieldChange(item.id, vIdx, 'stock', val)}
+                              />
+
+                              <TouchableOpacity
+                                style={[styles.stepBtn, styles.variantStepBtn]}
+                                onPress={() => handleVariantStockStep(item.id, vIdx, 1)}
+                              >
+                                <Text style={styles.stepBtnText}>+</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+
+                          {/* 8. Tipe (Sub Varian badge) */}
+                          <View style={[styles.cell, styles.colType, styles.variantCell]}>
+                            <View style={styles.variantBadgeType}>
+                              <Text style={styles.variantBadgeTypeText}>🏷️ Sub Varian</Text>
+                            </View>
+                          </View>
+
+                          {/* 9. Brand (Inherit from parent, muted) */}
+                          <View style={[styles.cell, styles.colBrand, styles.variantCell]}>
+                            <Text style={styles.variantMutedText} numberOfLines={1}>
+                              {brands.find(b => b.id === item.brandId)?.name || '-'}
+                            </Text>
+                          </View>
+
+                          {/* 10. Kategori (Inherit from parent, muted) */}
+                          <View style={[styles.cell, styles.colCategory, styles.variantCell]}>
+                            <Text style={styles.variantMutedText} numberOfLines={1}>
+                              {categories.find(c => c.id === item.categoryId)?.name || '-'}
+                            </Text>
+                          </View>
+
+                          {/* 11. Aksi (Variant Action) */}
+                          <View style={[styles.cell, styles.colStatus, styles.variantCell]}>
+                            <TouchableOpacity
+                              style={styles.variantEditBtn}
+                              onPress={() => navigation?.navigate('FormProduk', { id: item.id })}
+                              title="Edit Varian di Form Produk"
+                            >
+                              <Ionicons name="create-outline" size={13} color="#0284C7" />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      );
+                    })}
+                </React.Fragment>
               );
             })}
 
@@ -1010,6 +1289,28 @@ const styles = StyleSheet.create({
   },
 
   // Stock Steppers
+  unlimitedBadge: {
+    backgroundColor: '#F5F3FF',
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  unlimitedBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#7C3AED',
+  },
+  unlimitedToggle: {
+    marginTop: 3,
+  },
+  unlimitedToggleText: {
+    fontSize: 9.5,
+    fontWeight: '600',
+    color: '#0284C7',
+    textDecorationLine: 'underline',
+  },
   stockStepperWrap: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1173,5 +1474,143 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748B',
     marginTop: 2,
+  },
+
+  // Sub Table & Variant Rows (Menjorok)
+  productNameCellWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  parentVariantBadge: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    flexShrink: 0,
+  },
+  parentVariantBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#2563EB',
+  },
+  tableRowParent: {
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#CBD5E1',
+  },
+  tableRowVariant: {
+    backgroundColor: '#F8FAFC',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    borderLeftWidth: 3,
+    borderLeftColor: '#0284C7',
+    minHeight: 34,
+  },
+  rowVariantEmpty: {
+    backgroundColor: '#FFF5F5',
+  },
+  variantCell: {
+    backgroundColor: 'transparent',
+  },
+  variantSubIndexText: {
+    fontSize: 10,
+    color: '#94A3B8',
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  variantNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
+  },
+  variantTreeIcon: {
+    fontSize: 14,
+    color: '#0284C7',
+    fontWeight: '700',
+    marginRight: 2,
+  },
+  variantLabelBadge: {
+    backgroundColor: '#E0F2FE',
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
+    marginRight: 3,
+  },
+  variantLabelBadgeText: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: '#0369A1',
+  },
+  variantInput: {
+    fontSize: 11,
+    paddingVertical: 2,
+    paddingHorizontal: 5,
+    height: 26,
+    backgroundColor: '#FFFFFF',
+  },
+  variantMoneyWrap: {
+    height: 26,
+    paddingHorizontal: 4,
+  },
+  rpPrefixSmall: {
+    fontSize: 9,
+    color: '#94A3B8',
+    fontWeight: '700',
+    marginRight: 1,
+    flexShrink: 0,
+  },
+  variantMoneyInput: {
+    fontSize: 11,
+    paddingVertical: 1,
+  },
+  variantMarginText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#059669',
+    textAlign: 'right',
+  },
+  variantMarginPercentText: {
+    fontSize: 9,
+    color: '#10B981',
+    textAlign: 'right',
+  },
+  variantStepperWrap: {
+    height: 26,
+  },
+  variantStepBtn: {
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+  },
+  variantStockInput: {
+    height: 24,
+    fontSize: 10.5,
+  },
+  variantBadgeType: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  variantBadgeTypeText: {
+    fontSize: 9.5,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  variantMutedText: {
+    fontSize: 10.5,
+    color: '#94A3B8',
+  },
+  variantEditBtn: {
+    padding: 4,
+    backgroundColor: '#F0F9FF',
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

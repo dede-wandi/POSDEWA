@@ -765,13 +765,14 @@ export default function SalesScreen({ navigation, route }) {
                 stock = stocks.reduce((sum, s) => sum + s, 0);
               }
               
-              const stockLabel = stock > 0 ? `Stok: ${stock}` : 'Habis';
+              const isUnlimited = item.product_type === 'digital' || item.product_type === 'service';
+              const stockLabel = isUnlimited ? '∞ Unlimited' : (stock > 0 ? `Stok: ${stock}` : 'Habis');
 
               if (productLayout === 'grid') {
                 return (
                   <View style={styles.resultCardGrid}>
-                    <View style={[styles.stockBadge, stock <= 0 && styles.stockBadgeEmpty]}>
-                      <Text style={[styles.stockBadgeText, stock <= 0 && styles.stockBadgeTextEmpty]}>
+                    <View style={[styles.stockBadge, !isUnlimited && stock <= 0 && styles.stockBadgeEmpty]}>
+                      <Text style={[styles.stockBadgeText, !isUnlimited && stock <= 0 && styles.stockBadgeTextEmpty]}>
                         {stockLabel}
                       </Text>
                     </View>
@@ -796,15 +797,15 @@ export default function SalesScreen({ navigation, route }) {
                         <TouchableOpacity
                           style={[
                             styles.addButtonGrid,
-                            stock <= 0 && styles.addButtonDisabled
+                            !isUnlimited && stock <= 0 && styles.addButtonDisabled
                           ]}
                           onPress={() => addToCart(item)}
-                          disabled={stock <= 0}
+                          disabled={!isUnlimited && stock <= 0}
                         >
                           <Ionicons 
-                            name={stock <= 0 ? "ban" : "add"} 
+                            name={!isUnlimited && stock <= 0 ? "ban" : "add"} 
                             size={16} 
-                            color={stock <= 0 ? Colors.muted : Colors.white} 
+                            color={!isUnlimited && stock <= 0 ? Colors.muted : Colors.white} 
                           />
                         </TouchableOpacity>
                       </View>
@@ -815,8 +816,8 @@ export default function SalesScreen({ navigation, route }) {
 
               return (
                 <View style={styles.resultCard}>
-                  <View style={[styles.stockBadge, stock <= 0 && styles.stockBadgeEmpty]}>
-                    <Text style={[styles.stockBadgeText, stock <= 0 && styles.stockBadgeTextEmpty]}>
+                  <View style={[styles.stockBadge, !isUnlimited && stock <= 0 && styles.stockBadgeEmpty]}>
+                    <Text style={[styles.stockBadgeText, !isUnlimited && stock <= 0 && styles.stockBadgeTextEmpty]}>
                       {stockLabel}
                     </Text>
                   </View>
@@ -845,15 +846,15 @@ export default function SalesScreen({ navigation, route }) {
                   <TouchableOpacity
                     style={[
                       styles.addButtonList,
-                      item.stock <= 0 && styles.addButtonDisabled
+                      !isUnlimited && stock <= 0 && styles.addButtonDisabled
                     ]}
                     onPress={() => addToCart(item)}
-                    disabled={item.stock <= 0}
+                    disabled={!isUnlimited && stock <= 0}
                   >
                     <Ionicons 
-                      name={item.stock <= 0 ? "ban" : "add"} 
+                      name={!isUnlimited && stock <= 0 ? "ban" : "add"} 
                       size={16} 
-                      color={item.stock <= 0 ? Colors.muted : Colors.white} 
+                      color={!isUnlimited && stock <= 0 ? Colors.muted : Colors.white} 
                     />
                   </TouchableOpacity>
                 </View>

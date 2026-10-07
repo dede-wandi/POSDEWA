@@ -950,17 +950,26 @@ export default function FormScreen({ navigation, route }) {
                 />
               </View>
 
-              <View style={[styles.inputGroup, { flex: 1, marginBottom: 0 }]}>
-                <Text style={styles.label}>Stok *</Text>
-                <TextInput
-                  value={stock}
-                  onChangeText={setStock}
-                  keyboardType="numeric"
-                  style={styles.input}
-                  placeholder="0"
-                  placeholderTextColor={Colors.muted}
-                />
-              </View>
+              {productType === 'digital' || productType === 'service' ? (
+                <View style={[styles.inputGroup, { flex: 1, marginBottom: 0 }]}>
+                  <Text style={styles.label}>Stok</Text>
+                  <View style={[styles.input, { justifyContent: 'center', backgroundColor: '#F1F5F9' }]}>
+                    <Text style={{ color: '#475569', fontWeight: 'bold' }}>∞ Unlimited</Text>
+                  </View>
+                </View>
+              ) : (
+                <View style={[styles.inputGroup, { flex: 1, marginBottom: 0 }]}>
+                  <Text style={styles.label}>Stok *</Text>
+                  <TextInput
+                    value={stock}
+                    onChangeText={setStock}
+                    keyboardType="numeric"
+                    style={styles.input}
+                    placeholder="0"
+                    placeholderTextColor={Colors.muted}
+                  />
+                </View>
+              )}
             </View>
 
             {productType === 'consignment' && Number(price || 0) > 0 && (
@@ -1073,18 +1082,24 @@ export default function FormScreen({ navigation, route }) {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.muted, marginBottom: 4 }}>Stok</Text>
-                    <TextInput
-                      style={[styles.input, { paddingVertical: 8, paddingHorizontal: 10, fontSize: 14 }]}
-                      value={String(v.stock !== undefined && v.stock !== null ? v.stock : '')}
-                      onChangeText={(val) => {
-                        const newVars = [...variants];
-                        newVars[idx].stock = val;
-                        setVariants(newVars);
-                      }}
-                      keyboardType="numeric"
-                      placeholder="0"
-                      placeholderTextColor={Colors.muted}
-                    />
+                    {productType === 'digital' || productType === 'service' ? (
+                      <View style={[styles.input, { paddingVertical: 8, paddingHorizontal: 10, justifyContent: 'center', backgroundColor: '#F1F5F9' }]}>
+                        <Text style={{ fontSize: 14, color: '#475569', fontWeight: 'bold' }}>∞</Text>
+                      </View>
+                    ) : (
+                      <TextInput
+                        style={[styles.input, { paddingVertical: 8, paddingHorizontal: 10, fontSize: 14 }]}
+                        value={String(v.stock !== undefined && v.stock !== null ? v.stock : '')}
+                        onChangeText={(val) => {
+                          const newVars = [...variants];
+                          newVars[idx].stock = val;
+                          setVariants(newVars);
+                        }}
+                        keyboardType="numeric"
+                        placeholder="0"
+                        placeholderTextColor={Colors.muted}
+                      />
+                    )}
                   </View>
                   <View style={{ paddingTop: 20 }}>
                     <TouchableOpacity

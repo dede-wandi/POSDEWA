@@ -30,11 +30,11 @@ export const PRODUCT_TYPES = [
   },
   {
     id: 'digital',
-    label: 'Paket Data / Pulsa (PPOB)',
+    label: 'Produk Digital / Non-Fisik',
     icon: 'flash-outline',
     color: '#F59E0B',
     bg: '#FFFBEB',
-    desc: 'Injeksi nomor langsung (dipotong dari saldo deposit server).',
+    desc: 'Pulsa, Paket Data, PPOB, Tiket, atau Topup (tanpa stok fisik).',
   },
   {
     id: 'financial_service',
@@ -69,16 +69,20 @@ export async function getProductTypesMap(userId) {
     try {
       const { data: dbProducts, error } = await supabase
         .from('products')
-        .select('id, product_type, consignor_name, consignor_phone')
+        .select('id, product_type, consignor_name, consignor_phone, is_unlimited, track_stock')
         .eq('owner_id', userId);
 
       if (!error && Array.isArray(dbProducts)) {
         dbProducts.forEach(p => {
-          if (p.product_type || p.consignor_name) {
+          const isUnlim = typeof p.is_unlimited === 'boolean'
+            ? p.is_unlimited
+            : (p.track_stock === false || p.product_type === 'digital' || p.product_type === 'financial_service');
+          if (p.product_type || p.consignor_name || isUnlim) {
             map[p.id] = {
               type: p.product_type || map[p.id]?.type || 'physical',
               consignorName: p.consignor_name || map[p.id]?.consignorName || '',
               consignorPhone: p.consignor_phone || map[p.id]?.consignorPhone || '',
+              isUnlimited: isUnlim || map[p.id]?.isUnlimited || false,
               updatedAt: new Date().toISOString(),
             };
           }
@@ -95,14 +99,23 @@ export async function getProductTypesMap(userId) {
 /**
  * Set metadata for a product
  */
-export async function setProductTypeMeta(userId, productId, { type = 'physical', consignorName = '', consignorPhone = '' }) {
+export async function setProductTypeMeta(userId, productId, { type = 'physical', consignorName = '', consignorPhone = '', isUnlimited = null }) {
   if (!userId || !productId) return false;
   try {
     const map = await getProductTypesMap(userId);
+    const existing = map[productId] || {};
+    
+    // Auto-detect isUnlimited if not specified
+    const determinedUnlimited = isUnlimited !== null 
+      ? Boolean(isUnlimited)
+      : (type === 'digital' || type === 'financial_service' ? true : Boolean(existing.isUnlimited));
+
     const metaObj = {
+      ...existing,
       type,
-      consignorName: consignorName || '',
-      consignorPhone: consignorPhone || '',
+      consignorName: consignorName || existing.consignorName || '',
+      consignorPhone: consignorPhone || existing.consignorPhone || '',
+      isUnlimited: determinedUnlimited,
       updatedAt: new Date().toISOString(),
     };
     // Simpan dalam key asli, string, dan number agar aman dari mismatch tipe data
@@ -119,15 +132,29 @@ export async function setProductTypeMeta(userId, productId, { type = 'physical',
     const supabase = getSupabaseClient();
     if (supabase) {
       try {
-        await supabase
+        const updatePayload = {
+          product_type: type,
+          consignor_name: consignorName || null,
+          consignor_phone: consignorPhone || null,
+          is_unlimited: determinedUnlimited,
+          track_stock: !determinedUnlimited,
+        };
+        const { error } = await supabase
           .from('products')
-          .update({
-            product_type: type,
-            consignor_name: consignorName || null,
-            consignor_phone: consignorPhone || null,
-          })
+          .update(updatePayload)
           .eq('id', productId)
           .eq('owner_id', userId);
+
+        if (error && (error.message?.includes('is_unlimited') || error.message?.includes('track_stock'))) {
+          // If is_unlimited or track_stock columns do not exist yet, fallback without them
+          delete updatePayload.is_unlimited;
+          delete updatePayload.track_stock;
+          await supabase
+            .from('products')
+            .update(updatePayload)
+            .eq('id', productId)
+            .eq('owner_id', userId);
+        }
       } catch {
         // Continue silently if column not created yet
       }
@@ -213,3 +240,29 @@ export function detectProductType(product, meta = {}) {
 
   return 'physical';
 }
+
+/**
+ * Helper to determine if a product has unlimited / non-tracked stock
+ * (e.g. Paket Data, Pulsa, Token Listrik, Jasa, or manually marked unlimited)
+ */
+export function isUnlimitedProduct(product, meta = {}) {
+  if (!product) return false;
+
+  // 1. Explicit flags from DB or model (true OR false wins)
+  if (typeof product.is_unlimited === 'boolean') return product.is_unlimited;
+  if (typeof product.isUnlimited === 'boolean') return product.isUnlimited;
+  if (product.track_stock === false || product.trackStock === false) return true;
+
+  // 2. Check metadata
+  const idStr = String(product.id || '');
+  const idNum = Number(product.id);
+  const pMeta = meta[product.id] || meta[idStr] || (!isNaN(idNum) ? meta[idNum] : null);
+  if (pMeta?.isUnlimited === true) return true;
+
+  // 3. Check detected type (digital and financial services are inherently unlimited)
+  const pType = detectProductType(product, meta);
+  if (pType === 'digital' || pType === 'financial_service') return true;
+
+  return false;
+}
+

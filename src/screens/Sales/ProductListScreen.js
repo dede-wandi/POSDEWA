@@ -155,7 +155,8 @@ export default function ProductListScreen({ navigation, route }) {
         renderItem={({ item }) => {
           const inCart = localCart.find(cartItem => cartItem.productId === item.id);
           const qtyInCart = inCart ? inCart.qty : 0;
-          const availableStock = item.stock - qtyInCart;
+          const isUnlimited = item.product_type === 'digital' || item.product_type === 'service';
+          const availableStock = isUnlimited ? 999999 : item.stock - qtyInCart;
           if (isGrid) {
             return (
               <View style={styles.productCardGrid}>
@@ -176,7 +177,9 @@ export default function ProductListScreen({ navigation, route }) {
                 <View style={styles.productInfoGrid}>
                   <Text style={styles.productNameGrid} numberOfLines={2}>{item.name}</Text>
                   <Text style={styles.productPriceGrid}>{formatIDR(item.price)}</Text>
-                  <Text style={styles.productStockGrid}>Stok: {item.stock}</Text>
+                  <Text style={styles.productStockGrid}>
+                    {isUnlimited ? '∞ Unlimited' : `Stok: ${item.stock}`}
+                  </Text>
                 </View>
                 <TouchableOpacity
                   style={styles.addButtonGrid}
@@ -211,7 +214,7 @@ export default function ProductListScreen({ navigation, route }) {
                     <Text style={styles.productPrice}>{formatIDR(item.price)}</Text>
                   </View>
                   <Text style={styles.productStock}>
-                    Stok: {item.stock} {qtyInCart > 0 && `(${qtyInCart} di keranjang)`}
+                    {isUnlimited ? '∞ Unlimited' : `Stok: ${item.stock} ${qtyInCart > 0 ? `(${qtyInCart} di keranjang)` : ''}`}
                   </Text>
                 </View>
               </View>

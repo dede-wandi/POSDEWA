@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, FontSize, FontWeight, Radii, Spacing, Shadows } from '../../theme';
 import { ProductEditableTable } from './components/table/ProductEditableTable';
 import { sortProductsIntelligently } from '../../utils/productSorting';
+import { isUnlimitedProduct } from '../../services/productTypeService';
 
 const { width } = Dimensions.get('window');
 
@@ -536,21 +537,24 @@ export default function ListScreen({ navigation, route }) {
               const marginPercentage = basePrice > 0 ? ((margin / basePrice) * 100).toFixed(1) : 0;
               const categoryName = categories.find(c => c.id === item.category_id)?.name;
               const brandName = brands.find(b => b.id === item.brand_id)?.name;
-            let stockBadgeStyle = styles.stockBadgeNormal;
-            let stockTextStyle = styles.stockTextNormal;
-            let stockLabel = `Stok: ${stock}`;
+            const isUnlimited = isUnlimitedProduct(item);
+            let stockBadgeStyle = isUnlimited ? { backgroundColor: '#F5F3FF', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 } : styles.stockBadgeNormal;
+            let stockTextStyle = isUnlimited ? { color: '#6D28D9', fontSize: 12, fontWeight: '600' } : styles.stockTextNormal;
+            let stockLabel = isUnlimited ? '∞ Unlimited' : `Stok: ${stock}`;
   
-            if (stock <= 0) {
-              stockBadgeStyle = styles.stockBadgeHabis;
-              stockTextStyle = styles.stockTextHabis;
-              stockLabel = 'Habis';
-            } else if (stock <= 5) {
-              stockBadgeStyle = styles.stockBadgeSedikit;
-              stockTextStyle = styles.stockTextSedikit;
-              stockLabel = `Stok: ${stock}`;
+            if (!isUnlimited) {
+              if (stock <= 0) {
+                stockBadgeStyle = styles.stockBadgeHabis;
+                stockTextStyle = styles.stockTextHabis;
+                stockLabel = 'Habis';
+              } else if (stock <= 5) {
+                stockBadgeStyle = styles.stockBadgeSedikit;
+                stockTextStyle = styles.stockTextSedikit;
+                stockLabel = `Stok: ${stock}`;
+              }
             }
   
-            const isPulsing = stock <= 5;
+            const isPulsing = !isUnlimited && stock <= 5;
             const CardComponent = isPulsing ? PulsingCard : TouchableOpacity;
             const pulseType = stock <= 0 ? 'danger' : 'warning';
             const isInvalid = isFormatInvalid(item.name);

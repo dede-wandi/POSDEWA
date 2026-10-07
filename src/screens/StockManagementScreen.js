@@ -1,15 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  RefreshControl,
-  TouchableOpacity,
-  Modal,
-  TextInput,
-  FlatList,
-  ActivityIndicator
+  View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Modal, ScrollView, RefreshControl
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,462 +8,198 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { listProducts } from '../services/productsSupabase';
-import { addStock, getStockHistory, adjustStock } from '../services/stockSupabase';
-import { formatDate } from '../utils/helpers';
+import { getCategories } from '../services/products';
+import { StockItem } from '../models/StockItemModel';
+import {
+  StockMutationService,
+  HistoryDateFilter,
+  loadStockHistory
+} from '../services/stockMutationService';
+import { StockProductTable } from './Stock/components/StockProductTable';
+import { StockHistoryTable } from './Stock/components/StockHistoryTable';
+import { StockMutationModal } from './Stock/components/StockMutationModal';
 
 export default function StockManagementScreen({ navigation }) {
   const { user } = useAuth();
   const { showToast } = useToast();
+
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [stockHistory, setStockHistory] = useState([]);
-  const [filteredStockHistory, setFilteredStockHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState('products'); // 'products' or 'history'
-  
-  // Date filter states
+
+  const [activeTab, setActiveTab] = useState('products');
+
+  // Search & Filter (Products)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all'); // all, low, out, safe
+  const [sortBy, setSortBy] = useState('stock'); // stock, name
+  const [sortOrder, setSortOrder] = useState('asc'); // asc, desc
+
+  // Search & Filter (History)
+  const [historySearchQuery, setHistorySearchQuery] = useState('');
+  const [dateFilter, setDateFilter] = useState('all');
   const [showDateFilterModal, setShowDateFilterModal] = useState(false);
-  const [dateFilter, setDateFilter] = useState('all'); // 'all', 'today', 'week', 'month', 'year', 'custom'
-  const [customStartDate, setCustomStartDate] = useState('');
-  const [customEndDate, setCustomEndDate] = useState('');
-  
-  // Modal states
-  const [showAddStockModal, setShowAddStockModal] = useState(false);
-  const [showAdjustStockModal, setShowAdjustStockModal] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [stockQuantity, setStockQuantity] = useState('');
-  const [reason, setReason] = useState('');
-  const [notes, setNotes] = useState('');
-  const [adjustmentType, setAdjustmentType] = useState('set'); // 'set', 'add', 'subtract'
-  const [newStockValue, setNewStockValue] = useState('');
-  const [addingStock, setAddingStock] = useState(false);
 
-  // Initial load
-  useEffect(() => {
-    // Sort products by stock (ascending) initially
-    if (products.length > 0) {
-      const sorted = [...products].sort((a, b) => a.stock - b.stock);
-      // Check if order is different before setting to avoid loop if possible, 
-      // but simplistic set is okay if we trust react diffing or just ensure loadProducts does it.
-      // Actually loadProducts already does it.
-    }
-  }, []);
+  // Modal State
+  const [mutationTarget, setMutationTarget] = useState(null); // { source, item, variant }
 
-  // Date filter functions
-  const getDateFilterLabel = () => {
-    switch (dateFilter) {
-      case 'today': return 'Hari Ini';
-      case 'week': return 'Minggu Ini';
-      case 'month': return 'Bulan Ini';
-      case 'year': return 'Tahun Ini';
-      case 'custom': return 'Custom';
-      default: return 'Semua';
+  // 1. Data Loading
+  const loadData = async (isRefresh = false) => {
+    if (!isRefresh) setLoading(true);
+    else setRefreshing(true);
+    try {
+      const [fetchedProducts, fetchedCategories, fetchedHistory] = await Promise.all([
+        listProducts(user?.id),
+        getCategories(user?.id),
+        loadStockHistory(150).catch(() => [])
+      ]);
+      setProducts(fetchedProducts || []);
+      setCategories(fetchedCategories || []);
+      setStockHistory(fetchedHistory || []);
+    } catch (error) {
+      showToast('Gagal memuat data', 'error');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const applyDateFilter = (history) => {
-    if (dateFilter === 'all') {
-      return history;
+  useFocusEffect(useCallback(() => { loadData(); }, [user?.id]));
+
+  // 2. Computed Models
+  const categoryMap = useMemo(() => {
+    const map = {};
+    (categories || []).forEach(c => { if (c?.id) map[c.id] = c.name; });
+    return map;
+  }, [categories]);
+
+  const stockItems = useMemo(() => {
+    return products.map(p => new StockItem(p, categoryMap));
+  }, [products, categoryMap]);
+
+  // 3. KPIs
+  const metrics = useMemo(() => {
+    let totalStockUnits = 0;
+    let lowStockCount = 0;
+    let outOfStockCount = 0;
+    let safeStockCount = 0;
+
+    stockItems.forEach(item => {
+      // we only count products that have stock (isUnlimited == false)
+      if (item.isUnlimited) return; 
+      
+      totalStockUnits += item.stock;
+      if (item.status === 'out') outOfStockCount++;
+      else if (item.status === 'low') lowStockCount++;
+      else if (item.status === 'safe') safeStockCount++;
+    });
+
+    return {
+      totalProducts: stockItems.length,
+      totalStockUnits,
+      lowStockCount,
+      outOfStockCount,
+      safeStockCount,
+    };
+  }, [stockItems]);
+
+  // 4. Products Filtering
+  const filteredProducts = useMemo(() => {
+    let list = [...stockItems];
+
+    if (statusFilter !== 'all') {
+      list = list.filter(p => p.status === statusFilter);
     }
 
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(p => {
+        const matchesMain = [p.name, p.code, p.categoryName].some(s => String(s || '').toLowerCase().includes(q));
+        const matchesVar = p.variants.some(v => [v.name, v.barcode].some(s => String(s || '').toLowerCase().includes(q)));
+        return matchesMain || matchesVar;
+      });
+    }
 
-    return history.filter(item => {
-      const itemDate = new Date(item.created_at);
-      const itemDateOnly = new Date(itemDate.getFullYear(), itemDate.getMonth(), itemDate.getDate());
-
-      switch (dateFilter) {
-        case 'today':
-          return itemDateOnly.getTime() === today.getTime();
-        
-        case 'week':
-          const weekStart = new Date(today);
-          weekStart.setDate(today.getDate() - today.getDay());
-          return itemDateOnly >= weekStart && itemDateOnly <= today;
-        
-        case 'month':
-          const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-          return itemDateOnly >= monthStart && itemDateOnly <= today;
-        
-        case 'year':
-          const yearStart = new Date(today.getFullYear(), 0, 1);
-          return itemDateOnly >= yearStart && itemDateOnly <= today;
-        
-        case 'custom':
-          if (!customStartDate || !customEndDate) return true;
-          const startDate = new Date(customStartDate);
-          const endDate = new Date(customEndDate);
-          const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
-          const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
-          return itemDateOnly >= startDateOnly && itemDateOnly <= endDateOnly;
-        
-        default:
-          return true;
+    list.sort((a, b) => {
+      if (sortBy === 'name') {
+        const res = (a.name || '').localeCompare(b.name || '');
+        return sortOrder === 'asc' ? res : -res;
+      } else {
+        const sa = a.isUnlimited ? 9999999 : a.stock;
+        const sb = b.isUnlimited ? 9999999 : b.stock;
+        return sortOrder === 'asc' ? sa - sb : sb - sa;
       }
     });
-  };
 
-  const handleDateFilterChange = (newFilter) => {
-    setDateFilter(newFilter);
-    if (newFilter !== 'custom') {
-      setCustomStartDate('');
-      setCustomEndDate('');
-    }
-  };
+    return list;
+  }, [stockItems, statusFilter, searchQuery, sortBy, sortOrder]);
 
-  const applyDateFilterAndClose = () => {
-    const filtered = applyDateFilter(stockHistory);
-    setFilteredStockHistory(filtered);
-    setShowDateFilterModal(false);
-  };
-
-  const loadProducts = async () => {
-    try {
-      const products = await listProducts(user?.id);
-      // Sort by stock (low stock first)
-      const sortedProducts = products.sort((a, b) => a.stock - b.stock);
-      setProducts(sortedProducts);
-    } catch (error) {
-      showToast('Terjadi kesalahan saat memuat produk', 'error');
-    }
-  };
-
-  const loadStockHistory = async () => {
-    try {
-      const result = await getStockHistory(null, 100);
-      if (result.success) {
-        setStockHistory(result.data);
-        const filtered = applyDateFilter(result.data);
-        setFilteredStockHistory(filtered);
-      } else {
-        showToast('Gagal memuat riwayat stock: ' + result.error, 'error');
-      }
-    } catch (error) {
-      showToast('Terjadi kesalahan saat memuat riwayat stock', 'error');
-    }
-  };
-
-  // Apply date filter when stockHistory or dateFilter changes
-  useEffect(() => {
-    const filtered = applyDateFilter(stockHistory);
-    setFilteredStockHistory(filtered);
-  }, [stockHistory, dateFilter, customStartDate, customEndDate]);
-
-  const loadData = async () => {
-    setLoading(true);
-    await Promise.all([loadProducts(), loadStockHistory()]);
-    setLoading(false);
-    setRefreshing(false);
-  };
-
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [user?.id])
-  );
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    loadData();
-  };
-
-  const handleAddStock = async () => {
-    if (!selectedProduct || !stockQuantity || isNaN(stockQuantity) || parseInt(stockQuantity) <= 0) {
-      showToast('Masukkan jumlah stock yang valid', 'error');
-      return;
-    }
-
-    setAddingStock(true);
-    try {
-      const result = await addStock(
-        selectedProduct.id,
-        parseInt(stockQuantity),
-        stockReason || 'Penambahan stock manual',
-        stockNotes
-      );
-
-      if (result.success) {
-        showToast('Stock berhasil ditambahkan', 'success');
-        setShowAddStockModal(false);
-        setSelectedProduct(null);
-        setStockQuantity('');
-        setStockReason('');
-        setStockNotes('');
-        loadData(); // Refresh data
-      } else {
-        showToast('Gagal menambah stock: ' + result.error, 'error');
-      }
-    } catch (error) {
-      showToast('Terjadi kesalahan saat menambah stock', 'error');
-    } finally {
-      setAddingStock(false);
-    }
-  };
-
-  const handleAdjustStock = (product) => {
-    setSelectedProduct(product);
-    setNewStockValue(product.stock.toString());
-    setAdjustmentType('set');
-    setReason('');
-    setNotes('');
-    setShowAdjustStockModal(true);
-  };
-
-  const submitStockAdjustment = async () => {
-    if (!selectedProduct || !newStockValue.trim()) {
-      showToast('Mohon isi nilai stock yang baru', 'error');
-      return;
-    }
-
-    if (!reason.trim()) {
-      showToast('Mohon isi alasan penyesuaian stock', 'error');
-      return;
-    }
-
-    const inputValue = parseInt(newStockValue);
-    if (isNaN(inputValue) || inputValue < 0) {
-      showToast('Nilai stock harus berupa angka positif', 'error');
-      return;
-    }
-
-    // Calculate the final stock value based on adjustment type
-    let finalStock;
-    switch (adjustmentType) {
-      case 'add':
-        finalStock = selectedProduct.stock + inputValue;
-        break;
-      case 'subtract':
-        finalStock = Math.max(0, selectedProduct.stock - inputValue);
-        break;
-      case 'set':
-      default:
-        finalStock = inputValue;
-        break;
-    }
-
-    try {
-      const result = await adjustStock(
-        selectedProduct.id,
-        finalStock,
-        reason,
-        notes || undefined
-      );
-
-      if (result.success) {
-        showToast('Stock berhasil disesuaikan', 'success');
-        setShowAdjustStockModal(false);
-        resetAdjustmentForm();
-        loadProducts();
-        if (activeTab === 'history') {
-          loadStockHistory();
-        }
-      } else {
-        showToast(result.error || 'Gagal menyesuaikan stock', 'error');
-      }
-    } catch (error) {
-      showToast('Terjadi kesalahan saat menyesuaikan stock', 'error');
-    }
-  };
-
-  const resetAdjustmentForm = () => {
-    setSelectedProduct(null);
-    setNewStockValue('');
-    setAdjustmentType('set');
-    setReason('');
-    setNotes('');
-  };
-
-  const submitAddStock = async () => {
-    if (!selectedProduct || !stockQuantity.trim()) {
-      showToast('Mohon isi jumlah stock yang akan ditambahkan', 'error');
-      return;
-    }
-
-    if (!reason.trim()) {
-      showToast('Mohon isi alasan penambahan stock', 'error');
-      return;
-    }
-
-    const quantity = parseInt(stockQuantity);
-    if (isNaN(quantity) || quantity <= 0) {
-      showToast('Jumlah stock harus berupa angka positif', 'error');
-      return;
-    }
-
-    setAddingStock(true);
-    try {
-      const result = await addStock(
-        selectedProduct.id,
-        quantity,
-        reason,
-        notes || undefined
-      );
-
-      if (result.success) {
-        showToast('Stock berhasil ditambahkan', 'success');
-        setShowAddStockModal(false);
-        resetAddStockForm();
-        loadProducts();
-        if (activeTab === 'history') {
-          loadHistory();
-        }
-      } else {
-        showToast(result.error || 'Gagal menambahkan stock', 'error');
-      }
-    } catch (error) {
-      showToast('Terjadi kesalahan saat menambahkan stock', 'error');
-    } finally {
-      setAddingStock(false);
-    }
-  };
-
-  const resetAddStockForm = () => {
-    setSelectedProduct(null);
-    setStockQuantity('');
-    setReason('');
-    setNotes('');
-  };
-
-  const calculatePreviewStock = () => {
-    if (!selectedProduct || !newStockValue.trim()) return selectedProduct?.stock || 0;
-    
-    const inputValue = parseInt(newStockValue);
-    if (isNaN(inputValue)) return selectedProduct?.stock || 0;
-
-    switch (adjustmentType) {
-      case 'add':
-        return selectedProduct.stock + inputValue;
-      case 'subtract':
-        return Math.max(0, selectedProduct.stock - inputValue);
-      case 'set':
-      default:
-        return inputValue;
-    }
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+  // 5. History Filtering
+  const displayedHistory = useMemo(() => {
+    return HistoryDateFilter.apply(stockHistory, {
+      range: dateFilter,
+      search: historySearchQuery,
     });
+  }, [stockHistory, dateFilter, historySearchQuery]);
+
+  // 6. Action Handlers
+  const handleSort = (field) => {
+    if (sortBy === field) setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    else { setSortBy(field); setSortOrder('asc'); }
   };
 
-  const getStockStatusColor = (stock) => {
-    if (stock <= 5) return '#FF3B30';
-    if (stock <= 20) return '#FF9500';
-    return '#34C759';
+  const handleMutationAction = (source, item, variant) => {
+    setMutationTarget({ source, item, variant });
   };
 
-  const getTypeIcon = (type) => {
-    switch (type) {
-      case 'addition': return 'add-circle';
-      case 'reduction': return 'remove-circle';
-      case 'adjustment': return 'settings';
-      default: return 'help-circle';
+  const handleMutationSubmit = async (input) => {
+    if (!mutationTarget) return;
+    const srv = new StockMutationService(user?.id);
+    try {
+      await srv.apply(mutationTarget.item, mutationTarget.variant, input);
+      showToast('Stok berhasil diperbarui', 'success');
+      setMutationTarget(null);
+      loadData(true);
+    } catch (err) {
+      showToast(err.message, 'error');
     }
   };
 
-  const getTypeColor = (type) => {
-    switch (type) {
-      case 'addition': return '#34C759';
-      case 'reduction': return '#FF3B30';
-      case 'adjustment': return '#007AFF';
-      default: return '#8E8E93';
-    }
-  };
-
-  const getTypeText = (type) => {
-    switch (type) {
-      case 'addition': return 'Penambahan';
-      case 'reduction': return 'Pengurangan';
-      case 'adjustment': return 'Penyesuaian';
-      default: return 'Lainnya';
-    }
-  };
-
-  const ProductItem = ({ item }) => (
-    <View style={styles.productItem}>
-      <View style={styles.productInfo}>
-        <Text style={styles.productName}>{item.name}</Text>
-        <Text style={styles.productBarcode}>{item.barcode}</Text>
-        <View style={styles.stockInfo}>
-          <Text style={[styles.stockText, { color: getStockStatusColor(item.stock) }]}>
-            Stock: {item.stock}
-          </Text>
-          {item.stock <= 5 && (
-            <View style={styles.lowStockBadge}>
-              <Text style={styles.lowStockText}>Stock Menipis</Text>
-            </View>
-          )}
+  // Date filter helper for History Modal
+  const renderDateFilterModal = () => (
+    <Modal visible={showDateFilterModal} animationType="fade" transparent onRequestClose={() => setShowDateFilterModal(false)}>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalCard}>
+          <Text style={styles.modalCardTitle}>Pilih Periode</Text>
+          {HistoryDateFilter.OPTIONS.map(opt => {
+            if (opt.id === 'custom') return null; // We can skip custom for simplicity or implement it later
+            return (
+              <TouchableOpacity
+                key={opt.id}
+                style={[styles.dateFilterRow, dateFilter === opt.id && styles.dateFilterRowActive]}
+                onPress={() => { setDateFilter(opt.id); setShowDateFilterModal(false); }}
+              >
+                <Text style={[styles.dateFilterText, dateFilter === opt.id && styles.dateFilterTextActive]}>{opt.label}</Text>
+                {dateFilter === opt.id && <Ionicons name="checkmark" size={18} color="#0284C7" />}
+              </TouchableOpacity>
+            )
+          })}
+          <TouchableOpacity style={styles.modalBtnCancel} onPress={() => setShowDateFilterModal(false)}>
+            <Text style={styles.modalBtnCancelText}>Tutup</Text>
+          </TouchableOpacity>
         </View>
       </View>
-      <View style={styles.productActions}>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.addButton]}
-          onPress={() => {
-            setSelectedProduct(item);
-            setShowAddStockModal(true);
-          }}
-        >
-          <Ionicons name="add" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.adjustButton]}
-          onPress={() => handleAdjustStock(item)}
-        >
-          <Ionicons name="settings" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
-    </View>
+    </Modal>
   );
 
-  const HistoryItem = ({ item }) => (
-    <View style={styles.historyItem}>
-      <View style={styles.historyHeader}>
-        <View style={styles.historyTypeContainer}>
-          <Ionicons 
-            name={getTypeIcon(item.type)} 
-            size={20} 
-            color={getTypeColor(item.type)} 
-          />
-          <Text style={[styles.historyType, { color: getTypeColor(item.type) }]}>
-            {getTypeText(item.type)}
-          </Text>
-        </View>
-        <Text style={styles.historyDate}>{formatDate(item.created_at)}</Text>
-      </View>
-      
-      <Text style={styles.historyProduct}>{item.products?.name || 'Produk tidak ditemukan'}</Text>
-      
-      <View style={styles.historyDetails}>
-        <Text style={styles.historyQuantity}>
-          {item.type === 'reduction' ? '-' : '+'}{item.quantity}
-        </Text>
-        <Text style={styles.historyStock}>
-          {item.previous_stock} → {item.new_stock}
-        </Text>
-      </View>
-      
-      {item.reason && (
-        <Text style={styles.historyReason}>{item.reason}</Text>
-      )}
-      
-      {item.notes && (
-        <Text style={styles.historyNotes}>{item.notes}</Text>
-      )}
-    </View>
-  );
-
-  if (loading) {
+  if (loading && !refreshing) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>Memuat data stock...</Text>
+          <ActivityIndicator size="large" color="#0284C7" />
+          <Text style={styles.loadingText}>Memuat tabel stok...</Text>
         </View>
       </SafeAreaView>
     );
@@ -480,982 +207,201 @@ export default function StockManagementScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#007AFF" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Kelola Stock</Text>
-        {activeTab === 'history' ? (
-          <TouchableOpacity 
-            style={styles.dateFilterButton}
-            onPress={() => setShowDateFilterModal(true)}
-          >
-            <Ionicons name="calendar-outline" size={24} color="#007AFF" />
+      {/* HEADER BAR */}
+      <View style={styles.topHeader}>
+        <View style={styles.topHeaderLeft}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+            <Ionicons name="arrow-back" size={20} color="#0F172A" />
           </TouchableOpacity>
-        ) : (
-          <View style={{ width: 24 }} />
-        )}
+          <View>
+            <Text style={styles.topHeaderTitle}>Manajemen Stok</Text>
+            <Text style={styles.topHeaderSubtitle}>Pantau, tambah, dan sesuaikan ketersediaan fisik barang</Text>
+          </View>
+        </View>
+        <TouchableOpacity style={styles.refreshIconButton} onPress={() => loadData(true)} activeOpacity={0.7}>
+          <Ionicons name="refresh-outline" size={18} color="#475569" />
+        </TouchableOpacity>
       </View>
 
-      {/* Date Filter Info for History Tab */}
-      {activeTab === 'history' && (
-        <View style={styles.filterInfo}>
-          <Text style={styles.filterInfoText}>
-            Filter: {getDateFilterLabel()} ({filteredStockHistory.length} item)
-          </Text>
-        </View>
+      {/* TABS */}
+      <View style={styles.tabBarContainer}>
+        <TouchableOpacity style={[styles.tabButton, activeTab === 'products' && styles.tabButtonActive]} onPress={() => setActiveTab('products')}>
+          <Ionicons name="layers-outline" size={16} color={activeTab === 'products' ? '#0284C7' : '#64748B'} />
+          <Text style={[styles.tabButtonText, activeTab === 'products' && styles.tabButtonTextActive]}>Daftar Stok Produk</Text>
+          <View style={[styles.tabBadge, activeTab === 'products' && styles.tabBadgeActive]}>
+            <Text style={[styles.tabBadgeText, activeTab === 'products' && styles.tabBadgeTextActive]}>{products.length}</Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.tabButton, activeTab === 'history' && styles.tabButtonActive]} onPress={() => setActiveTab('history')}>
+          <Ionicons name="time-outline" size={16} color={activeTab === 'history' ? '#0284C7' : '#64748B'} />
+          <Text style={[styles.tabButtonText, activeTab === 'history' && styles.tabButtonTextActive]}>Riwayat Mutasi</Text>
+          <View style={[styles.tabBadge, activeTab === 'history' && styles.tabBadgeActive]}>
+            <Text style={[styles.tabBadgeText, activeTab === 'history' && styles.tabBadgeTextActive]}>{displayedHistory.length}</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      {/* PRODUCTS TAB */}
+      {activeTab === 'products' && (
+        <ScrollView style={styles.scrollableContent} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} />}>
+          <View style={styles.kpiContainer}>
+            <View style={styles.kpiCard}>
+              <View style={styles.kpiHeader}>
+                <Text style={styles.kpiLabel}>TOTAL PRODUK</Text>
+                <View style={[styles.kpiIconWrapper, { backgroundColor: '#F0F9FF' }]}><Ionicons name="cube-outline" size={14} color="#0284C7" /></View>
+              </View>
+              <Text style={styles.kpiValue}>{metrics.totalProducts}</Text>
+              <Text style={styles.kpiSub}>Item master terdaftar</Text>
+            </View>
+            <View style={styles.kpiCard}>
+              <View style={styles.kpiHeader}>
+                <Text style={styles.kpiLabel}>TOTAL FISIK STOK</Text>
+                <View style={[styles.kpiIconWrapper, { backgroundColor: '#F0FDF4' }]}><Ionicons name="layers-outline" size={14} color="#16A34A" /></View>
+              </View>
+              <Text style={styles.kpiValue}>{metrics.totalStockUnits.toLocaleString()} pcs</Text>
+              <Text style={styles.kpiSub}>Akumulasi seluruh stok</Text>
+            </View>
+            <TouchableOpacity style={[styles.kpiCard, statusFilter === 'low' && styles.kpiCardSelectedLow]} onPress={() => setStatusFilter(f => f === 'low' ? 'all' : 'low')}>
+              <View style={styles.kpiHeader}>
+                <Text style={[styles.kpiLabel, { color: '#B45309' }]}>STOK MENIPIS</Text>
+                <View style={[styles.kpiIconWrapper, { backgroundColor: '#FEF3C7' }]}><Ionicons name="warning-outline" size={14} color="#D97706" /></View>
+              </View>
+              <Text style={[styles.kpiValue, { color: '#B45309' }]}>{metrics.lowStockCount}</Text>
+              <Text style={styles.kpiSub}>Perlu segera restok (≤ 5)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.kpiCard, statusFilter === 'out' && styles.kpiCardSelectedOut]} onPress={() => setStatusFilter(f => f === 'out' ? 'all' : 'out')}>
+              <View style={styles.kpiHeader}>
+                <Text style={[styles.kpiLabel, { color: '#B91C1C' }]}>STOK HABIS</Text>
+                <View style={[styles.kpiIconWrapper, { backgroundColor: '#FEE2E2' }]}><Ionicons name="alert-circle-outline" size={14} color="#DC2626" /></View>
+              </View>
+              <Text style={[styles.kpiValue, { color: '#B91C1C' }]}>{metrics.outOfStockCount}</Text>
+              <Text style={styles.kpiSub}>Ketersediaan kosong (0)</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.toolbarCard}>
+            <View style={styles.searchBar}>
+              <Ionicons name="search-outline" size={18} color="#94A3B8" style={{ marginRight: 8 }} />
+              <TextInput style={styles.searchInput} value={searchQuery} onChangeText={setSearchQuery} placeholder="Cari nama produk, SKU, varian..." placeholderTextColor="#94A3B8" />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <Ionicons name="close-circle" size={18} color="#94A3B8" />
+                </TouchableOpacity>
+              )}
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll}>
+              <View style={styles.chipsRow}>
+                {['all', 'low', 'out', 'safe'].map(s => {
+                  const label = s === 'all' ? `Semua (${metrics.totalProducts})` : s === 'low' ? `⚠️ Menipis (${metrics.lowStockCount})` : s === 'out' ? `🔴 Habis (${metrics.outOfStockCount})` : `🟢 Aman (${metrics.safeStockCount})`;
+                  return (
+                    <TouchableOpacity key={s} style={[styles.chipButton, statusFilter === s && styles.chipButtonActive]} onPress={() => setStatusFilter(s)}>
+                      <Text style={[styles.chipButtonText, statusFilter === s && styles.chipButtonTextActive]}>{label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
+
+          <StockProductTable
+            items={filteredProducts}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSort={handleSort}
+            onAction={handleMutationAction}
+            emptyHint={searchQuery ? 'Coba ubah kata kunci pencarian Anda' : 'Belum ada produk pada status filter ini'}
+          />
+        </ScrollView>
       )}
 
-      {/* Tab Navigation */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'products' && styles.activeTab]}
-          onPress={() => setActiveTab('products')}
-        >
-          <Text style={[styles.tabText, activeTab === 'products' && styles.activeTabText]}>
-            Produk
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'all_stock' && styles.activeTab]}
-          onPress={() => setActiveTab('all_stock')}
-        >
-          <Text style={[styles.tabText, activeTab === 'all_stock' && styles.activeTabText]}>
-            Semua Stock
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'history' && styles.activeTab]}
-          onPress={() => setActiveTab('history')}
-        >
-          <Text style={[styles.tabText, activeTab === 'history' && styles.activeTabText]}>
-            Riwayat
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Content */}
-      <ScrollView
-        style={styles.content}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {activeTab === 'products' ? (
-          <View style={styles.productsContainer}>
-            {products.length > 0 ? (
-              products.map((product) => (
-                <ProductItem key={product.id} item={product} />
-              ))
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="cube-outline" size={48} color="#C7C7CC" />
-                <Text style={styles.emptyStateText}>Belum ada produk</Text>
-              </View>
-            )}
-          </View>
-        ) : activeTab === 'all_stock' ? (
-          <View style={styles.productsContainer}>
-            <View style={styles.tableHeader}>
-              <Text style={[styles.tableHeaderText, { flex: 2 }]}>Nama Produk</Text>
-              <Text style={[styles.tableHeaderText, { flex: 1, textAlign: 'center' }]}>Stock</Text>
-              <Text style={[styles.tableHeaderText, { width: 50, textAlign: 'center' }]}>Aksi</Text>
-            </View>
-            {products.length > 0 ? (
-              products.map((item, index) => (
-                <View key={item.id} style={[styles.tableRow, index % 2 === 1 && styles.tableRowAlt]}>
-                  <Text style={[styles.tableCell, { flex: 2 }]}>{item.name}</Text>
-                  <Text style={[styles.tableCell, { flex: 1, textAlign: 'center', fontWeight: 'bold', color: getStockStatusColor(item.stock) }]}>
-                    {item.stock}
-                  </Text>
-                  <TouchableOpacity 
-                    style={styles.editIconBtn} 
-                    onPress={() => handleAdjustStock(item)}
-                  >
-                    <Ionicons name="create-outline" size={20} color="#007AFF" />
-                  </TouchableOpacity>
-                </View>
-              ))
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="cube-outline" size={48} color="#C7C7CC" />
-                <Text style={styles.emptyStateText}>Belum ada produk</Text>
-              </View>
-            )}
-          </View>
-        ) : (
-          <View style={styles.historyContainer}>
-            {filteredStockHistory.length > 0 ? (
-              filteredStockHistory.map((history) => (
-                <HistoryItem key={history.id} item={history} />
-              ))
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="time-outline" size={48} color="#C7C7CC" />
-                <Text style={styles.emptyStateText}>
-                  {stockHistory.length === 0 ? 'Belum ada riwayat stock' : 'Tidak ada riwayat untuk filter ini'}
-                </Text>
-              </View>
-            )}
-          </View>
-        )}
-      </ScrollView>
-
-      {/* Add Stock Modal */}
-      <Modal
-        visible={showAddStockModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowAddStockModal(false)}>
-              <Text style={styles.modalCancelText}>Batal</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Tambah Stock</Text>
-            <TouchableOpacity 
-              onPress={submitAddStock}
-              disabled={addingStock || !stockQuantity.trim() || !reason.trim()}
-            >
-              <Text style={[
-                styles.modalSaveText,
-                (addingStock || !stockQuantity.trim() || !reason.trim()) && styles.disabledText
-              ]}>
-                {addingStock ? 'Menyimpan...' : 'Simpan'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.modalContent}>
-            {selectedProduct && (
-              <View style={styles.selectedProductInfo}>
-                <Text style={styles.selectedProductName}>{selectedProduct.name}</Text>
-                <Text style={styles.selectedProductStock}>Stock saat ini: {selectedProduct.stock}</Text>
-              </View>
-            )}
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Jumlah Tambahan *</Text>
-              <TextInput
-                style={styles.textInput}
-                value={stockQuantity}
-                onChangeText={setStockQuantity}
-                placeholder="Masukkan jumlah stock yang ditambahkan"
-                keyboardType="numeric"
-                autoFocus
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Alasan *</Text>
-              <TextInput
-                style={styles.textInput}
-                value={reason}
-                onChangeText={setReason}
-                placeholder="Alasan penambahan stock"
-                multiline
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Catatan</Text>
-              <TextInput
-                style={[styles.textInput, styles.textArea]}
-                value={notes}
-                onChangeText={setNotes}
-                placeholder="Catatan tambahan (opsional)"
-                multiline
-                numberOfLines={3}
-              />
-            </View>
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-
-      {/* Stock Adjustment Modal */}
-      <Modal
-        visible={showAdjustStockModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => {
-              setShowAdjustStockModal(false);
-              resetAdjustmentForm();
-            }}>
-              <Text style={styles.modalCancelText}>Batal</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Penyesuaian Stock</Text>
-            <TouchableOpacity 
-              onPress={submitStockAdjustment}
-              disabled={!newStockValue.trim() || !reason.trim()}
-            >
-              <Text style={[
-                styles.modalSaveText,
-                (!newStockValue.trim() || !reason.trim()) && styles.disabledText
-              ]}>
-                Sesuaikan
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.modalContent}>
-            {selectedProduct && (
-              <View style={styles.selectedProductInfo}>
-                <Text style={styles.selectedProductName}>{selectedProduct.name}</Text>
-                <Text style={styles.selectedProductStock}>Stock saat ini: {selectedProduct.stock}</Text>
-                <Text style={styles.previewStock}>
-                  Stock setelah penyesuaian: {calculatePreviewStock()}
-                </Text>
-              </View>
-            )}
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Tipe Penyesuaian</Text>
-              <View style={styles.adjustmentTypeContainer}>
-                <TouchableOpacity
-                  style={[
-                    styles.adjustmentTypeButton,
-                    adjustmentType === 'set' && styles.activeAdjustmentType
-                  ]}
-                  onPress={() => {
-                    setAdjustmentType('set');
-                    setNewStockValue(selectedProduct?.stock.toString() || '');
-                  }}
-                >
-                  <Ionicons 
-                    name="create-outline" 
-                    size={16} 
-                    color={adjustmentType === 'set' ? '#FFFFFF' : '#007AFF'} 
-                  />
-                  <Text style={[
-                    styles.adjustmentTypeText,
-                    adjustmentType === 'set' && styles.activeAdjustmentTypeText
-                  ]}>
-                    Set Nilai
-                  </Text>
+      {/* HISTORY TAB */}
+      {activeTab === 'history' && (
+        <ScrollView style={styles.scrollableContent} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} />}>
+          <View style={styles.toolbarCard}>
+            <View style={styles.searchBar}>
+              <Ionicons name="search-outline" size={18} color="#94A3B8" style={{ marginRight: 8 }} />
+              <TextInput style={styles.searchInput} value={historySearchQuery} onChangeText={setHistorySearchQuery} placeholder="Cari nama produk, alasan, atau catatan..." placeholderTextColor="#94A3B8" />
+              {historySearchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setHistorySearchQuery('')}>
+                  <Ionicons name="close-circle" size={18} color="#94A3B8" />
                 </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.adjustmentTypeButton,
-                    adjustmentType === 'add' && styles.activeAdjustmentType
-                  ]}
-                  onPress={() => {
-                    setAdjustmentType('add');
-                    setNewStockValue('');
-                  }}
-                >
-                  <Ionicons 
-                    name="add-circle-outline" 
-                    size={16} 
-                    color={adjustmentType === 'add' ? '#FFFFFF' : '#34C759'} 
-                  />
-                  <Text style={[
-                    styles.adjustmentTypeText,
-                    adjustmentType === 'add' && styles.activeAdjustmentTypeText
-                  ]}>
-                    Tambah
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.adjustmentTypeButton,
-                    adjustmentType === 'subtract' && styles.activeAdjustmentType
-                  ]}
-                  onPress={() => {
-                    setAdjustmentType('subtract');
-                    setNewStockValue('');
-                  }}
-                >
-                  <Ionicons 
-                    name="remove-circle-outline" 
-                    size={16} 
-                    color={adjustmentType === 'subtract' ? '#FFFFFF' : '#FF3B30'} 
-                  />
-                  <Text style={[
-                    styles.adjustmentTypeText,
-                    adjustmentType === 'subtract' && styles.activeAdjustmentTypeText
-                  ]}>
-                    Kurangi
-                  </Text>
-                </TouchableOpacity>
-              </View>
+              )}
             </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>
-                {adjustmentType === 'set' ? 'Stock Baru *' : 
-                 adjustmentType === 'add' ? 'Jumlah Penambahan *' : 
-                 'Jumlah Pengurangan *'}
-              </Text>
-              <TextInput
-                style={styles.textInput}
-                value={newStockValue}
-                onChangeText={setNewStockValue}
-                placeholder={
-                  adjustmentType === 'set' ? 'Masukkan nilai stock baru' :
-                  adjustmentType === 'add' ? 'Masukkan jumlah yang ditambahkan' :
-                  'Masukkan jumlah yang dikurangi'
-                }
-                keyboardType="numeric"
-              />
+            <View style={styles.historyFilterRow}>
+              <TouchableOpacity style={styles.dateFilterChip} onPress={() => setShowDateFilterModal(true)}>
+                <Ionicons name="calendar-outline" size={16} color="#0284C7" />
+                <Text style={styles.dateFilterChipText}>Periode: {HistoryDateFilter.label(dateFilter)} ({displayedHistory.length} mutasi)</Text>
+                <Ionicons name="chevron-down" size={14} color="#0284C7" />
+              </TouchableOpacity>
             </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Alasan Penyesuaian *</Text>
-              <TextInput
-                style={styles.textInput}
-                value={reason}
-                onChangeText={setReason}
-                placeholder="Alasan penyesuaian stock"
-                multiline
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Catatan</Text>
-              <TextInput
-                style={[styles.textInput, styles.textArea]}
-                value={notes}
-                onChangeText={setNotes}
-                placeholder="Catatan tambahan (opsional)"
-                multiline
-                numberOfLines={3}
-              />
-            </View>
-
-            {/* Preview Section */}
-            <View style={styles.previewSection}>
-              <Text style={styles.previewTitle}>Preview Perubahan</Text>
-              <View style={styles.previewRow}>
-                <Text style={styles.previewLabel}>Stock Saat Ini:</Text>
-                <Text style={styles.previewValue}>{selectedProduct?.stock || 0}</Text>
-              </View>
-              <View style={styles.previewRow}>
-                <Text style={styles.previewLabel}>Stock Setelah Penyesuaian:</Text>
-                <Text style={[
-                  styles.previewValue,
-                  { color: calculatePreviewStock() !== selectedProduct?.stock ? '#007AFF' : '#8E8E93' }
-                ]}>
-                  {calculatePreviewStock()}
-                </Text>
-              </View>
-              <View style={styles.previewRow}>
-                <Text style={styles.previewLabel}>Selisih:</Text>
-                <Text style={[
-                  styles.previewValue,
-                  { 
-                    color: calculatePreviewStock() > (selectedProduct?.stock || 0) ? '#34C759' : 
-                           calculatePreviewStock() < (selectedProduct?.stock || 0) ? '#FF3B30' : '#8E8E93'
-                  }
-                ]}>
-                  {calculatePreviewStock() > (selectedProduct?.stock || 0) ? '+' : ''}
-                  {calculatePreviewStock() - (selectedProduct?.stock || 0)}
-                </Text>
-              </View>
-            </View>
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-
-      {/* Date Filter Modal */}
-      <Modal
-        visible={showDateFilterModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowDateFilterModal(false)}>
-              <Text style={styles.modalCancelText}>Batal</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Filter Tanggal</Text>
-            <TouchableOpacity onPress={applyDateFilterAndClose}>
-              <Text style={styles.modalSaveText}>Terapkan</Text>
-            </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.modalContent}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Pilih Periode</Text>
-              
-              {['all', 'today', 'week', 'month', 'year', 'custom'].map((filter) => (
-                <TouchableOpacity
-                  key={filter}
-                  style={[
-                    styles.filterOption,
-                    dateFilter === filter && styles.activeFilterOption
-                  ]}
-                  onPress={() => handleDateFilterChange(filter)}
-                >
-                  <Text style={[
-                    styles.filterOptionText,
-                    dateFilter === filter && styles.activeFilterOptionText
-                  ]}>
-                    {filter === 'all' && 'Semua'}
-                    {filter === 'today' && 'Hari Ini'}
-                    {filter === 'week' && 'Minggu Ini'}
-                    {filter === 'month' && 'Bulan Ini'}
-                    {filter === 'year' && 'Tahun Ini'}
-                    {filter === 'custom' && 'Custom'}
-                  </Text>
-                  {dateFilter === filter && (
-                    <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
+          <StockHistoryTable
+            history={displayedHistory}
+            emptyHint={historySearchQuery ? 'Tidak ada riwayat yang sesuai pencarian' : 'Aktivitas mutasi stok akan tercatat di sini'}
+          />
+        </ScrollView>
+      )}
 
-            {dateFilter === 'custom' && (
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Tanggal Custom</Text>
-                <View style={styles.dateInputContainer}>
-                  <View style={styles.dateInputGroup}>
-                    <Text style={styles.dateInputLabel}>Dari</Text>
-                    <TextInput
-                      style={styles.textInput}
-                      value={customStartDate}
-                      onChangeText={setCustomStartDate}
-                      placeholder="YYYY-MM-DD"
-                    />
-                  </View>
-                  <View style={styles.dateInputGroup}>
-                    <Text style={styles.dateInputLabel}>Sampai</Text>
-                    <TextInput
-                      style={styles.textInput}
-                      value={customEndDate}
-                      onChangeText={setCustomEndDate}
-                      placeholder="YYYY-MM-DD"
-                    />
-                  </View>
-                </View>
-              </View>
-            )}
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
+      {/* MODALS */}
+      <StockMutationModal
+        target={mutationTarget}
+        onClose={() => setMutationTarget(null)}
+        onSubmit={handleMutationSubmit}
+      />
+      {renderDateFilterModal()}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F2F2F7',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  tableHeader: {
-    flexDirection: 'row',
-    backgroundColor: '#E5E5EA',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  tableHeaderText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#000000',
-  },
-  tableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F2F2F7',
-  },
-  tableRowAlt: {
-    backgroundColor: '#F9F9F9',
-  },
-  tableCell: {
-    fontSize: 14,
-    color: '#000000',
-  },
-  editIconBtn: {
-    width: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#8E8E93',
-    marginTop: 12,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000000',
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  activeTab: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#007AFF',
-  },
-  tabText: {
-    fontSize: 16,
-    color: '#8E8E93',
-    fontWeight: '500',
-  },
-  activeTabText: {
-    color: '#007AFF',
-    fontWeight: '600',
-  },
-  content: {
-    flex: 1,
-  },
-  productsContainer: {
-    padding: 20,
-  },
-  historyContainer: {
-    padding: 20,
-  },
-  productItem: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  productInfo: {
-    flex: 1,
-  },
-  productName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000000',
-    marginBottom: 4,
-  },
-  productBarcode: {
-    fontSize: 14,
-    color: '#8E8E93',
-    marginBottom: 8,
-  },
-  stockInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  stockText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000000',
-  },
-  dateFilterButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F2F2F7',
-  },
-  filterInfo: {
-    backgroundColor: '#F8F9FA',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  filterInfoText: {
-    fontSize: 14,
-    color: '#8E8E93',
-    textAlign: 'center',
-  },
-  filterOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-  },
-  activeFilterOption: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
-  },
-  filterOptionText: {
-    fontSize: 16,
-    color: '#000000',
-    fontWeight: '500',
-  },
-  activeFilterOptionText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  dateInputContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  dateInputGroup: {
-    flex: 1,
-  },
-  dateInputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000000',
-    marginBottom: 8,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#F2F2F7',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  modalCancelText: {
-    fontSize: 16,
-    color: '#FF3B30',
-    fontWeight: '500',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000000',
-  },
-  modalSaveText: {
-    fontSize: 16,
-    color: '#007AFF',
-    fontWeight: '600',
-  },
-  modalContent: {
-    flex: 1,
-    padding: 20,
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000000',
-    marginBottom: 12,
-  },
-  textInput: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  historyItem: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  historyHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  historyTypeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  historyType: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 6,
-  },
-  historyDate: {
-    fontSize: 12,
-    color: '#8E8E93',
-  },
-  historyProduct: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000000',
-    marginBottom: 8,
-  },
-  historyDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  historyQuantity: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#007AFF',
-  },
-  historyStock: {
-    fontSize: 14,
-    color: '#8E8E93',
-  },
-  historyReason: {
-    fontSize: 14,
-    color: '#000000',
-    marginBottom: 4,
-  },
-  historyNotes: {
-    fontSize: 12,
-    color: '#8E8E93',
-    fontStyle: 'italic',
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyStateText: {
-    fontSize: 16,
-    color: '#8E8E93',
-    marginTop: 12,
-    textAlign: 'center',
-  },
-  productActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  actionButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  addButton: {
-    backgroundColor: '#34C759',
-  },
-  adjustButton: {
-    backgroundColor: '#007AFF',
-  },
-  lowStockBadge: {
-    backgroundColor: '#FF3B30',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-    marginLeft: 8,
-  },
-  lowStockText: {
-    fontSize: 10,
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  adjustmentTypeContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#F2F2F7',
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  adjustmentTypeButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  activeAdjustmentType: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  adjustmentTypeText: {
-    fontSize: 14,
-    color: '#8E8E93',
-    fontWeight: '500',
-  },
-  activeAdjustmentTypeText: {
-    color: '#007AFF',
-    fontWeight: '600',
-  },
-  textArea: {
-    height: 100,
-    textAlignVertical: 'top',
-    paddingTop: 16,
-  },
-  previewSection: {
-    backgroundColor: '#E3F2FD',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 20,
-    borderWidth: 1,
-    borderColor: '#BBDEFB',
-  },
-  previewTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1976D2',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  previewRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-    paddingVertical: 4,
-  },
-  previewLabel: {
-    fontSize: 14,
-    color: '#424242',
-    fontWeight: '500',
-  },
-  previewValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1976D2',
-  },
-  disabledText: {
-    color: '#8E8E93',
-  },
-  selectedProductInfo: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  selectedProductName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#000000',
-    marginBottom: 8,
-  },
-  selectedProductStock: {
-    fontSize: 15,
-    color: '#666666',
-    marginBottom: 6,
-    fontWeight: '500',
-  },
-  previewStock: {
-    fontSize: 15,
-    color: '#007AFF',
-    fontWeight: '700',
-    backgroundColor: '#F0F8FF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
-    marginTop: 4,
-  },
-  inputGroup: {
-    marginBottom: 24,
-  },
-  inputLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000000',
-    marginBottom: 8,
-  },
-  textInput: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    borderWidth: 1.5,
-    borderColor: '#E5E5EA',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-    color: '#000000',
-  },
-  modalContent: {
-    flex: 1,
-    padding: 24,
-  },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { marginTop: 12, fontSize: 14, color: '#64748B' },
+  topHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  topHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  backButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
+  topHeaderTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
+  topHeaderSubtitle: { fontSize: 12, color: '#64748B', marginTop: 2 },
+  refreshIconButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
+  tabBarContainer: { flexDirection: 'row', backgroundColor: '#FFFFFF', paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#E2E8F0', paddingBottom: 0 },
+  tabButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 2, borderBottomColor: 'transparent', gap: 6 },
+  tabButtonActive: { borderBottomColor: '#0284C7' },
+  tabButtonText: { fontSize: 14, fontWeight: '600', color: '#64748B' },
+  tabButtonTextActive: { color: '#0284C7', fontWeight: '700' },
+  tabBadge: { backgroundColor: '#F1F5F9', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 },
+  tabBadgeActive: { backgroundColor: '#E0F2FE' },
+  tabBadgeText: { fontSize: 11, fontWeight: '700', color: '#64748B' },
+  tabBadgeTextActive: { color: '#0284C7' },
+  scrollableContent: { flex: 1, padding: 16 },
+  kpiContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 16 },
+  kpiCard: { flex: 1, minWidth: 150, backgroundColor: '#FFFFFF', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' },
+  kpiCardSelectedLow: { borderColor: '#F59E0B', backgroundColor: '#FEF3C7' },
+  kpiCardSelectedOut: { borderColor: '#EF4444', backgroundColor: '#FEE2E2' },
+  kpiHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  kpiLabel: { fontSize: 10, fontWeight: '700', color: '#64748B' },
+  kpiIconWrapper: { width: 24, height: 24, borderRadius: 6, justifyContent: 'center', alignItems: 'center' },
+  kpiValue: { fontSize: 20, fontWeight: '800', color: '#0F172A', marginBottom: 2 },
+  kpiSub: { fontSize: 11, color: '#94A3B8' },
+  toolbarCard: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 16 },
+  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 8, paddingHorizontal: 12, height: 40, borderWidth: 1, borderColor: '#E2E8F0' },
+  searchInput: { flex: 1, fontSize: 13, color: '#0F172A' },
+  chipsScroll: { marginTop: 12 },
+  chipsRow: { flexDirection: 'row', gap: 8 },
+  chipButton: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0' },
+  chipButtonActive: { backgroundColor: '#0284C7', borderColor: '#0284C7' },
+  chipButtonText: { fontSize: 12, fontWeight: '600', color: '#475569' },
+  chipButtonTextActive: { color: '#FFFFFF' },
+  historyFilterRow: { marginTop: 12, flexDirection: 'row' },
+  dateFilterChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E0F2FE', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, gap: 6 },
+  dateFilterChipText: { fontSize: 12, fontWeight: '600', color: '#0284C7' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalCard: { backgroundColor: '#fff', borderRadius: 12, width: '100%', maxWidth: 300, padding: 20 },
+  modalCardTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 15 },
+  dateFilterRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  dateFilterRowActive: { backgroundColor: '#f8fafc' },
+  dateFilterText: { fontSize: 14, color: '#334155' },
+  dateFilterTextActive: { color: '#0284C7', fontWeight: 'bold' },
+  modalBtnCancel: { marginTop: 15, paddingVertical: 10, alignItems: 'center', backgroundColor: '#f1f5f9', borderRadius: 8 },
+  modalBtnCancelText: { color: '#475569', fontWeight: '600' }
 });

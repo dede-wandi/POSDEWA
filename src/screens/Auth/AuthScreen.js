@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, Dimensions, Animated } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, Dimensions, Animated, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Radii, Typography, Shadows } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
@@ -75,12 +75,11 @@ export default function AuthScreen() {
             width: 80, 
             height: 80, 
             borderRadius: 20, 
-            backgroundColor: Colors.primary + '15', 
             alignItems: 'center', 
             justifyContent: 'center',
             marginBottom: 16
           }}>
-            <Ionicons name="receipt" size={48} color={Colors.primary} />
+            <Image source={require('../../../assets/logo.png')} style={{ width: 80, height: 80, borderRadius: 20 }} resizeMode="contain" />
           </View>
           <Text style={styles.title}>POSDEWA</Text>
           <Text style={styles.subtitle}>

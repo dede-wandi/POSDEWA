@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions, Easing, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Animated, Dimensions, Easing, ActivityIndicator, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme';
 import { getSupabaseClient } from '../services/supabase';
@@ -132,8 +132,8 @@ export default function SplashScreen({ onFinish }) {
         
         {/* Main Icon Container with Scanning Effect */}
         <View style={styles.iconWrapper}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="storefront-outline" size={60} color="#fff" />
+          <View style={[styles.iconContainer, { backgroundColor: 'transparent', shadowColor: 'transparent', elevation: 0 }]}>
+            <Image source={require('../../assets/logo.png')} style={{ width: 100, height: 100, borderRadius: 25 }} resizeMode="contain" />
           </View>
           
           {/* Scanning Line */}
