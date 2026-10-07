@@ -258,6 +258,28 @@ export default function ListScreen({ navigation, route }) {
     });
   }, [products, selectedCategory, selectedBrand, brands, categories, query]);
 
+  const duplicateKeys = useMemo(() => {
+    const nameCounts = {};
+    const barcodeCounts = {};
+    
+    products.forEach(p => {
+      const lowerName = (p.name || '').toLowerCase().replace(/\s+/g, ' ').trim();
+      if (lowerName) nameCounts[lowerName] = (nameCounts[lowerName] || 0) + 1;
+      
+      const barcode = (p.barcode || '').trim();
+      if (barcode) barcodeCounts[barcode] = (barcodeCounts[barcode] || 0) + 1;
+    });
+    
+    const duplicates = new Set();
+    Object.keys(nameCounts).forEach(name => {
+      if (nameCounts[name] > 1) duplicates.add(`name:${name}`);
+    });
+    Object.keys(barcodeCounts).forEach(bc => {
+      if (barcodeCounts[bc] > 1) duplicates.add(`barcode:${bc}`);
+    });
+    return duplicates;
+  }, [products]);
+
   const filteredProducts = useMemo(() => {
     if (viewMode === 'grid' || viewMode === 'table') {
       return sortedRawProducts;
@@ -560,25 +582,47 @@ export default function ListScreen({ navigation, route }) {
             const CardComponent = isPulsing ? PulsingCard : TouchableOpacity;
             const pulseType = stock <= 0 ? 'danger' : 'warning';
             const isInvalid = isFormatInvalid(item.name);
+            const lowerItemName = (item.name || '').toLowerCase().replace(/\s+/g, ' ').trim();
+            const itemBarcode = (item.barcode || '').trim();
+            const isDuplicate = duplicateKeys.has(`name:${lowerItemName}`) || (itemBarcode && duplicateKeys.has(`barcode:${itemBarcode}`));
   
             if (isGrid) {
               return (
                 <CardComponent 
                   onPress={() => navigation.navigate('FormProduk', { id: item.id })} 
-                  style={styles.productCardGrid}
+                  style={[styles.productCardGrid, { flex: 1, maxWidth: `${100 / gridColumns}%` }]}
                   type={pulseType}
                 >
                   {item.image_urls && item.image_urls.length > 0 && item.image_urls[0] ? (
-                    <Image source={{ uri: item.image_urls[0] }} style={styles.productImageGrid} resizeMode="contain" />
+                    <Image source={{ uri: item.image_urls[0] }} style={styles.productImageGrid} resizeMode="cover" />
                   ) : (
                     <View style={[styles.productImageGrid, { backgroundColor: '#f9fafb', alignItems: 'center', justifyContent: 'center' }]}>
                       <Ionicons name="image-outline" size={24} color="#ccc" />
                     </View>
                   )}
                   <View style={styles.productInfoGrid}>
-                    <Text style={[styles.productNameGrid, isInvalid && styles.productNameInvalid]} numberOfLines={2}>
-                      {isInvalid ? '⚠️ ' : ''}{item.name}
-                    </Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 4 }}>
+                      <Text style={[styles.productNameGrid, isInvalid && styles.productNameInvalid, { flex: 1 }]} numberOfLines={2}>
+                        {isInvalid ? '⚠️ ' : ''}{item.name}
+                      </Text>
+                      {isDuplicate && (
+                        <View style={{ backgroundColor: Colors.danger, paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4, marginLeft: 2, marginRight: 2 }}>
+                          <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>Duplikat</Text>
+                        </View>
+                      )}
+                      <TouchableOpacity 
+                        onPress={(e) => {
+                          if (e && typeof e.stopPropagation === 'function') {
+                            e.stopPropagation();
+                          }
+                          confirmDelete(item.id);
+                        }}
+                        style={{ padding: 2 }}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                         <Ionicons name="trash-outline" size={16} color={Colors.danger} />
+                      </TouchableOpacity>
+                    </View>
                     
                     {isInvalid && (
                       <Text style={styles.formatWarningText} numberOfLines={1}>
@@ -628,8 +672,14 @@ export default function ListScreen({ navigation, route }) {
                       {isInvalid ? '⚠️ ' : ''}{item.name}
                     </Text>
                     
+                    {isDuplicate && (
+                      <View style={{ backgroundColor: Colors.danger, paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4, marginLeft: 6, alignSelf: 'center' }}>
+                        <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>Duplikat</Text>
+                      </View>
+                    )}
+                    
                     {/* Mini Actions */}
-                    <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                    <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center', marginLeft: 'auto' }}>
                         <TouchableOpacity 
                           onPress={(e) => {
                             if (e && typeof e.stopPropagation === 'function') {

@@ -735,6 +735,7 @@ export default function SalesScreen({ navigation, route }) {
             numColumns={productLayout === 'grid' ? gridColumns : 1}
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 150 }}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
@@ -775,7 +776,7 @@ export default function SalesScreen({ navigation, route }) {
 
               if (productLayout === 'grid') {
                 return (
-                  <View style={styles.resultCardGrid}>
+                  <View style={[styles.resultCardGrid, { flex: 1, maxWidth: `${100 / gridColumns}%` }]}>
                     <View style={[styles.stockBadge, !isUnlimited && stock <= 0 && styles.stockBadgeEmpty]}>
                       <Text style={[styles.stockBadgeText, !isUnlimited && stock <= 0 && styles.stockBadgeTextEmpty]}>
                         {stockLabel}
