@@ -233,10 +233,21 @@ export default function DashboardScreen({ navigation }) {
                   <View style={[styles.heroDivider, { marginTop: 14 }]} />
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                     {wallets.map((w, index) => (
-                      <View key={w.id} style={{ alignItems: index === 0 ? 'flex-start' : index === wallets.length - 1 ? 'flex-end' : 'center', flex: 1 }}>
+                      <TouchableOpacity 
+                        key={w.id} 
+                        style={{ alignItems: index === 0 ? 'flex-start' : index === wallets.length - 1 ? 'flex-end' : 'center', flex: 1 }}
+                        onPress={() => {
+                          if (w.type === 'PROFIT' || (w.name || '').toLowerCase().includes('profit')) {
+                            navigation.navigate('AnnualProfitReport');
+                          } else {
+                            navigation.navigate('WalletManagement');
+                          }
+                        }}
+                        activeOpacity={0.7}
+                      >
                         <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 10, marginBottom: 2, fontWeight: '500' }} numberOfLines={1}>{w.name}</Text>
                         <Text style={{ color: '#FFF', fontSize: 11, fontWeight: 'bold' }} numberOfLines={1}>{fmt(w.balance)}</Text>
-                      </View>
+                      </TouchableOpacity>
                     ))}
                   </View>
                 </>
