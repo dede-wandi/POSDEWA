@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, Alert, StyleSheet, Dimensions, RefreshControl, Modal, Image, useWindowDimensions, ScrollView } from 'react-native';
+import { View, Text, TextInput, FlatList, TouchableOpacity, Alert, StyleSheet, Dimensions, RefreshControl, Modal, Image, useWindowDimensions, ScrollView, Animated, Easing } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,66 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 
 const { width } = Dimensions.get('window');
+
+const FloatingAddIndicator = ({ startX, startY, isDesktop, windowWidth, windowHeight }) => {
+  const translateX = React.useRef(new Animated.Value(0)).current;
+  const translateY = React.useRef(new Animated.Value(0)).current;
+  const scale = React.useRef(new Animated.Value(1)).current;
+  const opacity = React.useRef(new Animated.Value(1)).current;
+
+  React.useEffect(() => {
+    // Target position (approximate cart location)
+    const endX = isDesktop ? windowWidth - 175 - startX : (windowWidth / 2) - startX;
+    const endY = isDesktop ? (windowHeight / 2) - startY : windowHeight - 80 - startY;
+
+    Animated.parallel([
+      Animated.timing(translateX, {
+        toValue: endX,
+        duration: 600,
+        easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: endY,
+        duration: 600,
+        easing: Easing.bezier(0.5, -0.5, 0.75, 0), // Arc effect
+        useNativeDriver: true,
+      }),
+      Animated.timing(scale, {
+        toValue: 0.2,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 600,
+        delay: 200,
+        useNativeDriver: true,
+      })
+    ]).start();
+  }, [startX, startY, isDesktop, windowWidth, windowHeight]);
+
+  return (
+    <Animated.View style={{
+      position: 'absolute',
+      left: startX,
+      top: startY,
+      transform: [{ translateX }, { translateY }, { scale }],
+      opacity,
+      backgroundColor: Colors.primary,
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 9999,
+      elevation: 9999,
+      pointerEvents: 'none'
+    }}>
+      <Ionicons name="cart" size={14} color="#fff" />
+    </Animated.View>
+  );
+};
 
 export default function SalesScreen({ navigation, route }) {
   const { user } = useAuth();
@@ -24,6 +84,22 @@ export default function SalesScreen({ navigation, route }) {
   const [brands, setBrands] = useState([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
   const [selectedBrandId, setSelectedBrandId] = useState(null);
+  
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isDesktop = windowWidth >= 768;
+  const [floatingItems, setFloatingItems] = useState([]);
+
+  const addFloatingAnimation = (e) => {
+    if (!e || !e.nativeEvent) return;
+    const { pageX, pageY } = e.nativeEvent;
+    if (pageX === undefined || pageY === undefined) return;
+    
+    const id = Date.now().toString() + Math.random().toString();
+    setFloatingItems(prev => [...prev, { id, x: pageX, y: pageY }]);
+    setTimeout(() => {
+      setFloatingItems(prev => prev.filter(item => item.id !== id));
+    }, 800);
+  };
 
   // Dynamic filter chips logic (Cascading/Contextual Filters)
   const showUncategorizedCategory = useMemo(() => {
@@ -805,7 +881,10 @@ export default function SalesScreen({ navigation, route }) {
                             styles.addButtonGrid,
                             !isUnlimited && stock <= 0 && styles.addButtonDisabled
                           ]}
-                          onPress={() => addToCart(item)}
+                          onPress={(e) => {
+                            addToCart(item);
+                            addFloatingAnimation(e);
+                          }}
                           disabled={!isUnlimited && stock <= 0}
                         >
                           <Ionicons 
@@ -854,7 +933,10 @@ export default function SalesScreen({ navigation, route }) {
                       styles.addButtonList,
                       !isUnlimited && stock <= 0 && styles.addButtonDisabled
                     ]}
-                    onPress={() => addToCart(item)}
+                    onPress={(e) => {
+                      addToCart(item);
+                      addFloatingAnimation(e);
+                    }}
                     disabled={!isUnlimited && stock <= 0}
                   >
                     <Ionicons 
@@ -1097,6 +1179,18 @@ export default function SalesScreen({ navigation, route }) {
       </View>
       </Modal>
 
+      {/* Floating Animations */}
+      {floatingItems.map(item => (
+        <FloatingAddIndicator 
+          key={item.id} 
+          startX={item.x} 
+          startY={item.y} 
+          isDesktop={isDesktop} 
+          windowWidth={windowWidth} 
+          windowHeight={windowHeight} 
+        />
+      ))}
+      
     </SafeAreaView>
   );
 }
