@@ -91,7 +91,7 @@ export function ValuationFilterToolbar({
           onPress={() => setActiveTab('physical')}
         >
           <Text style={[styles.tabChipText, activeTab === 'physical' && styles.tabChipTextActive]}>
-            📦 Fisik Toko ({typeCounts.physical || 0})
+            📦 Fisik & Voucher ({typeCounts.physical || 0})
           </Text>
         </TouchableOpacity>
 
@@ -117,16 +117,7 @@ export function ValuationFilterToolbar({
           </TouchableOpacity>
         )}
 
-        {Boolean(typeCounts.voucher > 0) && (
-          <TouchableOpacity
-            style={[styles.tabChip, activeTab === 'voucher' && styles.tabChipActive]}
-            onPress={() => setActiveTab('voucher')}
-          >
-            <Text style={[styles.tabChipText, activeTab === 'voucher' && styles.tabChipTextActive]}>
-              🎟️ Voucher ({typeCounts.voucher})
-            </Text>
-          </TouchableOpacity>
-        )}
+
 
         {Boolean(typeCounts.service > 0) && (
           <TouchableOpacity

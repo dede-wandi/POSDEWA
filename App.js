@@ -144,11 +144,8 @@ function MainTabs() {
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '600',
-          marginBottom: 6,
-          display: 'flex', // Ensure label is displayed
         },
         tabBarIconStyle: {
-          marginTop: 4,
         },
         tabBarIcon: ({ focused, color }) => {
           let iconName = 'ellipse';
@@ -159,12 +156,36 @@ function MainTabs() {
             case 'Produk':
               iconName = focused ? 'cube' : 'cube-outline';
               break;
-            case 'Penjualan':
-              iconName = focused ? 'cart' : 'cart-outline'; // Changed to cart for sales
+            case 'Stok':
+              iconName = focused ? 'layers' : 'layers-outline';
               break;
             case 'Akun':
               iconName = focused ? 'person' : 'person-outline'; // Changed to simpler person icon
               break;
+          }
+
+          if (route.name === 'Penjualan') {
+            return (
+              <View style={{
+                position: 'absolute',
+                top: Platform.OS === 'android' ? -24 : -20,
+                width: 64,
+                height: 64,
+                backgroundColor: Colors.primary,
+                borderRadius: 32,
+                justifyContent: 'center',
+                alignItems: 'center',
+                shadowColor: Colors.primary,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 5,
+                elevation: 6,
+                borderWidth: 4,
+                borderColor: '#ffffff',
+              }}>
+                <Ionicons name="cart" size={30} color="#FFFFFF" />
+              </View>
+            );
           }
           return <Ionicons name={iconName} size={22} color={color} />;
         },
@@ -173,9 +194,9 @@ function MainTabs() {
           borderTopWidth: 1,
           borderTopColor: '#e9ecef',
           // Responsif terhadap safe area di perangkat dengan notch / navigasi tombol
-          height: insets.bottom > 0 ? (56 + insets.bottom) : 60,
-          paddingBottom: insets.bottom > 0 ? insets.bottom : 6,
-          paddingTop: 6,
+          height: insets.bottom > 0 ? (60 + insets.bottom) : 60,
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 5,
+          paddingTop: 5,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -2 },
           shadowOpacity: 0.05,
@@ -183,12 +204,14 @@ function MainTabs() {
           elevation: 5,
         },
         tabBarHideOnKeyboard: true,
-        tabBarShowLabel: true, // Explicitly enable labels
+        tabBarLabelPosition: 'below-icon',
+        tabBarShowLabel: true,
       })}
     >
       <Tab.Screen name="Home" component={DashboardScreen} options={{ tabBarLabel: 'Home' }} />
       <Tab.Screen name="Produk" component={ProductsStack} options={{ tabBarLabel: 'Produk' }} />
-      <Tab.Screen name="Penjualan" component={SalesStack} options={{ tabBarLabel: 'Penjualan' }} />
+      <Tab.Screen name="Penjualan" component={SalesStack} options={{ tabBarLabel: () => null }} />
+      <Tab.Screen name="Stok" component={StockManagementScreen} options={{ tabBarLabel: 'Stok' }} />
       <Tab.Screen name="Akun" component={AccountScreen} options={{ tabBarLabel: 'Akun' }} />
     </Tab.Navigator>
   );

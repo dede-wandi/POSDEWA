@@ -153,7 +153,7 @@ export class ValuationProductItem {
   matchesTab(activeTab) {
     switch (activeTab) {
       case 'physical':
-        return this.productType === 'physical';
+        return this.productType === 'physical' || this.productType === 'voucher';
       case 'consignment':
         return this.isConsignment;
       case 'digital':
@@ -334,7 +334,7 @@ export class ValuationFilterService {
   static countByType(products = []) {
     return {
       all: products.length,
-      physical: products.filter(p => p.productType === 'physical').length,
+      physical: products.filter(p => p.productType === 'physical' || p.productType === 'voucher').length,
       consignment: products.filter(p => p.isConsignment).length,
       digital: products.filter(p => p.productType === 'digital').length,
       voucher: products.filter(p => p.productType === 'voucher').length,

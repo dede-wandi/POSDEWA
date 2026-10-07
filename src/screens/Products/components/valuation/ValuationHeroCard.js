@@ -20,7 +20,7 @@ export function ValuationHeroCard({ data }) {
     <View style={styles.heroCard}>
       <View style={styles.heroHeader}>
         <View style={{ flex: 1, paddingRight: 8 }}>
-          <Text style={styles.heroLabel}>TOTAL MODAL FISIK MILIK TOKO (HPP STOK DI RAK)</Text>
+          <Text style={styles.heroLabel}>TOTAL MODAL</Text>
           <Text style={styles.heroValue}>{formatIDR(totalCostValue)}</Text>
           <Text style={styles.heroNotice}>
             ✓ Hanya menghitung Barang Fisik & Voucher Toko (Titipan & Digital tidak menguras modal fisik)
