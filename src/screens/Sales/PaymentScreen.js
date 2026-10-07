@@ -272,7 +272,7 @@ export default function PaymentScreen({ navigation, route }) {
             </TouchableOpacity>
 
             {/* Semua wallet sebagai pilihan channel */}
-            {wallets.filter(w => w.type !== 'PROFIT').map(w => {
+            {wallets.filter(w => w.type !== 'PROFIT' && !(w.name || '').toLowerCase().includes('profit')).map(w => {
               const ws = getWalletStyle(w.type);
               const isActive = digitalWalletId === w.id;
               return (
