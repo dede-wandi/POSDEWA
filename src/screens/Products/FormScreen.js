@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { formatIDR } from '../../utils/currency';
+import { getProductTypesMap, setProductTypeMeta, PRODUCT_TYPES } from '../../services/productTypeService';
 export default function FormScreen({ navigation, route }) {
   const { id } = route.params || {};
   const { user } = useAuth();
@@ -40,6 +41,8 @@ export default function FormScreen({ navigation, route }) {
   const [newBrandName, setNewBrandName] = useState('');
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [showAllBrands, setShowAllBrands] = useState(false);
+  const [productType, setProductType] = useState('physical');
+  const [consignorName, setConsignorName] = useState('');
 
   // Draft recovery & auto-save states/refs
   const [isDraftRestored, setIsDraftRestored] = useState(false);
@@ -103,6 +106,15 @@ export default function FormScreen({ navigation, route }) {
       setBrands(brs || []);
       const prods = await getProducts(user.id);
       setExistingProducts(prods || []);
+
+      if (id) {
+        const typeMap = await getProductTypesMap(user.id);
+        const pMeta = typeMap ? (typeMap[id] || typeMap[String(id)] || typeMap[Number(id)]) : null;
+        if (pMeta) {
+          if (pMeta.type) setProductType(pMeta.type);
+          if (pMeta.consignorName) setConsignorName(pMeta.consignorName);
+        }
+      }
     } catch (e) {
     }
   };
@@ -238,6 +250,12 @@ export default function FormScreen({ navigation, route }) {
         setCategoryId(vals.categoryId);
         setBrandId(vals.brandId);
         setImageUrls(vals.imageUrls);
+        if (initialData.product_type) {
+          setProductType(initialData.product_type);
+        }
+        if (initialData.consignor_name) {
+          setConsignorName(initialData.consignor_name);
+        }
         initialValuesRef.current = vals;
       } else {
         const vals = {
@@ -525,6 +543,8 @@ export default function FormScreen({ navigation, route }) {
       image_urls: imageUrls.filter(u => u.trim() !== ''),
       category_id: categoryId,
       brand_id: brandId,
+      product_type: productType,
+      consignor_name: consignorName.trim(),
     };
 
     try {
@@ -551,6 +571,19 @@ export default function FormScreen({ navigation, route }) {
         await AsyncStorage.removeItem(draftKey);
       } catch (err) {
         console.log('Error removing draft on save', err);
+      }
+
+      // Save metadata product type & consignor
+      const savedProductId = id || result?.data?.id || result?.id;
+      if (savedProductId && user?.id) {
+        try {
+          await setProductTypeMeta(user.id, savedProductId, {
+            type: productType,
+            consignorName: consignorName.trim(),
+          });
+        } catch (e) {
+          console.log('Error saving product type meta', e);
+        }
       }
 
       // Update initial values so unmount doesn't auto-save again
@@ -840,11 +873,59 @@ export default function FormScreen({ navigation, route }) {
           </View>
         </View>
 
+        {/* Tipe Kepemilikan Barang */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Tipe & Kepemilikan Barang</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: 6 }}>
+            {PRODUCT_TYPES.slice(0, 4).map(pt => {
+              const isSelected = productType === pt.id;
+              return (
+                <TouchableOpacity
+                  key={pt.id}
+                  style={[
+                    styles.typeChip,
+                    isSelected && { borderColor: pt.color, backgroundColor: pt.bg },
+                  ]}
+                  onPress={() => setProductType(pt.id)}
+                >
+                  <Ionicons name={pt.icon} size={15} color={isSelected ? pt.color : Colors.muted} />
+                  <Text style={[styles.typeChipText, isSelected && { color: pt.color, fontWeight: '700' }]}>
+                    {pt.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {productType === 'consignment' && (
+            <View style={styles.consignmentCard}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                <Ionicons name="information-circle" size={16} color="#8B5CF6" />
+                <Text style={styles.consignmentNoticeTitle}>Barang Titipan (Konsinyasi)</Text>
+              </View>
+              <Text style={styles.consignmentNoticeDesc}>
+                Modal Toko = Rp 0. Uang modal milik penitip (disetor saat laku). Toko mendapatkan keuntungan komisi bersih.
+              </Text>
+
+              <Text style={[styles.label, { marginTop: 8, fontSize: 11 }]}>Nama Penitip (Opsional)</Text>
+              <TextInput
+                value={consignorName}
+                onChangeText={setConsignorName}
+                style={styles.input}
+                placeholder="Misal: Bu Lina / Donat Madu"
+                placeholderTextColor={Colors.placeholder}
+              />
+            </View>
+          )}
+        </View>
+
         {variants.length === 0 && (
           <>
             <View style={[styles.row, { gap: 12 }]}>
               <View style={[styles.inputGroup, { flex: 1, marginBottom: 0 }]}>
-                <Text style={styles.label}>Harga Modal</Text>
+                <Text style={styles.label}>
+                  {productType === 'consignment' ? 'Harga Setor Penitip *' : 'Harga Modal'}
+                </Text>
                 <TextInput
                   value={costPrice !== undefined && costPrice !== null && costPrice !== '' ? String(costPrice).replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.') : ''}
                   onChangeText={(val) => setCostPrice(val.replace(/\D/g, ''))}
@@ -856,7 +937,9 @@ export default function FormScreen({ navigation, route }) {
               </View>
 
               <View style={[styles.inputGroup, { flex: 1, marginBottom: 0 }]}>
-                <Text style={styles.label}>Harga Jual *</Text>
+                <Text style={styles.label}>
+                  {productType === 'consignment' ? 'Harga Jual ke Pembeli *' : 'Harga Jual *'}
+                </Text>
                 <TextInput
                   value={price !== undefined && price !== null && price !== '' ? String(price).replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.') : ''}
                   onChangeText={(val) => setPrice(val.replace(/\D/g, ''))}
@@ -879,6 +962,16 @@ export default function FormScreen({ navigation, route }) {
                 />
               </View>
             </View>
+
+            {productType === 'consignment' && Number(price || 0) > 0 && (
+              <View style={styles.commissionPreviewBox}>
+                <Ionicons name="sparkles" size={14} color="#059669" />
+                <Text style={styles.commissionPreviewText}>
+                  Komisi Toko: <Text style={{ fontWeight: '800' }}>{formatIDR(Math.max(0, Number(price || 0) - Number(costPrice || 0)))}</Text> / pcs (Modal Toko: Rp 0)
+                </Text>
+              </View>
+            )}
+
             <View style={{ marginBottom: 20 }} />
           </>
         )}
@@ -1331,5 +1424,57 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 12,
     fontWeight: '600',
+  },
+  typeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+    marginRight: 8,
+  },
+  typeChipText: {
+    fontSize: 12,
+    color: '#475569',
+    marginLeft: 5,
+    fontWeight: '600',
+  },
+  consignmentCard: {
+    backgroundColor: '#F5F3FF',
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8,
+  },
+  consignmentNoticeTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#6D28D9',
+    marginLeft: 6,
+  },
+  consignmentNoticeDesc: {
+    fontSize: 11,
+    color: '#5B21B6',
+    lineHeight: 15,
+  },
+  commissionPreviewBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginTop: 8,
+  },
+  commissionPreviewText: {
+    fontSize: 11,
+    color: '#047857',
+    marginLeft: 6,
   },
 });

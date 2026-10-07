@@ -26,6 +26,11 @@ export default function SalesScreen({ navigation, route }) {
   const [selectedBrandId, setSelectedBrandId] = useState(null);
 
   // Dynamic filter chips logic (Cascading/Contextual Filters)
+  const showUncategorizedCategory = useMemo(() => {
+    if (!selectedBrandId) return true;
+    return allProducts.some(p => p.brand_id === selectedBrandId && (!p.category_id || p.category_id === 'null' || p.category_id === 'none'));
+  }, [selectedBrandId, allProducts]);
+
   const visibleCategories = useMemo(() => {
     if (!selectedBrandId) return categories;
     const availableCategoryIds = new Set(
@@ -41,7 +46,10 @@ export default function SalesScreen({ navigation, route }) {
     if (!selectedCategoryId) return brands;
     const availableBrandIds = new Set(
       allProducts
-        .filter(p => p.category_id === selectedCategoryId)
+        .filter(p => selectedCategoryId === 'uncategorized'
+          ? (!p.category_id || p.category_id === 'null' || p.category_id === 'none')
+          : p.category_id === selectedCategoryId
+        )
         .map(p => p.brand_id)
         .filter(Boolean)
     );
@@ -60,12 +68,21 @@ export default function SalesScreen({ navigation, route }) {
 
   useEffect(() => {
     if (selectedCategoryId) {
+      if (selectedCategoryId === 'uncategorized') {
+        if (selectedBrandId) {
+          const hasUncat = allProducts.some(p => p.brand_id === selectedBrandId && (!p.category_id || p.category_id === 'null' || p.category_id === 'none'));
+          if (!hasUncat) {
+            setSelectedCategoryId(null);
+          }
+        }
+        return;
+      }
       const isAvailable = visibleCategories.some(c => c.id === selectedCategoryId);
       if (!isAvailable) {
         setSelectedCategoryId(null);
       }
     }
-  }, [selectedCategoryId, visibleCategories]);
+  }, [selectedCategoryId, visibleCategories, selectedBrandId, allProducts]);
   
   // Token modal states
   const [showTokenModal, setShowTokenModal] = useState(false);
@@ -201,7 +218,9 @@ export default function SalesScreen({ navigation, route }) {
 
   const applyFilters = useCallback((list) => {
     let filtered = list || [];
-    if (selectedCategoryId) {
+    if (selectedCategoryId === 'uncategorized') {
+      filtered = filtered.filter(p => !p.category_id || p.category_id === 'null' || p.category_id === 'none');
+    } else if (selectedCategoryId) {
       filtered = filtered.filter(p => p.category_id === selectedCategoryId);
     }
     if (selectedBrandId) {
@@ -633,46 +652,72 @@ export default function SalesScreen({ navigation, route }) {
           <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
-            data={[{ id: null, name: 'Semua Kategori' }, ...visibleCategories]}
+            data={[
+              { id: null, name: 'Semua Kategori' },
+              ...(showUncategorizedCategory ? [{ id: 'uncategorized', name: 'Unkategori' }] : []),
+              ...visibleCategories
+            ]}
             keyExtractor={(item) => String(item.id ?? 'all')}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[
-                  styles.filterChip,
-                  (selectedCategoryId === item.id) && styles.filterChipActive
-                ]}
-                onPress={() => setSelectedCategoryId(item.id)}
-              >
-                <Text style={[
-                  styles.filterChipText,
-                  (selectedCategoryId === item.id) && styles.filterChipTextActive
-                ]}>
-                  {item.name}
-                </Text>
-              </TouchableOpacity>
-            )}
+            renderItem={({ item }) => {
+              const isSelected = item.id === null 
+                ? !selectedCategoryId 
+                : selectedCategoryId === item.id;
+              return (
+                <TouchableOpacity
+                  style={[
+                    styles.filterChip,
+                    isSelected && styles.filterChipActive
+                  ]}
+                  onPress={() => {
+                    if (item.id === null) {
+                      setSelectedCategoryId(null);
+                    } else {
+                      setSelectedCategoryId(selectedCategoryId === item.id ? null : item.id);
+                    }
+                  }}
+                >
+                  <Text style={[
+                    styles.filterChipText,
+                    isSelected && styles.filterChipTextActive
+                  ]}>
+                    {item.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            }}
           />
           <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
             data={[{ id: null, name: 'Semua Brand' }, ...visibleBrands]}
             keyExtractor={(item) => String(item.id ?? 'all')}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[
-                  styles.filterChip,
-                  (selectedBrandId === item.id) && styles.filterChipActive
-                ]}
-                onPress={() => setSelectedBrandId(item.id)}
-              >
-                <Text style={[
-                  styles.filterChipText,
-                  (selectedBrandId === item.id) && styles.filterChipTextActive
-                ]}>
-                  {item.name}
-                </Text>
-              </TouchableOpacity>
-            )}
+            renderItem={({ item }) => {
+              const isSelected = item.id === null
+                ? !selectedBrandId
+                : selectedBrandId === item.id;
+              return (
+                <TouchableOpacity
+                  style={[
+                    styles.filterChip,
+                    isSelected && styles.filterChipActive
+                  ]}
+                  onPress={() => {
+                    if (item.id === null) {
+                      setSelectedBrandId(null);
+                    } else {
+                      setSelectedBrandId(selectedBrandId === item.id ? null : item.id);
+                    }
+                  }}
+                >
+                  <Text style={[
+                    styles.filterChipText,
+                    isSelected && styles.filterChipTextActive
+                  ]}>
+                    {item.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            }}
           />
         </View>
       </View>
@@ -739,9 +784,9 @@ export default function SalesScreen({ navigation, route }) {
                     )}
                     <View style={styles.resultInfoGrid}>
                       <Text style={styles.resultNameGrid} numberOfLines={2}>{item.name}</Text>
-                      {(categoryName || brandName) && (
+                      {(categoryName || brandName || selectedCategoryId === 'uncategorized') && (
                         <Text style={styles.productCategoryGrid} numberOfLines={1}>
-                           {[categoryName, brandName].filter(Boolean).join(' • ')}
+                           {[categoryName || (selectedCategoryId === 'uncategorized' ? 'Tanpa Kategori' : null), brandName].filter(Boolean).join(' • ')}
                         </Text>
                       )}
                       <View style={styles.productRowGrid}>
@@ -784,9 +829,9 @@ export default function SalesScreen({ navigation, route }) {
                   )}
                   <View style={styles.resultInfo}>
                     <Text style={styles.resultName}>{item.name}</Text>
-                    {(categoryName || brandName) && (
+                    {(categoryName || brandName || selectedCategoryId === 'uncategorized') && (
                       <Text style={styles.productCategoryText} numberOfLines={1}>
-                         {[categoryName, brandName].filter(Boolean).join(' • ')}
+                         {[categoryName || (selectedCategoryId === 'uncategorized' ? 'Tanpa Kategori' : null), brandName].filter(Boolean).join(' • ')}
                       </Text>
                     )}
                     <View style={styles.resultBarcodeRow}>
@@ -814,6 +859,21 @@ export default function SalesScreen({ navigation, route }) {
                 </View>
               );
             }}
+            ListEmptyComponent={() => (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="cube-outline" size={48} color={Colors.muted} style={{ marginBottom: 12 }} />
+                <Text style={styles.emptyTitle}>
+                  {selectedCategoryId === 'uncategorized' 
+                    ? 'Tidak ada produk tanpa kategori' 
+                    : 'Tidak ada produk ditemukan'}
+                </Text>
+                <Text style={styles.emptySubtitle}>
+                  {selectedCategoryId === 'uncategorized'
+                    ? 'Semua produk sudah memiliki kategori'
+                    : 'Coba ubah kata kunci pencarian atau filter'}
+                </Text>
+              </View>
+            )}
           />
         </View>
         </View>
@@ -1610,5 +1670,23 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.bold,
     color: Colors.white,
     letterSpacing: 0.5,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+    paddingHorizontal: 24,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.darkText,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    color: Colors.muted,
+    textAlign: 'center',
   },
 });

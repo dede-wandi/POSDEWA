@@ -4,7 +4,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from './src/theme';
 import { enableScreens } from 'react-native-screens';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, getStateFromPath } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Linking from 'expo-linking';
@@ -48,8 +48,10 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { CartProvider } from './src/contexts/CartContext';
 import { ToastProvider } from './src/contexts/ToastContext';
 import ErrorBoundary from './src/components/ErrorBoundary';
-import CartScreen from './src/screens/PublicProducts/CartScreen';
 import AntiGoresStockScreen from './src/screens/AntiGoresStockScreen';
+import ProductAssetValuationScreen from './src/screens/Products/ProductAssetValuationScreen';
+import ExpensesScreen from './src/screens/Finance/ExpensesScreen';
+import CashReconciliationScreen from './src/screens/Finance/CashReconciliationScreen';
 
 enableScreens(true);
 
@@ -326,6 +328,38 @@ function MainStack() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="ProductAssetValuation"
+        component={ProductAssetValuationScreen}
+        options={{
+          presentation: 'card',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="Expenses"
+        component={ExpensesScreen}
+        options={{
+          presentation: 'card',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="Finance"
+        component={ExpensesScreen}
+        options={{
+          presentation: 'card',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="CashReconciliation"
+        component={CashReconciliationScreen}
+        options={{
+          presentation: 'card',
+          headerShown: false,
+        }}
+      />
 
       <Stack.Screen
         name="ProfileEdit"
@@ -341,12 +375,16 @@ function MainStack() {
 
 function AppNavigator() {
   const { user, loading: authLoading } = useAuth();
-  const [splashLoading, setSplashLoading] = React.useState(true);
+  const [splashLoading, setSplashLoading] = React.useState(Platform.OS !== 'web');
 
   React.useEffect(() => {
+    if (Platform.OS === 'web') {
+      setSplashLoading(false);
+      return;
+    }
     const timer = setTimeout(() => {
       setSplashLoading(false);
-    }, 3500); // 3.5 seconds minimum splash
+    }, 3500); // 3.5 seconds minimum splash on mobile only
     return () => clearTimeout(timer);
   }, []);
 
@@ -397,7 +435,62 @@ function AppNavigator() {
         WhatsAppSettings: 'pengaturan-whatsapp',
         MenuSettings: 'pengaturan-menu',
         ProfileEdit: 'profil/edit',
+        ProductAssetValuation: 'ProductAssetValuation',
+        Expenses: 'Expenses',
+        Finance: 'Finance',
+        CashReconciliation: 'CashReconciliation',
+        SalesReport: 'SalesReport',
+        AntiGoresStock: 'AntiGoresStock',
+        PaymentChannels: 'PaymentChannels',
+        TopSales: 'TopSales',
+        TopList: 'TopList',
+        MoreMenu: 'MoreMenu',
       },
+    },
+    getStateFromPath(path, options) {
+      const cleanPath = (path || '').replace(/^\/+/, '').split('?')[0].split('#')[0];
+      const lower = cleanPath.toLowerCase();
+
+      if (
+        lower === 'productassetvaluation' ||
+        lower === 'product-asset-valuation' ||
+        lower === 'valuasi-produk' ||
+        lower === 'valuasi-stok'
+      ) {
+        return {
+          routes: [{ name: 'ProductAssetValuation' }],
+        };
+      }
+      if (lower === 'expenses' || lower === 'pengeluaran') {
+        return {
+          routes: [{ name: 'Expenses' }],
+        };
+      }
+      if (lower === 'finance' || lower === 'keuangan') {
+        return {
+          routes: [{ name: 'Finance' }],
+        };
+      }
+      if (
+        lower === 'cashreconciliation' ||
+        lower === 'cash-reconciliation' ||
+        lower === 'rekonsiliasi-kas'
+      ) {
+        return {
+          routes: [{ name: 'CashReconciliation' }],
+        };
+      }
+      if (
+        lower === 'salesreport' ||
+        lower === 'sales-report' ||
+        lower === 'laporan-penjualan'
+      ) {
+        return {
+          routes: [{ name: 'SalesReport' }],
+        };
+      }
+
+      return getStateFromPath(path, options);
     },
   };
 

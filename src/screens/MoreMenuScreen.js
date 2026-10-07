@@ -63,6 +63,27 @@ export default function MoreMenuScreen({ navigation }) {
       onPress: () => navigation.navigate('StockManagement'),
     },
     {
+      label: 'Valuasi Aset Stok',
+      icon: 'pie-chart',
+      iconColor: '#4338CA',
+      bgColor: '#EEF2FF',
+      onPress: () => navigation.navigate('ProductAssetValuation'),
+    },
+    {
+      label: 'Pengeluaran Toko',
+      icon: 'wallet',
+      iconColor: '#DC2626',
+      bgColor: '#FEF2F2',
+      onPress: () => navigation.navigate('Expenses'),
+    },
+    {
+      label: 'Rekonsiliasi Kas',
+      icon: 'calculator',
+      iconColor: '#0284C7',
+      bgColor: '#F0F9FF',
+      onPress: () => navigation.navigate('CashReconciliation'),
+    },
+    {
       label: 'Pengaturan Invoice',
       icon: 'document-text',
       iconColor: '#607D8B',

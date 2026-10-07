@@ -27,12 +27,12 @@ export async function listProducts(userId) {
   // Check current session dengan retry mechanism
   let session = null;
   let sessionError = null;
-  
+
   try {
     const sessionResult = await supabase.auth.getSession();
     session = sessionResult.data?.session;
     sessionError = sessionResult.error;
-    
+
     // If no session, try to refresh
     if (!session) {
       const refreshResult = await supabase.auth.refreshSession();
@@ -40,7 +40,7 @@ export async function listProducts(userId) {
     }
   } catch (error) {
   }
-  
+
   if (!session || !session.user) {
     return [];
   }
@@ -154,7 +154,7 @@ export async function getProduct(userId, id) {
   try {
     const sessionResult = await supabase.auth.getSession();
     session = sessionResult.data?.session;
-    
+
     if (!session || !session.user) {
       return { data: null, error: 'User tidak ter-autentikasi' };
     }
@@ -242,7 +242,7 @@ export async function findByBarcodeExact(userId, barcode) {
 }
 
 export async function createProduct(payload) {
-  
+
   const supabase = getSupabaseClient();
   if (!supabase) {
     return { success: false, error: 'Supabase tidak tersedia' };
@@ -251,13 +251,13 @@ export async function createProduct(payload) {
   // Check current session with retry mechanism
   let session = null;
   let sessionError = null;
-  
+
   try {
     const sessionResult = await supabase.auth.getSession();
     session = sessionResult.data?.session;
     sessionError = sessionResult.error;
-    
-    
+
+
     // If no session, try to refresh
     if (!session) {
       const refreshResult = await supabase.auth.refreshSession();
@@ -265,7 +265,7 @@ export async function createProduct(payload) {
     }
   } catch (error) {
   }
-  
+
   if (!session || !session.user) {
     return { success: false, error: 'User tidak ter-autentikasi. Silakan login ulang.' };
   }
@@ -281,17 +281,30 @@ export async function createProduct(payload) {
       image_urls: Array.isArray(payload.image_urls) ? payload.image_urls : [],
       category_id: payload.category_id || null,
       brand_id: payload.brand_id || null,
+      product_type: payload.product_type || 'physical',
+      consignor_name: payload.consignor_name || null,
       owner_id: session.user.id,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('products')
       .insert([productData])
       .select()
       .single();
+
+    if (error && (error.message?.includes('product_type') || error.message?.includes('consignor_name'))) {
+      delete productData.product_type;
+      delete productData.consignor_name;
+      const retry = await supabase
+        .from('products')
+        .insert([productData])
+        .select()
+        .single();
+      data = retry.data;
+      error = retry.error;
+    }
 
     if (error) {
       return { success: false, error: error.message };
@@ -310,7 +323,7 @@ export async function listCategories(userId) {
   try {
     const { data: sessionData } = await supabase.auth.getSession();
     const session = sessionData?.session;
-    
+
     if (!session || !session.user) return { data: [], error: 'User tidak ter-autentikasi' };
 
     const { data, error } = await supabase
@@ -332,7 +345,7 @@ export async function createCategory(userId, name) {
   try {
     const { data: sessionData } = await supabase.auth.getSession();
     const session = sessionData?.session;
-    
+
     if (!session || !session.user) return { success: false, error: 'User tidak ter-autentikasi' };
 
     const { data, error } = await supabase
@@ -359,7 +372,7 @@ export async function listBrands(userId) {
   try {
     const { data: sessionData } = await supabase.auth.getSession();
     const session = sessionData?.session;
-    
+
     if (!session || !session.user) return { data: [], error: 'User tidak ter-autentikasi' };
 
     const { data, error } = await supabase
@@ -381,7 +394,7 @@ export async function createBrand(userId, name) {
   try {
     const { data: sessionData } = await supabase.auth.getSession();
     const session = sessionData?.session;
-    
+
     if (!session || !session.user) return { success: false, error: 'User tidak ter-autentikasi' };
 
     const { data, error } = await supabase
@@ -401,7 +414,7 @@ export async function createBrand(userId, name) {
   }
 }
 export async function updateProduct(userId, id, payload) {
-  
+
   const supabase = getSupabaseClient();
   if (!supabase) {
     return { data: null, error: 'Supabase tidak tersedia' };
@@ -412,7 +425,7 @@ export async function updateProduct(userId, id, payload) {
   try {
     const sessionResult = await supabase.auth.getSession();
     session = sessionResult.data?.session;
-    
+
     if (!session || !session.user) {
       return { data: null, error: 'User tidak ter-autentikasi' };
     }
@@ -424,7 +437,7 @@ export async function updateProduct(userId, id, payload) {
     const patch = {
       updated_at: new Date().toISOString()
     };
-    
+
     if (payload.name != null) patch.name = String(payload.name);
     if (payload.barcode != null) patch.barcode = String(payload.barcode || '').trim() || null;
     if (payload.price != null) patch.price = Number(payload.price);
@@ -434,6 +447,9 @@ export async function updateProduct(userId, id, payload) {
     if (payload.image_urls != null) patch.image_urls = payload.image_urls;
     if (payload.category_id !== undefined) patch.category_id = payload.category_id;
     if (payload.brand_id !== undefined) patch.brand_id = payload.brand_id;
+    if (payload.product_type !== undefined) patch.product_type = payload.product_type;
+    if (payload.consignor_name !== undefined) patch.consignor_name = payload.consignor_name;
+    if (payload.consignor_phone !== undefined) patch.consignor_phone = payload.consignor_phone;
 
     // Sertakan alasan perubahan agar trigger product_change_log mencatatnya dengan benar
     // Nilai: 'edit_manual' | 'penjualan' | 'restock' | 'koreksi' | 'import'
@@ -443,13 +459,28 @@ export async function updateProduct(userId, id, payload) {
       patch.last_change_reason = 'edit_manual';
     }
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('products')
       .update(patch)
       .eq('owner_id', session.user.id)
       .eq('id', id)
       .select()
       .single();
+
+    if (error && (error.message?.includes('product_type') || error.message?.includes('consignor_name'))) {
+      delete patch.product_type;
+      delete patch.consignor_name;
+      delete patch.consignor_phone;
+      const retry = await supabase
+        .from('products')
+        .update(patch)
+        .eq('owner_id', session.user.id)
+        .eq('id', id)
+        .select()
+        .single();
+      data = retry.data;
+      error = retry.error;
+    }
 
     return { data, error };
   } catch (error) {
@@ -461,7 +492,7 @@ export async function updateProduct(userId, id, payload) {
 export async function deleteProduct(userId, id) {
   const supabase = getSupabaseClient();
   if (!supabase || !userId) return { error: 'Supabase tidak tersedia atau user tidak login' };
-  
+
   // Cek dulu apakah produk ada dan milik user
   const { data: existing, error: checkError } = await supabase
     .from('products')
@@ -504,8 +535,8 @@ export async function deleteProduct(userId, id) {
 
   if (error) {
     if (error.code === '23503') {
-      return { 
-        error: 'Gagal hapus: Data masih terikat oleh foreign key constraint. Silakan jalankan script SQL di file "src/database/fix_product_delete.sql" pada Supabase editor Anda untuk mengaktifkan CASCADE.' 
+      return {
+        error: 'Gagal hapus: Data masih terikat oleh foreign key constraint. Silakan jalankan script SQL di file "src/database/fix_product_delete.sql" pada Supabase editor Anda untuk mengaktifkan CASCADE.'
       };
     }
     return { error: error.message };
@@ -519,7 +550,7 @@ export async function deleteProduct(userId, id) {
 }
 
 export async function adjustStockOnSale(userId, cartItems) {
-  
+
   const supabase = getSupabaseClient();
   if (!supabase) {
     return { success: false, error: 'Supabase tidak tersedia' };
@@ -529,15 +560,15 @@ export async function adjustStockOnSale(userId, cartItems) {
     // Get current session
     const { data: sessionData } = await supabase.auth.getSession();
     const session = sessionData?.session;
-    
+
     if (!session || !session.user) {
       return { success: false, error: 'User tidak ter-autentikasi' };
     }
 
-    
+
     // Process each cart item
     for (const item of cartItems) {
-      
+
       // Get current product stock and variants
       const { data: product, error: getError } = await supabase
         .from('products')
@@ -551,7 +582,7 @@ export async function adjustStockOnSale(userId, cartItems) {
       }
 
       let updateData = { last_change_reason: 'penjualan' };
-      
+
       if (item.variantName && Array.isArray(product.variants) && product.variants.length > 0) {
         let variantFound = false;
         const updatedVariants = product.variants.map(v => {
@@ -561,11 +592,11 @@ export async function adjustStockOnSale(userId, cartItems) {
           }
           return v;
         });
-        
+
         if (!variantFound) {
           return { success: false, error: `Varian "${item.variantName}" tidak ditemukan pada produk (${item.productId})` };
         }
-        
+
         updateData.variants = updatedVariants;
         // Also update the main stock to be the sum of variants' stocks
         updateData.stock = updatedVariants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);

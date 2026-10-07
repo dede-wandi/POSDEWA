@@ -9,6 +9,8 @@ import { useToast } from '../../contexts/ToastContext';
 import { formatIDR } from '../../utils/currency';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, FontSize, FontWeight, Radii, Spacing, Shadows } from '../../theme';
+import { ProductEditableTable } from './components/table/ProductEditableTable';
+import { sortProductsIntelligently } from '../../utils/productSorting';
 
 const { width } = Dimensions.get('window');
 
@@ -84,9 +86,10 @@ export default function ListScreen({ navigation, route }) {
   const [products, setProducts] = useState([]);
   const [query, setQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const [isGrid, setIsGrid] = useState(false);
-
   const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
+  const [viewMode, setViewMode] = useState(isDesktop ? 'table' : 'list'); // 'table' | 'list' | 'grid'
+  const isGrid = viewMode === 'grid';
   const gridColumns = width >= 1024 ? 4 : (width >= 768 ? 3 : (width >= 600 ? 3 : 2));
 
   // Confirm Modal state
@@ -114,7 +117,10 @@ export default function ListScreen({ navigation, route }) {
     if (!selectedCategory) return brands;
     const availableBrandIds = new Set(
       products
-        .filter(p => p.category_id === selectedCategory)
+        .filter(p => selectedCategory === 'uncategorized'
+          ? (!p.category_id || p.category_id === 'null' || p.category_id === 'none')
+          : p.category_id === selectedCategory
+        )
         .map(p => p.brand_id)
         .filter(Boolean)
     );
@@ -133,12 +139,21 @@ export default function ListScreen({ navigation, route }) {
 
   useEffect(() => {
     if (selectedCategory) {
+      if (selectedCategory === 'uncategorized') {
+        if (selectedBrand) {
+          const hasUncat = products.some(p => p.brand_id === selectedBrand && (!p.category_id || p.category_id === 'null' || p.category_id === 'none'));
+          if (!hasUncat) {
+            setSelectedCategory(null);
+          }
+        }
+        return;
+      }
       const isAvailable = visibleCategories.some(c => c.id === selectedCategory);
       if (!isAvailable) {
         setSelectedCategory(null);
       }
     }
-  }, [selectedCategory, visibleCategories]);
+  }, [selectedCategory, visibleCategories, selectedBrand, products]);
 
   const loadMasterData = async () => {
     if (user?.id) {
@@ -218,60 +233,31 @@ export default function ListScreen({ navigation, route }) {
     };
   }, [user?.id]);
 
-  const filteredProducts = useMemo(() => {
+  const sortedRawProducts = useMemo(() => {
     let result = products;
-    if (selectedCategory) {
+    if (selectedCategory === 'uncategorized') {
+      result = result.filter(p => !p.category_id || p.category_id === 'null' || p.category_id === 'none');
+    } else if (selectedCategory) {
       result = result.filter(p => p.category_id === selectedCategory);
     }
     if (selectedBrand) {
       result = result.filter(p => p.brand_id === selectedBrand);
     }
 
-    // Jika tidak mem-filter kategori spesifik (e.g. Semua Kategori dipilih), tampilkan normal tanpa header/pengelompokan
-    // Urutkan berdasarkan item yang paling baru ditambahkan (created_at descending)
-    if (!selectedCategory) {
-      return [...result].sort((a, b) => {
-        const dateA = a.created_at || '';
-        const dateB = b.created_at || '';
-        if (dateA && dateB) {
-          return dateB.localeCompare(dateA);
-        }
-        return String(b.id || '').localeCompare(String(a.id || ''));
-      });
-    }
-
-    // Urutkan: Brand secara alfabet, lalu Kategori secara alfabet, lalu harga terendah ke tertinggi
-    const sorted = [...result].sort((a, b) => {
-      const brandA = brands.find(br => br.id === a.brand_id)?.name || 'Tanpa Brand';
-      const brandB = brands.find(br => br.id === b.brand_id)?.name || 'Tanpa Brand';
-      
-      const isAEmpty = brandA === 'Tanpa Brand';
-      const isBEmpty = brandB === 'Tanpa Brand';
-      
-      if (isAEmpty && !isBEmpty) return 1;
-      if (!isAEmpty && isBEmpty) return -1;
-      
-      const compBrand = brandA.localeCompare(brandB, undefined, { sensitivity: 'base' });
-      if (compBrand !== 0) return compBrand;
-      
-      // Jika brand sama, urutkan berdasarkan kategori
-      const catA = categories.find(c => c.id === a.category_id)?.name || 'Tanpa Kategori';
-      const catB = categories.find(c => c.id === b.category_id)?.name || 'Tanpa Kategori';
-      
-      const isCatAEmpty = catA === 'Tanpa Kategori';
-      const isCatBEmpty = catB === 'Tanpa Kategori';
-      
-      if (isCatAEmpty && !isCatBEmpty) return 1;
-      if (!isCatAEmpty && isCatBEmpty) return -1;
-      
-      const compCat = catA.localeCompare(catB, undefined, { sensitivity: 'base' });
-      if (compCat !== 0) return compCat;
-      
-      return (Number(a.price) || 0) - (Number(b.price) || 0);
+    // Urutkan produk menggunakan Smart Natural Sorting engine
+    // Mendukung pengurutan hari terkecil -> terbesar via Regex, kuota, harga, & grouping brand/kategori
+    return sortProductsIntelligently(result, {
+      brands,
+      categories,
+      selectedBrand,
+      selectedCategory,
+      query,
     });
+  }, [products, selectedCategory, selectedBrand, brands, categories, query]);
 
-    if (isGrid) {
-      return sorted;
+  const filteredProducts = useMemo(() => {
+    if (viewMode === 'grid' || viewMode === 'table') {
+      return sortedRawProducts;
     }
 
     // Untuk tampilan list, selipkan header brand - kategori
@@ -279,7 +265,7 @@ export default function ListScreen({ navigation, route }) {
     let lastBrandId = null;
     let lastCategoryId = null;
 
-    sorted.forEach((product) => {
+    sortedRawProducts.forEach((product) => {
       if (product.brand_id !== lastBrandId || product.category_id !== lastCategoryId) {
         lastBrandId = product.brand_id;
         lastCategoryId = product.category_id;
@@ -298,11 +284,11 @@ export default function ListScreen({ navigation, route }) {
     });
 
     return listWithHeaders;
-  }, [products, selectedCategory, selectedBrand, brands, categories, isGrid]);
+  }, [sortedRawProducts, viewMode, brands, categories]);
 
-  const confirmDelete = (id) => {
+  const confirmDelete = (id, fallbackName) => {
     const product = products.find(p => p.id === id);
-    const productName = product?.name || 'produk ini';
+    const productName = product?.name || fallbackName || 'produk ini';
     setConfirmModal({ visible: true, id, name: productName });
   };
 
@@ -376,12 +362,29 @@ export default function ListScreen({ navigation, route }) {
               <Ionicons name="add" size={18} color="#fff" />
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.viewToggleButton, styles.viewToggleButtonActive]}
-              onPress={() => setIsGrid(!isGrid)}
-            >
-              <Ionicons name={isGrid ? 'grid' : 'list'} size={16} color="#fff" />
-            </TouchableOpacity>
+            <View style={styles.modeSegment}>
+              <TouchableOpacity
+                style={[styles.modeSegmentBtn, viewMode === 'table' && styles.modeSegmentBtnActive]}
+                onPress={() => setViewMode('table')}
+                accessibilityLabel="Tabel Excel"
+              >
+                <Ionicons name="grid-outline" size={15} color={viewMode === 'table' ? '#fff' : '#64748B'} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modeSegmentBtn, viewMode === 'list' && styles.modeSegmentBtnActive]}
+                onPress={() => setViewMode('list')}
+                accessibilityLabel="Daftar List"
+              >
+                <Ionicons name="list" size={15} color={viewMode === 'list' ? '#fff' : '#64748B'} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modeSegmentBtn, viewMode === 'grid' && styles.modeSegmentBtnActive]}
+                onPress={() => setViewMode('grid')}
+                accessibilityLabel="Daftar Grid"
+              >
+                <Ionicons name="apps" size={15} color={viewMode === 'grid' ? '#fff' : '#64748B'} />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
         
@@ -397,6 +400,17 @@ export default function ListScreen({ navigation, route }) {
             >
               <Text style={[styles.filterChipText, !selectedCategory && styles.filterChipTextActive]}>Semua Kategori</Text>
             </TouchableOpacity>
+            {(!selectedBrand || products.some(p => p.brand_id === selectedBrand && (!p.category_id || p.category_id === 'null' || p.category_id === 'none'))) && (
+              <TouchableOpacity
+                style={[styles.filterChip, selectedCategory === 'uncategorized' && styles.filterChipActive]}
+                onPress={() => {
+                  setSelectedCategory(selectedCategory === 'uncategorized' ? null : 'uncategorized');
+                  setSelectedBrand(null);
+                }}
+              >
+                <Text style={[styles.filterChipText, selectedCategory === 'uncategorized' && styles.filterChipTextActive]}>Unkategori</Text>
+              </TouchableOpacity>
+            )}
             {visibleCategories.map(c => (
               <TouchableOpacity
                 key={c.id}
@@ -442,23 +456,48 @@ export default function ListScreen({ navigation, route }) {
 
       {/* Products List */}
       <View style={{ flex: 1 }}>
-        <FlatList
-          data={filteredProducts}
-          key={`${isGrid ? 'GRID' : 'LIST'}-${selectedCategory || 'all'}-${gridColumns}`}
-          numColumns={isGrid ? gridColumns : 1}
-          keyExtractor={(item) => item.id}
-          initialNumToRender={100}
-          windowSize={100}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listContainer}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[Colors.primary]}
-              tintColor={Colors.primary}
+        {viewMode === 'table' ? (
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={styles.tableScrollWrapper}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[Colors.primary]}
+                tintColor={Colors.primary}
+              />
+            }
+          >
+            <ProductEditableTable
+              products={sortedRawProducts}
+              categories={categories}
+              brands={brands}
+              navigation={navigation}
+              userId={user?.id}
+              showToast={showToast}
+              onProductUpdated={() => load()}
+              onDeleteProduct={confirmDelete}
             />
-          }
+          </ScrollView>
+        ) : (
+          <FlatList
+            data={filteredProducts}
+            key={`${viewMode === 'grid' ? 'GRID' : 'LIST'}-${selectedCategory || 'all'}-${gridColumns}`}
+            numColumns={viewMode === 'grid' ? gridColumns : 1}
+            keyExtractor={(item) => item.id}
+            initialNumToRender={100}
+            windowSize={100}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContainer}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[Colors.primary]}
+                tintColor={Colors.primary}
+              />
+            }
           renderItem={({ item }) => {
             try {
               if (item.isHeader) {
@@ -541,9 +580,9 @@ export default function ListScreen({ navigation, route }) {
                       </Text>
                     )}
                     
-                    {!selectedCategory && (categoryName || brandName) && (
+                    {(!selectedCategory || selectedCategory === 'uncategorized') && (categoryName || brandName || selectedCategory === 'uncategorized') && (
                       <Text style={styles.productCategoryGrid} numberOfLines={1}>
-                         {[categoryName, brandName].filter(Boolean).join(' • ')}
+                         {[categoryName || (selectedCategory === 'uncategorized' ? 'Tanpa Kategori' : null), brandName].filter(Boolean).join(' • ')}
                       </Text>
                     )}
                     {/* Price & Stock Row */}
@@ -624,9 +663,9 @@ export default function ListScreen({ navigation, route }) {
                     </Text>
                   )}
   
-                  {!selectedCategory && (categoryName || brandName) && (
+                  {(!selectedCategory || selectedCategory === 'uncategorized') && (categoryName || brandName || selectedCategory === 'uncategorized') && (
                     <Text style={styles.productCategoryText} numberOfLines={1}>
-                       {[categoryName, brandName].filter(Boolean).join(' • ')}
+                       {[categoryName || (selectedCategory === 'uncategorized' ? 'Tanpa Kategori' : null), brandName].filter(Boolean).join(' • ')}
                     </Text>
                   )}
                   
@@ -668,17 +707,28 @@ export default function ListScreen({ navigation, route }) {
           ListEmptyComponent={() => (
             <View style={styles.emptyContainer}>
               <Ionicons name="cube" size={48} color={Colors.muted} style={styles.emptyIcon} />
-              <Text style={styles.emptyTitle}>Belum ada produk</Text>
-              <Text style={styles.emptySubtitle}>Tambah produk pertama Anda untuk memulai</Text>
-              <TouchableOpacity 
-                style={styles.emptyButton}
-                onPress={() => navigation.navigate('FormProduk')}
-              >
-                <Text style={styles.emptyButtonText}>+ Tambah Produk</Text>
-              </TouchableOpacity>
+              <Text style={styles.emptyTitle}>
+                {selectedCategory === 'uncategorized'
+                  ? 'Tidak ada produk tanpa kategori'
+                  : 'Belum ada produk'}
+              </Text>
+              <Text style={styles.emptySubtitle}>
+                {selectedCategory === 'uncategorized'
+                  ? 'Semua produk sudah memiliki kategori'
+                  : 'Tambah produk pertama Anda untuk memulai'}
+              </Text>
+              {selectedCategory !== 'uncategorized' && (
+                <TouchableOpacity 
+                  style={styles.emptyButton}
+                  onPress={() => navigation.navigate('FormProduk')}
+                >
+                  <Text style={styles.emptyButtonText}>+ Tambah Produk</Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
         />
+      )}
       </View>
       <ConfirmModal
         visible={confirmModal.visible}
@@ -736,16 +786,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  viewToggleButton: {
-    width: 38,
-    height: 38,
-    borderRadius: Radii.sm,
+  modeSegment: {
+    flexDirection: 'row',
+    backgroundColor: '#E2E8F0',
+    borderRadius: 8,
+    padding: 2,
+    alignItems: 'center',
+  },
+  modeSegmentBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.border,
   },
-  viewToggleButtonActive: {
+  modeSegmentBtnActive: {
     backgroundColor: Colors.primary,
+    ...Shadows.sm,
+  },
+  tableScrollWrapper: {
+    padding: Spacing.md,
+    paddingBottom: 80,
   },
   filterChip: {
     paddingHorizontal: Spacing.md,
