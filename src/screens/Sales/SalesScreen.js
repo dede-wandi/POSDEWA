@@ -563,7 +563,7 @@ export default function SalesScreen({ navigation, route }) {
                   {item.qty}x {formatIDR(item.price)} = {formatIDR(item.lineTotal)}
                 </Text>
                 {item.costPrice > 0 && (
-                  <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 2, fontWeight: '500' }}>
+                  <Text style={{ fontSize: 11, color: Colors.danger, marginTop: 2, fontWeight: '700' }}>
                     Modal: {formatIDR(item.costPrice)}
                   </Text>
                 )}
@@ -986,7 +986,7 @@ export default function SalesScreen({ navigation, route }) {
                       Sisa Stok: {v.stock}
                     </Text>
                     {v.costPrice > 0 && (
-                      <Text style={{ fontSize: 11, color: '#94A3B8', fontWeight: '500' }}>
+                      <Text style={{ fontSize: 11, color: Colors.danger, fontWeight: '700' }}>
                         Modal: {formatIDR(v.costPrice)}
                       </Text>
                     )}

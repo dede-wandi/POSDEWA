@@ -132,8 +132,8 @@ export default function SplashScreen({ onFinish }) {
         
         {/* Main Icon Container with Scanning Effect */}
         <View style={styles.iconWrapper}>
-          <View style={[styles.iconContainer, { backgroundColor: 'transparent', shadowColor: 'transparent', elevation: 0 }]}>
-            <Image source={require('../../assets/logo.png')} style={{ width: 100, height: 100, borderRadius: 25 }} resizeMode="contain" />
+          <View style={[styles.iconContainer, { backgroundColor: 'transparent', shadowColor: 'transparent', elevation: 0, borderRadius: 0 }]}>
+            <Image source={require('../../assets/logo.png')} style={{ width: 120, height: 120 }} resizeMode="contain" />
           </View>
           
           {/* Scanning Line */}

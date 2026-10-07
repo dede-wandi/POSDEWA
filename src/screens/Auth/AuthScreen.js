@@ -72,14 +72,13 @@ export default function AuthScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={{ 
-            width: 80, 
-            height: 80, 
-            borderRadius: 20, 
+            width: 100, 
+            height: 100, 
             alignItems: 'center', 
             justifyContent: 'center',
             marginBottom: 16
           }}>
-            <Image source={require('../../../assets/logo.png')} style={{ width: 80, height: 80, borderRadius: 20 }} resizeMode="contain" />
+            <Image source={require('../../../assets/logo.png')} style={{ width: 100, height: 100 }} resizeMode="contain" />
           </View>
           <Text style={styles.title}>POSDEWA</Text>
           <Text style={styles.subtitle}>
