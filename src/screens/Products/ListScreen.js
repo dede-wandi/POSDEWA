@@ -281,7 +281,7 @@ export default function ListScreen({ navigation, route }) {
   }, [products]);
 
   const filteredProducts = useMemo(() => {
-    if (viewMode === 'grid' || viewMode === 'table') {
+    if (viewMode === 'grid' || viewMode === 'table' || (!selectedBrand && !selectedCategory)) {
       return sortedRawProducts;
     }
 

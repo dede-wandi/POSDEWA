@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
     fontSize: FontSize.title,
     fontWeight: FontWeight.bold,
     color: Colors.textPrimary,
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
   },
   scrollContent: {
     padding: Spacing.lg,
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     fontSize: FontSize.subtitle,
     fontWeight: FontWeight.bold,
     color: Colors.textPrimary,
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
   },
   table: {
     borderWidth: 1,
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     fontSize: FontSize.body,
     fontWeight: FontWeight.bold,
     color: Colors.primary,
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
   },
   tableRow: {
     flexDirection: 'row',
@@ -304,14 +304,14 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: FontSize.body,
     color: Colors.text,
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
   },
   cellProfit: {
     width: 140,
     textAlign: 'right',
     fontSize: FontSize.body,
     fontWeight: FontWeight.semibold,
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
   },
   positiveProfit: {
     color: Colors.success,
@@ -333,13 +333,13 @@ const styles = StyleSheet.create({
     fontSize: FontSize.bodyLg,
     fontWeight: FontWeight.bold,
     color: Colors.textPrimary,
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
   },
   totalValue: {
     fontSize: FontSize.bodyLg,
     fontWeight: FontWeight.bold,
     color: Colors.primary,
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
   },
   loadingContainer: {
     flex: 1,
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
     color: Colors.muted,
     fontSize: FontSize.body,
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
   },
   emptyContainer: {
     flex: 1,
@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
     color: Colors.muted,
     fontSize: FontSize.body,
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
     textAlign: 'center',
   },
   analyticsButtonCard: {
@@ -394,12 +394,12 @@ const styles = StyleSheet.create({
     fontSize: FontSize.bodyLg,
     fontWeight: FontWeight.bold,
     color: Colors.textPrimary,
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
   },
   analyticsButtonSubtitle: {
     fontSize: FontSize.caption,
     color: Colors.muted,
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
     marginTop: 2,
   },
 });

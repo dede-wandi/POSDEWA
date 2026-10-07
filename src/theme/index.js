@@ -126,14 +126,14 @@ export const FontWeight = {
 export const TextStyles = {
   // Screen / page
   pageTitle: {
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
     fontSize: FontSize.title,
     fontWeight: FontWeight.bold,
     color: Colors.textPrimary,
     letterSpacing: -0.3,
   },
   sectionTitle: {
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
     fontSize: FontSize.subtitle,
     fontWeight: FontWeight.semibold,
     color: Colors.textPrimary,
@@ -142,25 +142,25 @@ export const TextStyles = {
 
   // Cards
   cardTitle: {
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
     fontSize: FontSize.body,
     fontWeight: FontWeight.bold,
     color: Colors.textPrimary,
   },
   cardSubtitle: {
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
     fontSize: FontSize.caption,
     fontWeight: FontWeight.regular,
     color: Colors.muted,
   },
   cardValue: {
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
     fontSize: FontSize.bodyLg,
     fontWeight: FontWeight.bold,
     color: Colors.text,
   },
   cardValueLg: {
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
     fontSize: FontSize.h3,
     fontWeight: FontWeight.extrabold,
     color: Colors.textPrimary,
@@ -168,31 +168,31 @@ export const TextStyles = {
 
   // Labels & body
   label: {
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
     fontSize: FontSize.body,
     fontWeight: FontWeight.medium,
     color: Colors.textSecondary,
   },
   labelSm: {
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
     fontSize: FontSize.caption,
     fontWeight: FontWeight.medium,
     color: Colors.muted,
   },
   body: {
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
     fontSize: FontSize.body,
     fontWeight: FontWeight.regular,
     color: Colors.text,
   },
   bodySm: {
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
     fontSize: FontSize.caption,
     fontWeight: FontWeight.regular,
     color: Colors.muted,
   },
   caption: {
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
     fontSize: FontSize.sm,
     fontWeight: FontWeight.regular,
     color: Colors.muted,
@@ -200,19 +200,19 @@ export const TextStyles = {
 
   // Price / amount
   price: {
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
     fontSize: FontSize.body,
     fontWeight: FontWeight.extrabold,
     color: Colors.primary,
   },
   priceLg: {
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
     fontSize: FontSize.h3,
     fontWeight: FontWeight.extrabold,
     color: Colors.primary,
   },
   profit: {
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
     fontSize: FontSize.caption,
     fontWeight: FontWeight.semibold,
     color: Colors.success,
@@ -220,14 +220,14 @@ export const TextStyles = {
 
   // Buttons
   buttonText: {
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
     fontSize: FontSize.subtitle,
     fontWeight: FontWeight.bold,
     color: Colors.white,
     textAlign: 'center',
   },
   buttonTextSm: {
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
     fontSize: FontSize.body,
     fontWeight: FontWeight.semibold,
     color: Colors.white,
@@ -236,13 +236,13 @@ export const TextStyles = {
 
   // Misc
   badge: {
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
     fontSize: FontSize.xs,
     fontWeight: FontWeight.bold,
     color: Colors.white,
   },
   muted: {
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
     fontSize: FontSize.caption,
     color: Colors.muted,
   },
@@ -251,9 +251,9 @@ export const TextStyles = {
 // ── Backwards-compat alias ───────────────────────────────────
 // Screens that imported Typography will still work.
 export const Typography = {
-  heading: { fontFamily: 'Poppins', fontSize: FontSize.h1, fontWeight: FontWeight.bold },
-  subheading: { fontFamily: 'Poppins', fontSize: FontSize.h3, fontWeight: FontWeight.semibold },
-  label: { fontFamily: 'Poppins', fontSize: FontSize.body, fontWeight: FontWeight.medium },
-  body: { fontFamily: 'Poppins', fontSize: FontSize.body },
-  small: { fontFamily: 'Poppins', fontSize: FontSize.caption },
+  heading: { fontFamily: 'Nunito', fontSize: FontSize.h1, fontWeight: FontWeight.bold },
+  subheading: { fontFamily: 'Nunito', fontSize: FontSize.h3, fontWeight: FontWeight.semibold },
+  label: { fontFamily: 'Nunito', fontSize: FontSize.body, fontWeight: FontWeight.medium },
+  body: { fontFamily: 'Nunito', fontSize: FontSize.body },
+  small: { fontFamily: 'Nunito', fontSize: FontSize.caption },
 };

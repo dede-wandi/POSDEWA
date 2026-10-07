@@ -189,7 +189,7 @@ export default function SalesScreen({ navigation, route }) {
     
     // 1. Jika tidak mem-filter kategori spesifik (e.g. Semua Kategori dipilih), tampilkan normal tanpa header/pengelompokan
     // Urutkan berdasarkan item yang paling baru ditambahkan (created_at descending)
-    if (!selectedCategoryId) {
+    if (!selectedCategoryId && !selectedBrandId) {
       return list.sort((a, b) => {
         const dateA = a.created_at || '';
         const dateB = b.created_at || '';

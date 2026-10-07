@@ -630,7 +630,7 @@ const styles = StyleSheet.create({
     fontSize: FontSize.title,
     fontWeight: FontWeight.bold,
     color: Colors.textPrimary,
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
   },
   tabBar: {
     flexDirection: 'row',
@@ -654,7 +654,7 @@ const styles = StyleSheet.create({
     fontSize: FontSize.body,
     fontWeight: FontWeight.medium,
     color: Colors.muted,
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
   },
   tabTextActive: {
     color: Colors.textPrimary,
@@ -688,7 +688,7 @@ const styles = StyleSheet.create({
     fontSize: FontSize.caption,
     color: Colors.muted,
     fontWeight: FontWeight.semibold,
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
   },
   toggleTextActive: {
     color: Colors.textPrimary,
@@ -712,7 +712,7 @@ const styles = StyleSheet.create({
   yearText: {
     fontSize: FontSize.caption,
     color: Colors.text,
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
   },
   yearTextActive: {
     color: Colors.primary,
@@ -741,7 +741,7 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: FontSize.xs,
     color: Colors.text,
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
   },
   chipTextActive: {
     color: Colors.primary,
@@ -763,7 +763,7 @@ const styles = StyleSheet.create({
     color: Colors.muted,
     marginRight: 8,
     width: 50,
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
   },
   yearMiniChip: {
     paddingHorizontal: 8,
@@ -781,7 +781,7 @@ const styles = StyleSheet.create({
   yearMiniText: {
     fontSize: FontSize.xs,
     color: Colors.text,
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
   },
   yearMiniTextActive: {
     color: Colors.white,
@@ -798,7 +798,7 @@ const styles = StyleSheet.create({
     color: Colors.muted,
     marginRight: 8,
     width: 48,
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
   },
   miniChip: {
     paddingHorizontal: 10,
@@ -816,7 +816,7 @@ const styles = StyleSheet.create({
   miniChipText: {
     fontSize: FontSize.caption,
     color: Colors.text,
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
   },
   miniChipTextActive: {
     color: Colors.white,
@@ -838,7 +838,7 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.bold,
     color: Colors.textPrimary,
     marginBottom: Spacing.lg,
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
   },
   chart: {
     marginVertical: 8,
@@ -860,7 +860,7 @@ const styles = StyleSheet.create({
     fontSize: 9, 
     color: Colors.muted, 
     textAlign: 'right',
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
   },
   noDataContainer: {
     height: 200,
@@ -871,7 +871,7 @@ const styles = StyleSheet.create({
   noDataText: {
     color: Colors.muted,
     fontSize: FontSize.body,
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
     textAlign: 'center',
   },
   summaryCard: {
@@ -886,7 +886,7 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.bold,
     color: Colors.textPrimary,
     marginBottom: Spacing.md,
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
   },
   summaryRow: {
     flexDirection: 'row',
@@ -899,12 +899,12 @@ const styles = StyleSheet.create({
   summaryLabel: {
     color: Colors.textSecondary,
     fontSize: FontSize.body,
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
   },
   summaryValue: {
     fontWeight: FontWeight.bold,
     fontSize: FontSize.bodyLg,
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
   },
   loadingContainer: {
     flex: 1,
@@ -916,6 +916,6 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
     color: Colors.muted,
     fontSize: FontSize.body,
-    fontFamily: 'Poppins',
+    fontFamily: 'Nunito',
   },
 });
