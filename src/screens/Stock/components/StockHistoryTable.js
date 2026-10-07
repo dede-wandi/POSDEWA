@@ -80,8 +80,8 @@ export function StockHistoryTable({ history, emptyHint }) {
                     </View>
                   </View>
                   <View style={[t.cell, s.colReason, t.lastCol]}>
-                    <Text style={s.reasonText} numberOfLines={2}>{h.reason || '-'}</Text>
-                    {h.notes ? <Text style={s.notesText} numberOfLines={1}>Catatan: {h.notes}</Text> : null}
+                    <Text style={s.reasonText}>{h.reason || '-'}</Text>
+                    {h.notes ? <Text style={s.notesText}>{h.notes}</Text> : null}
                   </View>
                 </View>
               );

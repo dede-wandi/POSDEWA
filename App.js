@@ -39,6 +39,7 @@ import DashboardScreen from './src/screens/DashboardScreen';
 import MoreMenuScreen from './src/screens/MoreMenuScreen';
 
 import StockManagementScreen from './src/screens/StockManagementScreen';
+import InjectVoucherScreen from './src/screens/InjectVoucherScreen';
 import SalesAnalyticsScreen from './src/screens/SalesAnalyticsScreen';
 import WalletManagementScreen from './src/screens/Wallets/WalletManagementScreen'; // IMPORT WALLETS
 
@@ -246,6 +247,13 @@ function MainStack() {
           presentation: 'modal',
           headerShown: false,
           title: 'Manajemen Stok',
+        }}
+      />
+      <Stack.Screen
+        name="InjectVoucher"
+        component={InjectVoucherScreen}
+        options={{
+          headerShown: false,
         }}
       />
       <Stack.Screen

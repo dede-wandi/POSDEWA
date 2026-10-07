@@ -27,6 +27,13 @@ export default function MoreMenuScreen({ navigation }) {
       onPress: () => navigation.navigate('MainTabs', { screen: 'Produk', params: { screen: 'DaftarProduk' } }),
     },
     {
+      label: 'Inject Voucher',
+      icon: 'flash',
+      iconColor: '#F59E0B',
+      bgColor: '#FEF3C7',
+      onPress: () => navigation.navigate('InjectVoucher'),
+    },
+    {
       label: 'Produk Publik',
       icon: 'globe',
       iconColor: '#9C27B0',

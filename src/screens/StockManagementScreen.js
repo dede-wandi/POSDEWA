@@ -39,7 +39,7 @@ export default function StockManagementScreen({ navigation }) {
 
   // Search & Filter (History)
   const [historySearchQuery, setHistorySearchQuery] = useState('');
-  const [dateFilter, setDateFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('today');
   const [showDateFilterModal, setShowDateFilterModal] = useState(false);
 
   // Modal State
