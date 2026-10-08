@@ -121,7 +121,7 @@ export const sendWhatsAppNotification = async (saleData, items) => {
 
     // 3. Construct Message
     const businessName = user?.user_metadata?.business_name || user?.user_metadata?.full_name || 'POSDEWA';
-    let message = `*🔔 ${businessName.toUpperCase()} - PENJUALAN BARU*\n\n`;
+    let message = `*🔔 ${businessName.toUpperCase()} - ${saleData.isTest ? 'TEST NOTIFIKASI' : 'PENJUALAN BARU'}*\n\n`;
     
     // Format date safely
     const dateStr = new Date().toLocaleString('id-ID', { 
@@ -130,31 +130,35 @@ export const sendWhatsAppNotification = async (saleData, items) => {
     });
     message += `📅 ${dateStr}\n`;
     
-    // Format currency safely
-    const totalStr = Number(saleData.total || 0).toLocaleString('id-ID');
-    message += `💰 Total: Rp ${totalStr}\n`;
-    
-    const method = saleData.payment_method === 'cash' ? 'Tunai' : 'Transfer';
-    message += `💳 Metode: ${method}\n`;
-    
-    message += `\n*📝 Detail Item:*\n`;
+    if (saleData.isTest && saleData.hasTransaction === false) {
+      message += `\n(Belum ada transaksi untuk ditampilkan)\n`;
+    } else {
+      // Format currency safely
+      const totalStr = Number(saleData.total || 0).toLocaleString('id-ID');
+      message += `💰 Total: Rp ${totalStr}\n`;
+      
+      const method = saleData.payment_method === 'cash' ? 'Tunai' : 'Transfer';
+      message += `💳 Metode: ${method}\n`;
+      
+      message += `\n*📝 Detail Item:*\n`;
 
-    const itemsArray = Array.isArray(items) ? items : [];
-    itemsArray.forEach((item, index) => {
-      const name = item.product_name || item.name || 'Produk';
-      const qty = Number(item.qty || 0);
-      const price = Number(item.price || 0);
-      const subtotal = price * qty;
-      const itemProfit = item.line_profit !== undefined 
-        ? item.line_profit 
-        : ((price - (item.cost_price || item.costPrice || 0)) * qty);
-      
-      const costPrice = Number(item.cost_price || item.costPrice || 0);
-      const costPriceStr = costPrice.toLocaleString('id-ID');
-      
-      message += `${index + 1}. ${name} (${qty}x) Rp. ${costPriceStr}\n`;
-      message += `   Rp ${subtotal.toLocaleString('id-ID')} (Profit: Rp ${itemProfit.toLocaleString('id-ID')})\n`;
-    });
+      const itemsArray = Array.isArray(items) ? items : [];
+      itemsArray.forEach((item, index) => {
+        const name = item.product_name || item.name || 'Produk';
+        const qty = Number(item.qty || 0);
+        const price = Number(item.price || 0);
+        const subtotal = price * qty;
+        const itemProfit = item.line_profit !== undefined 
+          ? item.line_profit 
+          : ((price - (item.cost_price || item.costPrice || 0)) * qty);
+        
+        const costPrice = Number(item.cost_price || item.costPrice || 0);
+        const costPriceStr = costPrice.toLocaleString('id-ID');
+        
+        message += `${index + 1}. ${name} (${qty}x) Rp. ${costPriceStr}\n`;
+        message += `   Rp ${subtotal.toLocaleString('id-ID')} (Profit: Rp ${itemProfit.toLocaleString('id-ID')})\n`;
+      });
+    }
 
     // Add Daily & Monthly Stats
     message += `\n------------------\n`;

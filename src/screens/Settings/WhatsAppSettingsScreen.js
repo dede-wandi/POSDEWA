@@ -6,6 +6,8 @@ import { useAuth } from '../../context/AuthContext';
 import { getSupabaseClient } from '../../services/supabase';
 import { useToast } from '../../contexts/ToastContext';
 import { getWaConfig, upsertWaConfig } from '../../services/waNotifSupabase';
+import { sendWhatsAppNotification } from '../../services/whatsappService';
+import { getSalesHistory } from '../../services/salesSupabase';
 import { Colors, Spacing, Radii, Shadows, Typography } from '../../theme';
 
 export default function WhatsAppSettingsScreen({ navigation }) {
@@ -95,6 +97,46 @@ export default function WhatsAppSettingsScreen({ navigation }) {
       navigation.goBack();
     } catch (error) {
       showToast('Terjadi kesalahan saat menyimpan pengaturan', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const testNotification = async () => {
+    setLoading(true);
+    showToast('Mengirim test notifikasi...', 'info');
+    try {
+      const supabase = getSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        showToast('User tidak ter-autentikasi', 'error');
+        return;
+      }
+      
+      const salesResult = await getSalesHistory(user.id);
+      let saleData = { isTest: true, hasTransaction: false, total: 0, payment_method: 'cash' };
+      let items = [];
+      
+      if (salesResult && salesResult.data && salesResult.data.length > 0) {
+        const lastSale = salesResult.data[0];
+        saleData = { 
+          ...lastSale,
+          isTest: true,
+          hasTransaction: true
+        };
+        items = lastSale.sale_items || [];
+      }
+      
+      const result = await sendWhatsAppNotification(saleData, items);
+      
+      if (result && result.status) {
+        showToast('Test notifikasi berhasil dikirim!', 'success');
+      } else {
+        showToast('Gagal: ' + (result?.message || 'Kesalahan tidak diketahui'), 'error');
+      }
+    } catch (error) {
+      showToast('Gagal mengirim test: ' + error.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -261,6 +303,17 @@ export default function WhatsAppSettingsScreen({ navigation }) {
               </>
             )}
           </View>
+
+          <View style={[styles.section, { marginBottom: 40 }]}>
+            <TouchableOpacity 
+              style={[styles.testButton, loading ? styles.testButtonDisabled : null]}
+              onPress={testNotification}
+              disabled={loading}
+            >
+              <Ionicons name="paper-plane-outline" size={20} color={Colors.white} style={styles.testButtonIcon} />
+              <Text style={styles.testButtonText}>Test Notifikasi</Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -391,6 +444,27 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: Colors.borderLight,
     marginVertical: 20,
+  },
+  testButton: {
+    backgroundColor: Colors.secondary || '#6366f1',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: Radii.md,
+    marginTop: 10,
+    ...Shadows.button
+  },
+  testButtonDisabled: {
+    opacity: 0.6,
+  },
+  testButtonIcon: {
+    marginRight: 8,
+  },
+  testButtonText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: 'bold',
   }
 });
 
