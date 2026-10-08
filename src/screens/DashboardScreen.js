@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Platform,
   Alert,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,7 +21,7 @@ import { getDashboardStats, getRecentSales } from '../services/dashboardSupabase
 import { getMenuConfigs } from '../services/menuConfigSupabase';
 import { getProductValuation } from '../services/productValuationService';
 import { getExpenseSummary } from '../services/expenseSupabase';
-import { getWallets } from '../services/walletSupabase';
+import { getWallets, addWalletTransaction } from '../services/walletSupabase';
 import { Colors, Spacing, Radii, FontSize, FontWeight } from '../theme';
 
 const PRIMARY   = '#5B58F5';
@@ -54,6 +55,53 @@ export default function DashboardScreen({ navigation }) {
   const [refreshing, setRefreshing]       = useState(false);
   const [menuConfigs, setMenuConfigs]     = useState({});
   const [menuErrors, setMenuErrors]       = useState({});
+  const [isSettling, setIsSettling]       = useState(false);
+  const [settleModalData, setSettleModalData] = useState(null); // { titipanWallet, cashWallet }
+
+  const handleQuickSettleSupplier = (titipanWallet) => {
+    const cashWallet = wallets.find(w => w.type === 'CASH');
+    if (!cashWallet) {
+      showToast('Tidak ada dompet TUNAI (Kasir) untuk pembayaran.', 'error');
+      return;
+    }
+    setSettleModalData({ titipanWallet, cashWallet });
+  };
+
+  const executeSettlePayment = async () => {
+    if (!settleModalData) return;
+    const { titipanWallet, cashWallet } = settleModalData;
+
+    setIsSettling(true);
+    try {
+      await addWalletTransaction({
+        wallet_id: cashWallet.id,
+        type: 'OUT',
+        amount: titipanWallet.balance,
+        reference_type: 'ADJUSTMENT',
+        description: `Bayar supplier via ${titipanWallet.name}`
+      });
+
+      await addWalletTransaction({
+        wallet_id: titipanWallet.id,
+        type: 'OUT',
+        amount: titipanWallet.balance,
+        reference_type: 'ADJUSTMENT',
+        description: `Pencairan uang ke Supplier`
+      });
+
+      showToast('Berhasil bayar supplier!', 'success');
+      setSettleModalData(null);
+      if (typeof loadData === 'function') {
+         loadData();
+      } else {
+         fetchDashboardData();
+      }
+    } catch (err) {
+      showToast('Gagal memproses pembayaran', 'error');
+    } finally {
+      setIsSettling(false);
+    }
+  };
 
   // Custom Info Modal State
   const [infoModalVisible, setInfoModalVisible] = useState(false);
@@ -271,16 +319,50 @@ export default function DashboardScreen({ navigation }) {
                       </TouchableOpacity>
                     ))}
                   </View>
-                  <View style={{ marginTop: 16, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}>
-                    <Ionicons name="information-circle-outline" size={14} color="rgba(255,255,255,0.8)" style={{ marginRight: 6 }} />
-                    <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 10, flex: 1, fontStyle: 'italic' }}>
-                      Profit hari ini akan dipindahkan ke saldo Profit jam 12 malam secara otomatis (memotong saldo Laci Kasir).
-                    </Text>
-                  </View>
+                    <View style={{ marginTop: 16, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}>
+                      <Ionicons name="information-circle-outline" size={14} color="rgba(255,255,255,0.8)" style={{ marginRight: 6 }} />
+                      <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 10, flex: 1, fontStyle: 'italic' }}>
+                        Profit hari ini akan dipindahkan ke saldo Profit jam 12 malam secara otomatis (memotong saldo Laci Kasir).
+                      </Text>
+                    </View>
+
                 </>
               )}
             </View>
           </View>
+
+          {/* TOMBOL BAYAR SUPPLIER CEPAT (LUAR HERO CARD) */}
+          {(() => {
+            const titipanWallet = wallets?.find(w => (w.name || '').toLowerCase().includes('titipan') || (w.name || '').toLowerCase().includes('supplier'));
+            if (titipanWallet && Number(titipanWallet.balance) > 0) {
+              return (
+                <View style={{ marginHorizontal: PAD, marginTop: 12, marginBottom: 4, backgroundColor: '#FFF', borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
+                  <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: '#F0FDF4', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                      <Ionicons name="basket-outline" size={22} color="#16A34A" />
+                    </View>
+                    <View>
+                      <Text style={{ color: '#64748B', fontSize: 12, marginBottom: 2 }}>Tagihan Supplier / Titipan</Text>
+                      <Text style={{ color: '#0F172A', fontSize: 17, fontWeight: 'bold' }}>{fmt(titipanWallet.balance)}</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity 
+                    style={{ backgroundColor: SUCCESS, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, flexDirection: 'row', alignItems: 'center' }}
+                    onPress={() => handleQuickSettleSupplier(titipanWallet)}
+                    disabled={isSettling}
+                  >
+                    {isSettling ? <ActivityIndicator size="small" color="#FFF" /> : (
+                      <>
+                        <Ionicons name="checkmark-circle" size={18} color="#FFF" style={{ marginRight: 6 }} />
+                        <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 13 }}>Bayar Sekarang</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              );
+            }
+            return null;
+          })()}
 
           {/* ── QUICK ACTIONS ───────────────────────── */}
           <View style={[styles.qaRow, { marginHorizontal: PAD }]}>
@@ -452,6 +534,50 @@ export default function DashboardScreen({ navigation }) {
             </TouchableOpacity>
           </TouchableOpacity>
         </View>
+      )}
+
+      {/* ── MODAL SETTLE SUPPLIER ─────────────────────────────── */}
+      {settleModalData && (
+        <Modal visible={true} transparent animationType="fade">
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+            <View style={{ width: '100%', maxWidth: 400, backgroundColor: '#FFF', borderRadius: 16, padding: 20, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#FEF2F2', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                  <Ionicons name="warning-outline" size={24} color="#EF4444" />
+                </View>
+                <Text style={{ fontSize: 18, fontWeight: 'bold', color: TEXT_DARK, flex: 1 }}>Konfirmasi Pembayaran</Text>
+              </View>
+              
+              <Text style={{ fontSize: 15, color: TEXT_MID, lineHeight: 22, marginBottom: 8 }}>
+                Sistem akan memotong <Text style={{ fontWeight: 'bold', color: '#0F172A' }}>Rp {fmt(settleModalData.titipanWallet.balance)}</Text> dari dompet <Text style={{ fontWeight: 'bold' }}>{settleModalData.cashWallet.name}</Text>.
+              </Text>
+              <Text style={{ fontSize: 14, color: '#64748B', lineHeight: 20, marginBottom: 24 }}>
+                Pastikan Anda sudah memberikan uang fisiknya ke supplier. Lanjutkan?
+              </Text>
+
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <TouchableOpacity 
+                  style={{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: '#F1F5F9', alignItems: 'center' }}
+                  onPress={() => setSettleModalData(null)}
+                  disabled={isSettling}
+                >
+                  <Text style={{ color: '#475569', fontWeight: '600', fontSize: 14 }}>Batal</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: SUCCESS, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' }}
+                  onPress={executeSettlePayment}
+                  disabled={isSettling}
+                >
+                  {isSettling ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 14 }}>Ya, Bayar</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       )}
     </SafeAreaView>
   );

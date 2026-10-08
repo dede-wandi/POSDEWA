@@ -70,6 +70,64 @@ export default function WalletManagementScreen() {
   const [adjDesc, setAdjDesc] = useState('');
   const [adjError, setAdjError] = useState('');
 
+  // Settle Supplier Modal State
+  const [settleModalVisible, setSettleModalVisible] = useState(false);
+  const [isSettling, setIsSettling] = useState(false);
+  const [settleTitipanWallet, setSettleTitipanWallet] = useState(null);
+  const [settleCashWalletId, setSettleCashWalletId] = useState('');
+  const [settleAmount, setSettleAmount] = useState('');
+
+  const handleSettleSupplier = async () => {
+    if (!settleCashWalletId) {
+      showToast('Pilih laci kasir sumber dana', 'error');
+      return;
+    }
+    const amount = Number(settleAmount.replace(/[^0-9]/g, '')) || 0;
+    if (amount <= 0) {
+      showToast('Nominal harus lebih dari 0', 'error');
+      return;
+    }
+
+    Alert.alert(
+      "Konfirmasi Pembayaran",
+      `Anda yakin akan membayarkan uang sebesar Rp ${formatCurrency(amount)} ke supplier?\n\nSaldo Laci Kasir Anda akan dipotong.`,
+      [
+        { text: "Batal", style: "cancel" },
+        { 
+          text: "Ya, Bayar Sekarang", 
+          style: "destructive",
+          onPress: async () => {
+            setIsSettling(true);
+            
+            // 1. Keluarkan uang dari Laci Kasir (Fisik)
+            await addWalletTransaction({
+              wallet_id: settleCashWalletId,
+              type: 'OUT',
+              amount: amount,
+              reference_type: 'ADJUSTMENT',
+              description: `Bayar supplier via ${settleTitipanWallet.name}`
+            });
+
+            // 2. Turunkan hutang di dompet Titipan
+            await addWalletTransaction({
+              wallet_id: settleTitipanWallet.id,
+              type: 'OUT',
+              amount: amount,
+              reference_type: 'ADJUSTMENT',
+              description: `Pencairan uang ke Supplier`
+            });
+
+            setIsSettling(false);
+            showToast('Pembayaran ke supplier berhasil dicatat!', 'success');
+            setSettleModalVisible(false);
+            setSettleAmount('');
+            fetchWallets();
+          }
+        }
+      ]
+    );
+  };
+
   // History Modal State
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
   const [historyData, setHistoryData] = useState([]);
@@ -228,7 +286,10 @@ export default function WalletManagementScreen() {
   };
 
   const calculateTotal = () => {
-    return wallets.reduce((sum, wallet) => sum + (Number(wallet.balance) || 0), 0);
+    return wallets.filter(w => {
+      const wName = (w.name || '').toLowerCase();
+      return w.type !== 'PROFIT' && !wName.includes('profit') && !wName.includes('supplier') && !wName.includes('titipan');
+    }).reduce((sum, wallet) => sum + (Number(wallet.balance) || 0), 0);
   };
 
   const renderWalletItem = ({ item }) => (
@@ -252,6 +313,22 @@ export default function WalletManagementScreen() {
         <Text style={styles.walletBalanceLabel}>Total Saldo</Text>
         <Text style={styles.walletBalanceAmount}>{formatCurrency(item.balance)}</Text>
       </View>
+      
+      {/* Tombol khusus Titipan Supplier */}
+      {((item.name || '').toLowerCase().includes('titipan') || (item.name || '').toLowerCase().includes('supplier')) && Number(item.balance) > 0 && (
+        <TouchableOpacity 
+          style={{ backgroundColor: '#16a34a', paddingVertical: 8, borderRadius: 8, marginTop: 12, alignItems: 'center' }}
+          onPress={() => {
+            setSettleTitipanWallet(item);
+            setSettleAmount(item.balance.toString());
+            const firstCash = wallets.find(w => w.type === 'CASH');
+            if (firstCash) setSettleCashWalletId(firstCash.id);
+            setSettleModalVisible(true);
+          }}
+        >
+          <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 13 }}>Selesaikan Hutang Supplier</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -621,6 +698,63 @@ export default function WalletManagementScreen() {
                 }}
               />
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Settle Supplier */}
+      <Modal visible={settleModalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Selesaikan Tagihan Supplier</Text>
+              <TouchableOpacity onPress={() => setSettleModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ backgroundColor: '#FEE2E2', padding: 12, borderRadius: 8, marginBottom: 16 }}>
+              <Text style={{ color: '#991B1B', fontSize: 12 }}>
+                Sistem akan memotong uang fisik dari laci kasir dan me-reset tagihan di dompet {settleTitipanWallet?.name} ini.
+              </Text>
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Ambil Uang Fisik Dari</Text>
+              <WalletPicker
+                wallets={wallets.filter(w => !((w.name || '').toLowerCase().includes('titipan') || (w.name || '').toLowerCase().includes('supplier')) && w.type !== 'PROFIT')}
+                selectedId={settleCashWalletId}
+                onSelect={setSettleCashWalletId}
+                highlightColor="#16a34a"
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Nominal Disetor ke Supplier (Rp)</Text>
+              <TextInput
+                style={styles.input}
+                keyboardType="numeric"
+                value={settleAmount}
+                onChangeText={(val) => setSettleAmount(val.replace(/[^0-9]/g, ''))}
+              />
+              {settleAmount !== '' && (
+                <Text style={{ marginTop: 4, color: Colors.primary, fontWeight: '600' }}>
+                  {formatCurrency(Number(settleAmount))}
+                </Text>
+              )}
+            </View>
+
+            <TouchableOpacity
+              style={[styles.submitButton, isSettling && { opacity: 0.7 }]}
+              onPress={handleSettleSupplier}
+              disabled={isSettling}
+            >
+              {isSettling ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={styles.submitButtonText}>Konfirmasi Setor</Text>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>

@@ -142,6 +142,25 @@ export default function PaymentScreen({ navigation, route }) {
         });
       }
 
+      // 2c. INTEGRASI WALLET: Otomatis Catat Hutang Titipan Supplier
+      const titipanItems = cart.filter(item => item.consignorName || (item.name || '').toLowerCase().includes('titipan') || (item.name || '').toLowerCase().includes('konsinyasi'));
+      const totalTitipanCost = titipanItems.reduce((sum, item) => sum + (item.costPrice || 0) * item.qty, 0);
+
+      if (totalTitipanCost > 0) {
+         // Cari dompet yang namanya mengandung kata 'titipan' atau 'supplier'
+         const titipanWallet = wallets.find(w => (w.name || '').toLowerCase().includes('titipan') || (w.name || '').toLowerCase().includes('supplier'));
+         if (titipanWallet) {
+           await addWalletTransaction({
+             wallet_id: titipanWallet.id,
+             type: 'IN', // Hutang bertambah
+             amount: totalTitipanCost,
+             reference_type: 'SALE',
+             reference_id: saleResult.data?.sale?.id || null,
+             description: `Akumulasi Modal Terjual trx #${saleResult.data?.sale?.no_invoice || ''}`
+           });
+         }
+      }
+
       // 3. Adjust stock
       const cartForStock = cart.map(item => {
         let pId = item.originalProductId || item.id;

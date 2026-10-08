@@ -521,7 +521,8 @@ export default function SalesScreen({ navigation, route }) {
         qty: 1,
         lineTotal: itemPrice,
         tokenCode: tokenCode,
-        stock: maxStock
+        stock: maxStock,
+        consignorName: product.consignor_name || null
       };
       setCart([...cart, newItem]);
     }
