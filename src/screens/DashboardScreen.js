@@ -33,13 +33,10 @@ const SUCCESS   = '#22C55E';
 const DANGER    = '#EF4444';
 
 const MENU_ITEMS = [
-  { key: 'kasir',       label: 'Kasir',       icon: 'cart-outline',          color: '#3B82F6', bg: '#EFF6FF', screen: 'Penjualan',               params: {} },
   { key: 'produk',      label: 'Produk',      icon: 'cube-outline',          color: '#10B981', bg: '#ECFDF5', screen: 'Produk',                  params: { screen: 'DaftarProduk' } },
-  { key: 'wallet',      label: 'Kas & Saldo', icon: 'wallet',                color: '#8B5CF6', bg: '#F3E8FF', screen: 'WalletManagement',        params: {} },
-  { key: 'valuasi',     label: 'Valuasi',     icon: 'pie-chart-outline',     color: '#4338CA', bg: '#EEF2FF', screen: 'ProductAssetValuation',   params: {} },
   { key: 'inject',      label: 'Inject Voucher',icon: 'flash-outline',       color: '#F59E0B', bg: '#FEF3C7', screen: 'InjectVoucher',           params: {} },
   { key: 'stok',        label: 'Stok',        icon: 'layers-outline',        color: '#EF4444', bg: '#FEF2F2', screen: 'StockManagement',          params: {} },
-  { key: 'penjualan',   label: 'Laporan',     icon: 'document-text-outline', color: '#0D9488', bg: '#F0FDFA', screen: 'SalesReport',              params: {} },
+  { key: 'penjualan',   label: 'Penjualan',   icon: 'document-text-outline', color: '#0D9488', bg: '#F0FDFA', screen: 'SalesReport',              params: {} },
   { key: 'more',        label: 'Lainnya',     icon: 'grid-outline',          color: '#6366F1', bg: '#EEF2FF', screen: 'MoreMenu',                 params: {} },
 ];
 
@@ -106,7 +103,7 @@ export default function DashboardScreen({ navigation }) {
     try {
       const [sRes, rRes, cRes, vRes, eRes, wRes] = await Promise.all([
         getDashboardStats(user?.id),
-        getRecentSales(user?.id, 5),
+        getRecentSales(user?.id, 10),
         user?.id ? getMenuConfigs(user.id) : Promise.resolve({ success: false }),
         user?.id ? getProductValuation(user.id) : Promise.resolve({ success: false }),
         user?.id ? getExpenseSummary(user.id, 'month') : Promise.resolve({ success: false }),
@@ -286,7 +283,7 @@ export default function DashboardScreen({ navigation }) {
             {[
               { l: 'Kasir',       ic: 'cart-outline',        c: PRIMARY,   sc: 'Penjualan' },
               { l: 'Valuasi',     ic: 'pie-chart-outline',   c: '#4338CA', sc: 'ProductAssetValuation' },
-              { l: 'Pengeluaran', ic: 'wallet-outline',      c: '#DC2626', sc: 'Expenses' },
+              { l: 'Profit',      ic: 'bar-chart-outline',   c: '#10B981', sc: 'AnnualProfitReport' },
               { l: 'Kas & Saldo', ic: 'wallet',              c: '#8B5CF6', sc: 'WalletManagement' },
             ].map(btn => (
               <TouchableOpacity key={btn.l} style={styles.qaBtn} onPress={() => navigation.navigate(btn.sc, btn.p || {})} activeOpacity={0.75}>
@@ -306,36 +303,22 @@ export default function DashboardScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          {isTablet ? (
-            // On tablet/desktop: show all in one row, wrapped
-            <View style={[styles.menuGrid, { paddingHorizontal: PAD }]}>
-              {MENU_ITEMS.map(item => (
-                <TouchableOpacity
-                  key={item.key}
-                  style={[styles.menuItem, { width: menuItemW }]}
-                  onPress={() => navigation.navigate(item.screen, item.params)}
-                  activeOpacity={0.75}
-                >
-                  <View style={[styles.menuCircle, { backgroundColor: item.bg }]}>
-                    <Ionicons name={item.icon} size={22} color={item.color} />
-                  </View>
-                  <Text style={styles.menuLbl} numberOfLines={1}>{item.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          ) : (
-            // On phone: horizontal scroll
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.menuScroll, { paddingHorizontal: PAD }]}>
-              {MENU_ITEMS.map(item => (
-                <TouchableOpacity key={item.key} style={[styles.menuItem, { width: 68 }]} onPress={() => navigation.navigate(item.screen, item.params)} activeOpacity={0.75}>
-                  <View style={[styles.menuCircle, { backgroundColor: item.bg }]}>
-                    <Ionicons name={item.icon} size={20} color={item.color} />
-                  </View>
-                  <Text style={styles.menuLbl} numberOfLines={1}>{item.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          )}
+          {/* Menu always uses grid layout since there are only 5 items */}
+          <View style={[styles.menuGrid, { paddingHorizontal: PAD }]}>
+            {MENU_ITEMS.map(item => (
+              <TouchableOpacity
+                key={item.key}
+                style={[styles.menuItem, { flex: 1, maxWidth: '100%' }]}
+                onPress={() => navigation.navigate(item.screen, item.params)}
+                activeOpacity={0.75}
+              >
+                <View style={[styles.menuCircle, { backgroundColor: item.bg }]}>
+                  <Ionicons name={item.icon} size={22} color={item.color} />
+                </View>
+                <Text style={styles.menuLbl} numberOfLines={1}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
           {/* ── STAT CARDS ──────────────────────────── */}
           <View style={[styles.secRow, { paddingHorizontal: PAD }]}>
@@ -399,26 +382,33 @@ export default function DashboardScreen({ navigation }) {
           </View>
 
           <View style={[styles.salesCard, { marginHorizontal: PAD }]}>
-            {recentSales.length > 0 ? recentSales.map((sale, idx) => (
-              <TouchableOpacity
-                key={sale.id}
-                style={[styles.saleRow, idx < recentSales.length - 1 && styles.saleRowBorder]}
-                onPress={() => navigation.navigate('History')}
-                activeOpacity={0.7}
-              >
-                <View style={styles.saleIcon}>
-                  <Ionicons name="receipt-outline" size={17} color={PRIMARY} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.saleInv} numberOfLines={1}>{sale.no_invoice || `#${sale.id.substring(0, 8)}`}</Text>
-                  <Text style={styles.saleDate}>{fmtDate(sale.created_at)}</Text>
-                </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.saleTot}>{fmt(sale.total)}</Text>
-                  <Text style={styles.saleProfit}>+{fmt(sale.profit)}</Text>
-                </View>
-              </TouchableOpacity>
-            )) : (
+            {recentSales.length > 0 ? recentSales.map((sale, idx) => {
+              const items = sale.sale_items || [];
+              const title = items.length > 0 
+                ? `${items[0].product_name}${items.length > 1 ? ` (+${items.length - 1} item)` : ''}`
+                : (sale.no_invoice || `#${sale.id.substring(0, 8)}`);
+
+              return (
+                <TouchableOpacity
+                  key={sale.id}
+                  style={[styles.saleRow, idx < recentSales.length - 1 && styles.saleRowBorder]}
+                  onPress={() => navigation.navigate('History')}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.saleIcon}>
+                    <Ionicons name="receipt-outline" size={17} color={PRIMARY} />
+                  </View>
+                  <View style={{ flex: 1, paddingRight: 8 }}>
+                    <Text style={styles.saleInv} numberOfLines={1}>{title}</Text>
+                    <Text style={styles.saleDate}>{fmtDate(sale.created_at)}</Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.saleTot}>{fmt(sale.total)}</Text>
+                    <Text style={styles.saleProfit}>+{fmt(sale.profit)}</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            }) : (
               <View style={styles.empty}>
                 <Ionicons name="receipt-outline" size={40} color="#CBD5E1" />
                 <Text style={styles.emptyTxt}>Belum ada penjualan hari ini</Text>
