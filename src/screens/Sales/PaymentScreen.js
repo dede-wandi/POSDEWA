@@ -239,6 +239,49 @@ export default function PaymentScreen({ navigation, route }) {
           </View>
         </View>
 
+        {/* === UANG MASUK (PEMBAYARAN PELANGGAN) - KHUSUS TARIK TUNAI === */}
+        {wallets.length > 0 && cart.some(item => (item.name || '').toLowerCase().includes('tarik tunai')) && (
+          <View style={[styles.card, { borderColor: '#16a34a', borderWidth: 1.5, marginBottom: 16 }]}>
+            <View style={styles.cardTitleRow}>
+              <Ionicons name="enter" size={18} color="#16a34a" />
+              <Text style={[styles.cardTitle, { color: '#14532d' }]}>Tujuan Uang Masuk</Text>
+            </View>
+            <Text style={styles.cardSubtitle}>
+              Pilih dompet tempat pelanggan membayar (Contoh: Laci Kasir atau Seabank)
+            </Text>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -4 }}>
+              <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 4, paddingBottom: 4 }}>
+                {wallets.filter(w => w.type !== 'PROFIT').map(w => {
+                  const ws = getWalletStyle(w.type);
+                  const isActive = selectedWalletId === w.id;
+                  return (
+                    <TouchableOpacity
+                      key={w.id}
+                      style={[
+                        { 
+                          flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12, 
+                          borderWidth: 1.5, borderColor: isActive ? '#16a34a' : '#E2E8F0',
+                          backgroundColor: isActive ? '#f0fdf4' : '#FFF', minWidth: 130
+                        }
+                      ]}
+                      onPress={() => setSelectedWalletId(w.id)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name={ws.icon} size={20} color={isActive ? '#16a34a' : '#64748b'} />
+                      <View style={{ marginLeft: 8 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: isActive ? '#16a34a' : '#334155' }}>
+                          {w.name}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
+        )}
+
         {/* === CHANNEL PEMROSESAN === */}
         {wallets.length > 0 && (
           <View style={[styles.card, { borderColor: '#f59e0b', borderWidth: 1.5 }]}>
@@ -252,7 +295,8 @@ export default function PaymentScreen({ navigation, route }) {
                 : 'Pilih channel jika ada biaya modal. Kosongkan untuk produk fisik biasa.'}
             </Text>
 
-            {/* Opsi: Tidak ada / Skip */}
+            <View style={styles.walletGrid}>
+              {/* Opsi: Tidak ada / Skip */}
             <TouchableOpacity
               style={[
                 styles.walletCard,
@@ -293,6 +337,7 @@ export default function PaymentScreen({ navigation, route }) {
                 </TouchableOpacity>
               );
             })}
+            </View>
           </View>
         )}
 
@@ -401,7 +446,7 @@ const styles = StyleSheet.create({
   headerCard: {
     backgroundColor: Colors.primary,
     margin: 16,
-    marginBottom: 8,
+    marginBottom: 24, // Added more spacing here
     borderRadius: 16,
     padding: 20,
   },
