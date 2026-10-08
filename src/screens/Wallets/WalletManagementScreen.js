@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../theme';
-import { getWallets, deleteWallet, addWallet, transferBalance, addWalletTransaction } from '../../services/walletSupabase';
+import { getWallets, deleteWallet, addWallet, transferBalance, addWalletTransaction, getWalletTransactions } from '../../services/walletSupabase';
 import { useNavigation } from '@react-navigation/native';
 import { formatCurrency } from '../../utils/currency';
 
@@ -69,6 +69,25 @@ export default function WalletManagementScreen() {
   const [adjAmount, setAdjAmount] = useState('');
   const [adjDesc, setAdjDesc] = useState('');
   const [adjError, setAdjError] = useState('');
+
+  // History Modal State
+  const [historyModalVisible, setHistoryModalVisible] = useState(false);
+  const [historyData, setHistoryData] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [selectedWalletForHistory, setSelectedWalletForHistory] = useState(null);
+
+  const handleViewHistory = async (wallet) => {
+    setSelectedWalletForHistory(wallet);
+    setHistoryModalVisible(true);
+    setHistoryLoading(true);
+    const { data, error } = await getWalletTransactions(wallet.id);
+    if (data) {
+      setHistoryData(data);
+    } else {
+      showToast('Gagal memuat riwayat', 'error');
+    }
+    setHistoryLoading(false);
+  };
 
   useEffect(() => {
     if (user?.id) fetchWallets();
@@ -222,6 +241,12 @@ export default function WalletManagementScreen() {
           <Text style={styles.walletName}>{item.name}</Text>
           <Text style={styles.walletType}>{item.type}</Text>
         </View>
+        <TouchableOpacity 
+          style={{ padding: 6, backgroundColor: '#EFF6FF', borderRadius: 8, marginLeft: 'auto' }} 
+          onPress={() => handleViewHistory(item)}
+        >
+          <Ionicons name="time-outline" size={20} color="#3B82F6" />
+        </TouchableOpacity>
       </View>
       <View style={styles.walletBalanceContainer}>
         <Text style={styles.walletBalanceLabel}>Total Saldo</Text>
@@ -549,6 +574,53 @@ export default function WalletManagementScreen() {
                 )}
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Riwayat Mutasi */}
+      <Modal visible={historyModalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { minHeight: '80%', maxHeight: '90%' }]}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>Riwayat Mutasi</Text>
+                <Text style={{ fontSize: 13, color: '#64748b' }}>{selectedWalletForHistory?.name}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setHistoryModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            {historyLoading ? (
+              <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 20 }} />
+            ) : historyData.length === 0 ? (
+              <Text style={{ textAlign: 'center', color: '#94a3b8', marginTop: 20 }}>Belum ada riwayat mutasi.</Text>
+            ) : (
+              <FlatList
+                data={historyData}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={{ gap: 10, paddingBottom: 20 }}
+                renderItem={({ item }) => {
+                  const isOut = item.type === 'OUT';
+                  return (
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, backgroundColor: '#f8fafc', borderRadius: 10, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                      <View style={{ flex: 1, marginRight: 10 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#1e293b' }}>
+                          {item.description || (item.reference_type === 'TRANSFER' ? 'Transfer Saldo' : 'Mutasi')}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                          {new Date(item.created_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                      </View>
+                      <Text style={{ fontSize: 14, fontWeight: 'bold', color: isOut ? '#dc2626' : '#16a34a' }}>
+                        {isOut ? '-' : '+'}{formatCurrency(item.amount)}
+                      </Text>
+                    </View>
+                  );
+                }}
+              />
+            )}
           </View>
         </View>
       </Modal>

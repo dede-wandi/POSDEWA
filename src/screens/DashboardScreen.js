@@ -141,7 +141,10 @@ export default function DashboardScreen({ navigation }) {
   const lowStockCount     = stats?.products?.lowStock?.length || 0;
   const totalCostValue    = valuationData?.totalCostValue || 0;
   const monthExpenseTotal = expenseData?.totalAmount || 0;
-  const totalSaldoKas     = wallets?.reduce((sum, w) => sum + (Number(w.balance) || 0), 0) || 0;
+  const totalSaldoKas     = wallets?.filter(w => {
+    const wName = (w.name || '').toLowerCase();
+    return w.type !== 'PROFIT' && !wName.includes('profit') && !wName.includes('supplier') && !wName.includes('titipan');
+  }).reduce((sum, w) => sum + (Number(w.balance) || 0), 0) || 0;
 
   const STAT_CARDS = [
     { label: 'Total Penjualan', value: fmt(monthTotal),  icon: 'cash-outline',        color: PRIMARY,   bg: '#EEF2FF', onPress: () => navigation.navigate('SalesAnalytics', { type: 'sales',  period: 'month' }) },
@@ -247,7 +250,10 @@ export default function DashboardScreen({ navigation }) {
                 <>
                   <View style={[styles.heroDivider, { marginTop: 14 }]} />
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 24, rowGap: 12, marginTop: 8 }}>
-                    {wallets.map((w, index) => (
+                    {wallets.filter(w => {
+                      const wName = (w.name || '').toLowerCase();
+                      return w.type !== 'PROFIT' && !wName.includes('profit') && !wName.includes('supplier') && !wName.includes('titipan');
+                    }).map((w, index) => (
                       <TouchableOpacity 
                         key={w.id} 
                         style={{ alignItems: 'flex-start' }}

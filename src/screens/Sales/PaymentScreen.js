@@ -262,7 +262,10 @@ export default function PaymentScreen({ navigation, route }) {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -4 }}>
               <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 4, paddingBottom: 4 }}>
                 {wallets.filter(w => {
-                  if (w.type === 'PROFIT' || (w.name || '').toLowerCase().includes('profit')) return false;
+                  const wName = (w.name || '').toLowerCase();
+                  if (w.type === 'PROFIT' || wName.includes('profit')) return false;
+                  if (wName.includes('supplier') || wName.includes('titipan')) return false;
+                  
                   const isTarikTunai = cart.some(i => (i.name||'').toLowerCase().includes('tarik tunai'));
                   const isTransfer = cart.some(i => (i.name||'').toLowerCase().includes('transfer'));
                   
@@ -339,7 +342,10 @@ export default function PaymentScreen({ navigation, route }) {
             )}
 
             {wallets.filter(w => {
-              if (w.type === 'PROFIT' || (w.name || '').toLowerCase().includes('profit')) return false;
+              const wName = (w.name || '').toLowerCase();
+              if (w.type === 'PROFIT' || wName.includes('profit')) return false;
+              if (wName.includes('supplier') || wName.includes('titipan')) return false;
+              
               const isTarikTunai = cart.some(i => (i.name||'').toLowerCase().includes('tarik tunai'));
               const isTransfer = cart.some(i => (i.name||'').toLowerCase().includes('transfer'));
               
