@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   useWindowDimensions,
   ActivityIndicator,
+  Platform,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -55,6 +57,10 @@ export default function DashboardScreen({ navigation }) {
   const [refreshing, setRefreshing]       = useState(false);
   const [menuConfigs, setMenuConfigs]     = useState({});
   const [menuErrors, setMenuErrors]       = useState({});
+
+  // Custom Info Modal State
+  const [infoModalVisible, setInfoModalVisible] = useState(false);
+  const [infoModalContent, setInfoModalContent] = useState({ title: '', message: '' });
 
   // Responsive helpers
   const isTablet   = width >= 768;
@@ -186,43 +192,55 @@ export default function DashboardScreen({ navigation }) {
           </TouchableOpacity>
 
           {/* ── HERO CARD ───────────────────────────── */}
-          <TouchableOpacity
-            style={[styles.hero, { marginHorizontal: PAD, borderRadius: HERO_R }]}
-            onPress={() => navigation.navigate('SalesAnalyticsDashboard', { initialTab: 'profit' })}
-            activeOpacity={0.9}
-          >
+          <View style={[styles.hero, { marginHorizontal: PAD, borderRadius: HERO_R }]}>
             <View style={styles.b1} /><View style={styles.b2} /><View style={styles.b3} />
             <View style={{ position: 'relative', zIndex: 1 }}>
-              <View style={styles.heroTop}>
-                <View style={styles.badge}>
-                  <Ionicons name="wallet-outline" size={11} color={WHITE} style={{ marginRight: 3 }} />
-                  <Text style={styles.badgeTxt}>Hari Ini</Text>
+              <TouchableOpacity 
+                activeOpacity={0.8}
+                onPress={() => navigation.navigate('SalesAnalyticsDashboard', { initialTab: 'profit' })}
+              >
+                <View style={styles.heroTop}>
+                  <View style={styles.badge}>
+                    <Ionicons name="wallet-outline" size={11} color={WHITE} style={{ marginRight: 3 }} />
+                    <Text style={styles.badgeTxt}>Hari Ini</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={15} color="rgba(255,255,255,0.4)" />
                 </View>
-                <Ionicons name="chevron-forward" size={15} color="rgba(255,255,255,0.4)" />
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <View>
-                  <Text style={styles.heroLbl}>Total Profit Hari Ini</Text>
-                  <Text style={[styles.heroAmt, isTablet && { fontSize: 28 }]}>{fmt(todayProfit)}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <View>
+                    <Text style={styles.heroLbl}>Total Profit Hari Ini</Text>
+                    <Text style={[styles.heroAmt, isTablet && { fontSize: 28 }]}>{fmt(todayProfit)}</Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.heroLbl}>Total Saldo Kas</Text>
+                    <Text style={[styles.heroAmt, isTablet && { fontSize: 28 }]}>{fmt(totalSaldoKas)}</Text>
+                  </View>
                 </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.heroLbl}>Total Saldo Kas</Text>
-                  <Text style={[styles.heroAmt, isTablet && { fontSize: 28 }]}>{fmt(totalSaldoKas)}</Text>
-                </View>
-              </View>
+              </TouchableOpacity>
               <View style={styles.heroDivider} />
               <View style={styles.heroStats}>
                 {[
-                  { l: 'Penjualan', v: fmt(todayTotal) },
-                  { l: 'Transaksi', v: `${todayTrx}x` },
-                  { l: 'Bln Ini',   v: fmt(monthProfit) },
+                  { l: 'Penjualan', v: fmt(todayTotal), tooltip: 'Total nilai penjualan kotor Anda hari ini.' },
+                  { l: 'Transaksi', v: `${todayTrx}x`, tooltip: 'Jumlah transaksi (struk/nota) yang berhasil dicetak hari ini.' },
+                  { l: 'Bln Ini',   v: fmt(monthProfit), tooltip: 'Profit \'Bln Ini\' sudah mencakup (akumulasi) Profit Hari Ini. Jumlah ini adalah total keuntungan Anda sejak tanggal 1 di bulan yang sama.' },
                 ].map((stat, i) => (
                   <React.Fragment key={stat.l}>
                     {i > 0 && <View style={styles.heroSep} />}
-                    <View style={styles.heroStat}>
-                      <Text style={styles.heroStatLbl}>{stat.l}</Text>
+                    <TouchableOpacity 
+                      style={styles.heroStat}
+                      activeOpacity={0.7}
+                      title={Platform.OS === 'web' ? stat.tooltip : undefined}
+                      onPress={() => {
+                        setInfoModalContent({ title: `Info ${stat.l}`, message: stat.tooltip });
+                        setInfoModalVisible(true);
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Text style={styles.heroStatLbl}>{stat.l}</Text>
+                        <Ionicons name="information-circle" size={12} color="rgba(255,255,255,0.4)" />
+                      </View>
                       <Text style={styles.heroStatVal}>{stat.v}</Text>
-                    </View>
+                    </TouchableOpacity>
                   </React.Fragment>
                 ))}
               </View>
@@ -232,7 +250,7 @@ export default function DashboardScreen({ navigation }) {
                 <>
                   <View style={[styles.heroDivider, { marginTop: 14 }]} />
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20, paddingHorizontal: 20 }}>
-                    <View style={{ flexDirection: 'row', gap: 20 }}>
+                    <View style={{ flexDirection: 'row', gap: 20, paddingRight: 40 }}>
                       {wallets.map((w, index) => (
                         <TouchableOpacity 
                           key={w.id} 
@@ -252,10 +270,16 @@ export default function DashboardScreen({ navigation }) {
                       ))}
                     </View>
                   </ScrollView>
+                  <View style={{ marginTop: 16, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}>
+                    <Ionicons name="information-circle-outline" size={14} color="rgba(255,255,255,0.8)" style={{ marginRight: 6 }} />
+                    <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 10, flex: 1, fontStyle: 'italic' }}>
+                      Profit hari ini akan dipindahkan ke saldo Profit jam 12 malam secara otomatis (memotong saldo Laci Kasir).
+                    </Text>
+                  </View>
                 </>
               )}
             </View>
-          </TouchableOpacity>
+          </View>
 
           {/* ── QUICK ACTIONS ───────────────────────── */}
           <View style={[styles.qaRow, { marginHorizontal: PAD }]}>
@@ -405,6 +429,36 @@ export default function DashboardScreen({ navigation }) {
           <View style={{ height: 32 }} />
         </View>
       </ScrollView>
+
+      {/* ── INFO MODAL ─────────────────────────────── */}
+      {infoModalVisible && (
+        <View style={StyleSheet.absoluteFill}>
+          <TouchableOpacity 
+            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }} 
+            activeOpacity={1} 
+            onPress={() => setInfoModalVisible(false)}
+          >
+            <TouchableOpacity 
+              activeOpacity={1} 
+              style={{ width: '85%', maxWidth: 340, backgroundColor: '#FFF', borderRadius: 12, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                <Ionicons name="information-circle" size={24} color={PRIMARY} style={{ marginRight: 8 }} />
+                <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#1E293B' }}>{infoModalContent.title}</Text>
+              </View>
+              <Text style={{ fontSize: 14, color: '#475569', lineHeight: 22, marginBottom: 20 }}>
+                {infoModalContent.message}
+              </Text>
+              <TouchableOpacity 
+                style={{ backgroundColor: PRIMARY, paddingVertical: 10, borderRadius: 8, alignItems: 'center' }}
+                onPress={() => setInfoModalVisible(false)}
+              >
+                <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Mengerti</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
