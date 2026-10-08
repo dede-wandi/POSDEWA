@@ -1,4 +1,5 @@
 import { getSupabaseClient } from './supabase';
+import { isUnlimitedProduct } from './productTypeService';
 
 // Get sales history for a user
 export const getSalesHistory = async (userId) => {
@@ -303,16 +304,22 @@ export const deleteSale = async (saleId) => {
       const session = sessionData?.session;
       if (session && session.user) {
         for (const item of saleItems) {
-          let query = supabase.from('products').select('id, name, type, stock').eq('owner_id', session.user.id);
-          if (item.barcode) {
-            query = query.eq('barcode', item.barcode);
-          } else {
-            query = query.eq('name', item.product_name);
+          let products = null;
+          
+          if (item.barcode && String(item.barcode).trim() !== '') {
+            const { data } = await supabase.from('products').select('*').eq('owner_id', session.user.id).ilike('barcode', `%${String(item.barcode).trim()}%`).limit(1);
+            products = data;
           }
-          const { data: products } = await query.limit(1);
+          
+          if (!products || products.length === 0) {
+            const { data } = await supabase.from('products').select('*').eq('owner_id', session.user.id).eq('name', item.product_name).limit(1);
+            products = data;
+          }
+
           if (products && products.length > 0) {
             const p = products[0];
-            const isUnlimited = p.type === 'DIGITAL' || p.type === 'JASA' || String(p.name).toLowerCase().includes('tarik tunai') || String(p.name).toLowerCase().includes('topup');
+            const isUnlimited = isUnlimitedProduct(p);
+            
             if (!isUnlimited) {
               await supabase.from('products')
                 .update({ stock: (Number(p.stock) || 0) + Number(item.qty), last_change_reason: 'hapus_transaksi' })
@@ -378,16 +385,22 @@ export const deleteSaleItem = async (itemId) => {
     const { data: sessionData } = await supabase.auth.getSession();
     const session = sessionData?.session;
     if (session && session.user) {
-      let query = supabase.from('products').select('id, name, type, stock').eq('owner_id', session.user.id);
-      if (barcode) {
-        query = query.eq('barcode', barcode);
-      } else {
-        query = query.eq('name', product_name);
+      let products = null;
+      
+      if (barcode && String(barcode).trim() !== '') {
+        const { data } = await supabase.from('products').select('*').eq('owner_id', session.user.id).ilike('barcode', `%${String(barcode).trim()}%`).limit(1);
+        products = data;
       }
-      const { data: products } = await query.limit(1);
+      
+      if (!products || products.length === 0) {
+        const { data } = await supabase.from('products').select('*').eq('owner_id', session.user.id).eq('name', product_name).limit(1);
+        products = data;
+      }
+
       if (products && products.length > 0) {
         const p = products[0];
-        const isUnlimited = p.type === 'DIGITAL' || p.type === 'JASA' || String(p.name).toLowerCase().includes('tarik tunai') || String(p.name).toLowerCase().includes('topup');
+        const isUnlimited = isUnlimitedProduct(p);
+        
         if (!isUnlimited) {
           await supabase.from('products')
             .update({ stock: (Number(p.stock) || 0) + Number(qty), last_change_reason: 'hapus_transaksi' })
