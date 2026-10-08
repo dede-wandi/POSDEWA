@@ -41,10 +41,24 @@ export default function InjectVoucherScreen({ navigation }) {
         getWallets(user.id)
       ]);
       
-      const vouchers = (fetchedProducts || []).filter(p => 
-        (p.name && p.name.toLowerCase().includes('voucher')) || 
-        (p.category_id && p.category_name && p.category_name.toLowerCase().includes('voucher'))
-      );
+      const vouchers = (fetchedProducts || []).filter(p => {
+        const pName = p.name ? p.name.toLowerCase() : '';
+        const cName = p.category_name ? p.category_name.toLowerCase() : '';
+        return pName.includes('voucher') || cName.includes('voucher') ||
+               pName.includes('kartu') || cName.includes('kartu') ||
+               pName.includes('perdana') || cName.includes('perdana');
+      }).sort((a, b) => {
+        const aName = (a.name || '').toLowerCase();
+        const bName = (b.name || '').toLowerCase();
+        
+        const aIsKartu = aName.includes('kartu') || aName.includes('perdana');
+        const bIsKartu = bName.includes('kartu') || bName.includes('perdana');
+        
+        if (aIsKartu && !bIsKartu) return 1;
+        if (!aIsKartu && bIsKartu) return -1;
+        
+        return aName.localeCompare(bName);
+      });
       setProducts(vouchers);
 
       if (fetchedWallets.data) {
@@ -112,15 +126,15 @@ export default function InjectVoucherScreen({ navigation }) {
       const res = await addStock(
         selectedProduct.id, 
         injectQty, 
-        'Inject Voucher', 
-        `Inject voucher dari ${selectedWallet.name} (HPP: ${formatIDR(singleCost)})${customNoteText}`
+        'Inject Voucher / Kartu', 
+        `Inject voucher / kartu dari ${selectedWallet.name} (HPP: ${formatIDR(singleCost)})${customNoteText}`
       );
 
       if (!res.success) {
         throw new Error(res.error || 'Gagal update stok voucher');
       }
 
-      showToast('Inject Voucher Berhasil!', 'success');
+      showToast('Berhasil menambahkan stok (Inject/Beli)!', 'success');
       setModalVisible(false);
       loadData(); // refresh data
     } catch (error) {
@@ -130,17 +144,22 @@ export default function InjectVoucherScreen({ navigation }) {
     }
   };
 
-  const renderProductItem = ({ item }) => (
-    <TouchableOpacity style={styles.card} onPress={() => openInjectModal(item)}>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.productName}>{item.name}</Text>
-        <Text style={styles.stockText}>Stok saat ini: {item.stock || 0}</Text>
+  const renderProductItem = ({ item }) => {
+    const stock = item.stock || 0;
+    const isOutOfStock = stock <= 0;
+    return (
+      <View style={[styles.tableRow, isOutOfStock && { backgroundColor: '#FFE4E6' }]}>
+        <Text style={[styles.tableColTitle, { flex: 2 }]} numberOfLines={2}>{item.name}</Text>
+        <Text style={[styles.tableColStock, { flex: 1, textAlign: 'center', color: isOutOfStock ? '#E11D48' : '#64748B' }]}>{stock}</Text>
+        <TouchableOpacity style={styles.tableColAction} onPress={() => openInjectModal(item)} activeOpacity={0.7}>
+          <View style={styles.injectMiniBtn}>
+            <Ionicons name="add" size={16} color="#FFF" />
+            <Text style={styles.injectMiniBtnTxt}>Beli</Text>
+          </View>
+        </TouchableOpacity>
       </View>
-      <View style={styles.injectButton}>
-        <Ionicons name="add-circle" size={32} color={Colors.primary} />
-      </View>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -148,7 +167,7 @@ export default function InjectVoucherScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Inject Voucher</Text>
+        <Text style={styles.headerTitle}>Inject Voucher & Kartu</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -175,12 +194,19 @@ export default function InjectVoucherScreen({ navigation }) {
           <Text style={{ marginTop: 10, color: '#64748B' }}>Tidak ada produk dengan nama 'Voucher'</Text>
         </View>
       ) : (
-        <FlatList
-          data={products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))}
-          keyExtractor={item => item.id}
-          renderItem={renderProductItem}
-          contentContainerStyle={{ padding: 16 }}
-        />
+        <View style={{ flex: 1 }}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableHeadText, { flex: 2 }]}>Nama Produk</Text>
+            <Text style={[styles.tableHeadText, { flex: 1, textAlign: 'center' }]}>Stok</Text>
+            <Text style={[styles.tableHeadText, { width: 80, textAlign: 'center' }]}>Aksi</Text>
+          </View>
+          <FlatList
+            data={products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))}
+            keyExtractor={item => item.id}
+            renderItem={renderProductItem}
+            contentContainerStyle={{ paddingBottom: 20 }}
+          />
+        </View>
       )}
 
       {/* Modal Inject */}
@@ -322,17 +348,24 @@ const styles = StyleSheet.create({
   },
   searchIcon: { marginRight: 8 },
   searchInput: { flex: 1, fontSize: 14, color: '#1E293B', height: '100%' },
-  card: {
-    backgroundColor: '#FFF', borderRadius: 12, padding: 16, marginBottom: 12,
-    flexDirection: 'row', alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 2
+  tableHeader: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9',
+    paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#E2E8F0',
+    marginTop: 12
   },
-  productName: { fontSize: 15, fontWeight: '600', color: '#1E293B' },
-  stockText: { fontSize: 13, color: '#64748B', marginTop: 4 },
-  priceLabel: { fontSize: 11, color: '#94A3B8', marginBottom: 2 },
-  priceValue: { fontSize: 13, fontWeight: '700', color: '#0EA5E9' },
-  costValue: { fontSize: 13, fontWeight: '700', color: '#F59E0B' },
-  injectButton: { padding: 8 },
+  tableHeadText: { fontSize: 12, fontWeight: '700', color: '#475569' },
+  tableRow: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF',
+    paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F1F5F9'
+  },
+  tableColTitle: { fontSize: 12, fontWeight: '600', color: '#1E293B' },
+  tableColStock: { fontSize: 13, fontWeight: '700' },
+  tableColAction: { width: 70, alignItems: 'flex-end' },
+  injectMiniBtn: { 
+    flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.primary,
+    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, justifyContent: 'center'
+  },
+  injectMiniBtnTxt: { color: '#FFF', fontSize: 11, fontWeight: '700', marginLeft: 2 },
   
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 },

@@ -239,8 +239,11 @@ export default function PaymentScreen({ navigation, route }) {
           </View>
         </View>
 
-        {/* === UANG MASUK (PEMBAYARAN PELANGGAN) - KHUSUS TARIK TUNAI === */}
-        {wallets.length > 0 && cart.some(item => (item.name || '').toLowerCase().includes('tarik tunai')) && (
+        {/* === UANG MASUK (PEMBAYARAN PELANGGAN) - KHUSUS TARIK TUNAI / TRANSFER === */}
+        {wallets.length > 0 && cart.some(item => {
+          const n = (item.name || '').toLowerCase();
+          return n.includes('tarik tunai') || n.includes('transfer');
+        }) && (
           <View style={[styles.card, { borderColor: '#16a34a', borderWidth: 1.5, marginBottom: 16 }]}>
             <View style={styles.cardTitleRow}>
               <Ionicons name="enter" size={18} color="#16a34a" />
@@ -271,7 +274,9 @@ export default function PaymentScreen({ navigation, route }) {
                       <Ionicons name={ws.icon} size={20} color={isActive ? '#16a34a' : '#64748b'} />
                       <View style={{ marginLeft: 8 }}>
                         <Text style={{ fontSize: 13, fontWeight: '700', color: isActive ? '#16a34a' : '#334155' }}>
-                          {w.type === 'CASH' ? `${w.name} / Tarik Tunai` : w.name}
+                          {w.type === 'CASH' 
+                            ? `${w.name}${cart.some(i => (i.name||'').toLowerCase().includes('tarik tunai')) ? ' / Tarik Tunai' : cart.some(i => (i.name||'').toLowerCase().includes('transfer')) ? ' / Terima Tunai' : ''}` 
+                            : w.name}
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -331,7 +336,9 @@ export default function PaymentScreen({ navigation, route }) {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.walletCardName, isActive && { color: ws.color }]}>
-                      {w.type === 'CASH' ? `${w.name} / Tarik Tunai` : w.name}
+                      {w.type === 'CASH' 
+                        ? `${w.name}${cart.some(i => (i.name||'').toLowerCase().includes('tarik tunai')) ? ' / Tarik Tunai' : cart.some(i => (i.name||'').toLowerCase().includes('transfer')) ? ' / Terima Tunai' : ''}` 
+                        : w.name}
                     </Text>
                     <Text style={styles.walletCardBalance}>{formatIDR(w.balance)}</Text>
                   </View>

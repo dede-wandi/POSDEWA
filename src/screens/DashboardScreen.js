@@ -34,7 +34,7 @@ const DANGER    = '#EF4444';
 
 const MENU_ITEMS = [
   { key: 'produk',      label: 'Produk',      icon: 'cube-outline',          color: '#10B981', bg: '#ECFDF5', screen: 'Produk',                  params: { screen: 'DaftarProduk' } },
-  { key: 'inject',      label: 'Inject Voucher',icon: 'flash-outline',       color: '#F59E0B', bg: '#FEF3C7', screen: 'InjectVoucher',           params: {} },
+  { key: 'inject',      label: 'Voucher/Kartu', icon: 'flash-outline',       color: '#F59E0B', bg: '#FEF3C7', screen: 'InjectVoucher',           params: {} },
   { key: 'stok',        label: 'Stok',        icon: 'layers-outline',        color: '#EF4444', bg: '#FEF2F2', screen: 'StockManagement',          params: {} },
   { key: 'penjualan',   label: 'Penjualan',   icon: 'document-text-outline', color: '#0D9488', bg: '#F0FDFA', screen: 'SalesReport',              params: {} },
   { key: 'more',        label: 'Lainnya',     icon: 'grid-outline',          color: '#6366F1', bg: '#EEF2FF', screen: 'MoreMenu',                 params: {} },
