@@ -231,25 +231,27 @@ export default function DashboardScreen({ navigation }) {
               {wallets && wallets.length > 0 && (
                 <>
                   <View style={[styles.heroDivider, { marginTop: 14 }]} />
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                    {wallets.map((w, index) => (
-                      <TouchableOpacity 
-                        key={w.id} 
-                        style={{ alignItems: index === 0 ? 'flex-start' : index === wallets.length - 1 ? 'flex-end' : 'center', flex: 1 }}
-                        onPress={() => {
-                          if (w.type === 'PROFIT' || (w.name || '').toLowerCase().includes('profit')) {
-                            navigation.navigate('AnnualProfitReport');
-                          } else {
-                            navigation.navigate('WalletManagement');
-                          }
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 10, marginBottom: 2, fontWeight: '500' }} numberOfLines={1}>{w.name}</Text>
-                        <Text style={{ color: '#FFF', fontSize: 11, fontWeight: 'bold' }} numberOfLines={1}>{fmt(w.balance)}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20, paddingHorizontal: 20 }}>
+                    <View style={{ flexDirection: 'row', gap: 20 }}>
+                      {wallets.map((w, index) => (
+                        <TouchableOpacity 
+                          key={w.id} 
+                          style={{ alignItems: 'flex-start' }}
+                          onPress={() => {
+                            if (w.type === 'PROFIT' || (w.name || '').toLowerCase().includes('profit')) {
+                              navigation.navigate('AnnualProfitReport');
+                            } else {
+                              navigation.navigate('WalletManagement');
+                            }
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 10, marginBottom: 2, fontWeight: '500' }}>{w.name}</Text>
+                          <Text style={{ color: '#FFF', fontSize: 11, fontWeight: 'bold' }}>{fmt(w.balance)}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </ScrollView>
                 </>
               )}
             </View>
