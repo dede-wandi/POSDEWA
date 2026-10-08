@@ -271,7 +271,7 @@ export default function PaymentScreen({ navigation, route }) {
                       <Ionicons name={ws.icon} size={20} color={isActive ? '#16a34a' : '#64748b'} />
                       <View style={{ marginLeft: 8 }}>
                         <Text style={{ fontSize: 13, fontWeight: '700', color: isActive ? '#16a34a' : '#334155' }}>
-                          {w.name}
+                          {w.type === 'CASH' ? `${w.name} / Tarik Tunai` : w.name}
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -330,7 +330,9 @@ export default function PaymentScreen({ navigation, route }) {
                     <Ionicons name={ws.icon} size={20} color={isActive ? '#FFF' : ws.color} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.walletCardName, isActive && { color: ws.color }]}>{w.name}</Text>
+                    <Text style={[styles.walletCardName, isActive && { color: ws.color }]}>
+                      {w.type === 'CASH' ? `${w.name} / Tarik Tunai` : w.name}
+                    </Text>
                     <Text style={styles.walletCardBalance}>{formatIDR(w.balance)}</Text>
                   </View>
                   {isActive && <View style={[styles.inBadge, { backgroundColor: '#dc2626' }]}><Text style={styles.inBadgeText}>-HPP</Text></View>}
