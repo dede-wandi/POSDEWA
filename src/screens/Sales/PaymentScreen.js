@@ -318,7 +318,7 @@ export default function PaymentScreen({ navigation, route }) {
 
             <View style={styles.walletGrid}>
               {/* Opsi: Tidak ada / Skip */}
-            {!cart.some(i => (i.name||'').toLowerCase().includes('tarik tunai')) && (
+            {!(cart.some(i => (i.name||'').toLowerCase().includes('tarik tunai')) || cart.some(i => (i.name||'').toLowerCase().includes('transfer'))) && (
               <TouchableOpacity
                 style={[
                   styles.walletCard,
