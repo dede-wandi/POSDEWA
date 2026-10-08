@@ -1,6 +1,6 @@
-
 import { getSupabaseClient } from './supabase';
 import { getWaConfig } from './waNotifSupabase';
+import { getWallets } from './walletSupabase';
 
 export const sendWhatsAppNotification = async (saleData, items) => {
 
@@ -98,6 +98,27 @@ export const sendWhatsAppNotification = async (saleData, items) => {
     } catch (err) {
     }
 
+    // 2.6 Fetch Wallet Balances
+    let wallets = [];
+    let totalSaldoKas = 0;
+    try {
+      if (user) {
+        const walletResult = await getWallets(user.id);
+        if (walletResult && walletResult.data) {
+          wallets = walletResult.data;
+          
+          totalSaldoKas = wallets.reduce((total, w) => {
+            const isSystem = w.name?.toUpperCase() === 'PROFIT' || 
+                           w.name?.toUpperCase() === 'SUPPLIER' || 
+                           w.name?.toUpperCase() === 'TITIPAN';
+            return total + (isSystem ? 0 : (Number(w.balance) || 0));
+          }, 0);
+        }
+      }
+    } catch (err) {
+      console.log('Error fetching wallets:', err);
+    }
+
     // 3. Construct Message
     const businessName = user?.user_metadata?.business_name || user?.user_metadata?.full_name || 'POSDEWA';
     let message = `*🔔 ${businessName.toUpperCase()} - PENJUALAN BARU*\n\n`;
@@ -142,6 +163,18 @@ export const sendWhatsAppNotification = async (saleData, items) => {
     message += `💰 Total Profit: Rp ${dailyProfitTotal.toLocaleString('id-ID')}\n`;
     message += `🛍️ Total Penjualan: Rp ${dailySalesTotal.toLocaleString('id-ID')}\n`;
     message += `📈 Profit Bulan Ini: Rp ${monthlyProfitTotal.toLocaleString('id-ID')}\n`;
+    
+    if (wallets && wallets.length > 0) {
+      message += `\n💼 *Saldo Keuangan*\n`;
+      message += `🏦 *Total Kas: Rp ${totalSaldoKas.toLocaleString('id-ID')}*\n\n`;
+      
+      const excludeNames = ['PROFIT', 'SUPPLIER', 'TITIPAN'];
+      wallets.forEach(w => {
+        if (!excludeNames.includes(w.name?.toUpperCase())) {
+          message += `🔹 ${w.name}: Rp ${(Number(w.balance) || 0).toLocaleString('id-ID')}\n`;
+        }
+      });
+    }
     
     // Get sender name (business name or user name)
     let senderName = 'POSDEWA';
