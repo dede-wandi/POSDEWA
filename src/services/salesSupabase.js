@@ -291,6 +291,37 @@ export const getSaleById = async (saleId) => {
 export const deleteSale = async (saleId) => {
   try {
     const supabase = getSupabaseClient();
+
+    // Step 0: Fetch items to revert stock
+    const { data: saleItems } = await supabase
+      .from('sale_items')
+      .select('product_name, barcode, qty')
+      .eq('sale_id', saleId);
+
+    if (saleItems && saleItems.length > 0) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const session = sessionData?.session;
+      if (session && session.user) {
+        for (const item of saleItems) {
+          let query = supabase.from('products').select('id, name, type, stock').eq('owner_id', session.user.id);
+          if (item.barcode) {
+            query = query.eq('barcode', item.barcode);
+          } else {
+            query = query.eq('name', item.product_name);
+          }
+          const { data: products } = await query.limit(1);
+          if (products && products.length > 0) {
+            const p = products[0];
+            const isUnlimited = p.type === 'DIGITAL' || p.type === 'JASA' || String(p.name).toLowerCase().includes('tarik tunai') || String(p.name).toLowerCase().includes('topup');
+            if (!isUnlimited) {
+              await supabase.from('products')
+                .update({ stock: (Number(p.stock) || 0) + Number(item.qty), last_change_reason: 'hapus_transaksi' })
+                .eq('id', p.id);
+            }
+          }
+        }
+      }
+    }
     
     // Step 1: Delete all related sale_items first (Manual Cascade)
     const { error: itemsError } = await supabase
@@ -331,7 +362,7 @@ export const deleteSaleItem = async (itemId) => {
     // First, get the sale_id and line_total/profit to update the parent sale
     const { data: itemData, error: fetchError } = await supabase
       .from('sale_items')
-      .select('sale_id, line_total, line_profit')
+      .select('sale_id, line_total, line_profit, product_name, barcode, qty')
       .eq('id', itemId)
       .single();
       
@@ -341,7 +372,29 @@ export const deleteSaleItem = async (itemId) => {
       throw new Error('Item not found');
     }
 
-    const { sale_id, line_total, line_profit } = itemData;
+    const { sale_id, line_total, line_profit, product_name, barcode, qty } = itemData;
+
+    // Step 0.5: Revert stock for this item
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData?.session;
+    if (session && session.user) {
+      let query = supabase.from('products').select('id, name, type, stock').eq('owner_id', session.user.id);
+      if (barcode) {
+        query = query.eq('barcode', barcode);
+      } else {
+        query = query.eq('name', product_name);
+      }
+      const { data: products } = await query.limit(1);
+      if (products && products.length > 0) {
+        const p = products[0];
+        const isUnlimited = p.type === 'DIGITAL' || p.type === 'JASA' || String(p.name).toLowerCase().includes('tarik tunai') || String(p.name).toLowerCase().includes('topup');
+        if (!isUnlimited) {
+          await supabase.from('products')
+            .update({ stock: (Number(p.stock) || 0) + Number(qty), last_change_reason: 'hapus_transaksi' })
+            .eq('id', p.id);
+        }
+      }
+    }
 
     // Delete the item
     const { data: deletedData, error: deleteError } = await supabase
