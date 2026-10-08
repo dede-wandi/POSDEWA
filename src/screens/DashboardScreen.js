@@ -246,27 +246,25 @@ export default function DashboardScreen({ navigation }) {
               {wallets && wallets.length > 0 && (
                 <>
                   <View style={[styles.heroDivider, { marginTop: 14 }]} />
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20, paddingHorizontal: 20 }}>
-                    <View style={{ flexDirection: 'row', gap: 20, paddingRight: 40 }}>
-                      {wallets.map((w, index) => (
-                        <TouchableOpacity 
-                          key={w.id} 
-                          style={{ alignItems: 'flex-start' }}
-                          onPress={() => {
-                            if (w.type === 'PROFIT' || (w.name || '').toLowerCase().includes('profit')) {
-                              navigation.navigate('AnnualProfitReport');
-                            } else {
-                              navigation.navigate('WalletManagement');
-                            }
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 10, marginBottom: 2, fontWeight: '500' }}>{w.name}</Text>
-                          <Text style={{ color: '#FFF', fontSize: 11, fontWeight: 'bold' }}>{fmt(w.balance)}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </ScrollView>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 24, rowGap: 12, marginTop: 8 }}>
+                    {wallets.map((w, index) => (
+                      <TouchableOpacity 
+                        key={w.id} 
+                        style={{ alignItems: 'flex-start' }}
+                        onPress={() => {
+                          if (w.type === 'PROFIT' || (w.name || '').toLowerCase().includes('profit')) {
+                            navigation.navigate('AnnualProfitReport');
+                          } else {
+                            navigation.navigate('WalletManagement');
+                          }
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 10, marginBottom: 2, fontWeight: '500' }}>{w.name}</Text>
+                        <Text style={{ color: '#FFF', fontSize: 11, fontWeight: 'bold' }}>{fmt(w.balance)}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                   <View style={{ marginTop: 16, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}>
                     <Ionicons name="information-circle-outline" size={14} color="rgba(255,255,255,0.8)" style={{ marginRight: 6 }} />
                     <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 10, flex: 1, fontStyle: 'italic' }}>

@@ -33,11 +33,17 @@ export default function PaymentScreen({ navigation, route }) {
       const { data } = await getWallets(user.id);
       if (data && data.length > 0) {
         setWallets(data);
-        // Auto-select CASH wallet sebagai penerima (tidak ditampilkan ke user)
-        const cashWallet = data.find(w => w.type === 'CASH') || data[0];
-        if (cashWallet) setSelectedWalletId(cashWallet.id);
-        // Channel default = null (tidak ada), user pilih manual
-        setDigitalWalletId(null);
+        const isTarikTunai = cart.some(item => (item.name || '').toLowerCase().includes('tarik tunai'));
+        const cashWallet = data.find(w => w.type === 'CASH');
+        const digitalWallet = data.find(w => w.type !== 'CASH' && w.type !== 'PROFIT');
+
+        if (isTarikTunai) {
+          setSelectedWalletId(digitalWallet ? digitalWallet.id : data[0].id);
+          setDigitalWalletId(cashWallet ? cashWallet.id : null);
+        } else {
+          setSelectedWalletId(cashWallet ? cashWallet.id : data[0].id);
+          setDigitalWalletId(null);
+        }
       }
     };
     fetchWallets();
@@ -255,7 +261,17 @@ export default function PaymentScreen({ navigation, route }) {
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -4 }}>
               <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 4, paddingBottom: 4 }}>
-                {wallets.filter(w => w.type !== 'PROFIT').map(w => {
+                {wallets.filter(w => {
+                  if (w.type === 'PROFIT' || (w.name || '').toLowerCase().includes('profit')) return false;
+                  const isTarikTunai = cart.some(i => (i.name||'').toLowerCase().includes('tarik tunai'));
+                  const isTransfer = cart.some(i => (i.name||'').toLowerCase().includes('transfer'));
+                  
+                  if (isTarikTunai || isTransfer) {
+                    if (isTarikTunai && w.type === 'CASH') return false;
+                    if (w.type === 'APP_BALANCE' && !(w.name || '').toLowerCase().includes('dana')) return false;
+                  }
+                  return true;
+                }).map(w => {
                   const ws = getWalletStyle(w.type);
                   const isActive = selectedWalletId === w.id;
                   return (
@@ -302,14 +318,15 @@ export default function PaymentScreen({ navigation, route }) {
 
             <View style={styles.walletGrid}>
               {/* Opsi: Tidak ada / Skip */}
-            <TouchableOpacity
-              style={[
-                styles.walletCard,
-                !digitalWalletId && { borderColor: '#64748b', backgroundColor: '#f1f5f9' }
-              ]}
-              onPress={() => setDigitalWalletId(null)}
-              activeOpacity={0.8}
-            >
+            {!cart.some(i => (i.name||'').toLowerCase().includes('tarik tunai')) && (
+              <TouchableOpacity
+                style={[
+                  styles.walletCard,
+                  !digitalWalletId && { borderColor: '#64748b', backgroundColor: '#f1f5f9' }
+                ]}
+                onPress={() => setDigitalWalletId(null)}
+                activeOpacity={0.8}
+              >
               <View style={[styles.walletCardIcon, { backgroundColor: !digitalWalletId ? '#64748b' : '#F1F5F9' }]}>
                 <Ionicons name="close-circle" size={20} color={!digitalWalletId ? '#FFF' : '#94a3b8'} />
               </View>
@@ -318,10 +335,19 @@ export default function PaymentScreen({ navigation, route }) {
                 <Text style={styles.walletCardBalance}>Laci kasir saja yang bertambah</Text>
               </View>
               {!digitalWalletId && <View style={[styles.inBadge, { backgroundColor: '#64748b' }]}><Text style={styles.inBadgeText}>SKIP</Text></View>}
-            </TouchableOpacity>
+              </TouchableOpacity>
+            )}
 
-            {/* Semua wallet sebagai pilihan channel */}
-            {wallets.filter(w => w.type !== 'PROFIT' && !(w.name || '').toLowerCase().includes('profit')).map(w => {
+            {wallets.filter(w => {
+              if (w.type === 'PROFIT' || (w.name || '').toLowerCase().includes('profit')) return false;
+              const isTarikTunai = cart.some(i => (i.name||'').toLowerCase().includes('tarik tunai'));
+              const isTransfer = cart.some(i => (i.name||'').toLowerCase().includes('transfer'));
+              
+              if (isTarikTunai && w.type !== 'CASH') return false;
+              if (isTransfer && w.type === 'APP_BALANCE' && !(w.name || '').toLowerCase().includes('dana')) return false;
+              
+              return true;
+            }).map(w => {
               const ws = getWalletStyle(w.type);
               const isActive = digitalWalletId === w.id;
               return (
