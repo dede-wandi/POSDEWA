@@ -178,6 +178,9 @@ export const sendWhatsAppNotification = async (saleData, items) => {
           message += `🔹 ${w.name}: Rp ${(Number(w.balance) || 0).toLocaleString('id-ID')}\n`;
         }
       });
+    } else {
+      message += `\n💼 *Saldo Keuangan*\n`;
+      message += `(Data saldo kas belum tersedia)\n`;
     }
     
     // Get sender name (business name or user name)
