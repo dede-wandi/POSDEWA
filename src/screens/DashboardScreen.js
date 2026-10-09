@@ -21,7 +21,8 @@ import { getDashboardStats, getRecentSales } from '../services/dashboardSupabase
 import { getMenuConfigs } from '../services/menuConfigSupabase';
 import { getProductValuation } from '../services/productValuationService';
 import { getExpenseSummary } from '../services/expenseSupabase';
-import { getWallets, addWalletTransaction } from '../services/walletSupabase';
+import { getWallets, addWalletTransaction, getUnsyncedProfits } from '../services/walletSupabase';
+import UnsyncedProfitWarning from '../components/UnsyncedProfitWarning';
 import { Colors, Spacing, Radii, FontSize, FontWeight } from '../theme';
 
 const PRIMARY   = '#5B58F5';
@@ -57,6 +58,9 @@ export default function DashboardScreen({ navigation }) {
   const [menuErrors, setMenuErrors]       = useState({});
   const [isSettling, setIsSettling]       = useState(false);
   const [settleModalData, setSettleModalData] = useState(null); // { titipanWallet, cashWallet }
+
+  // Profit Sync State
+  const [unsyncedProfits, setUnsyncedProfits] = useState([]);
 
   const handleQuickSettleSupplier = (titipanWallet) => {
     const cashWallet = wallets.find(w => w.type === 'CASH');
@@ -149,13 +153,14 @@ export default function DashboardScreen({ navigation }) {
 
   const loadData = async () => {
     try {
-      const [sRes, rRes, cRes, vRes, eRes, wRes] = await Promise.all([
+      const [sRes, rRes, cRes, vRes, eRes, wRes, uRes] = await Promise.all([
         getDashboardStats(user?.id),
         getRecentSales(user?.id, 10),
         user?.id ? getMenuConfigs(user.id) : Promise.resolve({ success: false }),
         user?.id ? getProductValuation(user.id) : Promise.resolve({ success: false }),
         user?.id ? getExpenseSummary(user.id, 'month') : Promise.resolve({ success: false }),
-        user?.id ? getWallets(user.id) : Promise.resolve({ data: [] })
+        user?.id ? getWallets(user.id) : Promise.resolve({ data: [] }),
+        user?.id ? getUnsyncedProfits(user.id) : Promise.resolve({ data: [] })
       ]);
       if (sRes.success) setStats(sRes.data); else showToast('Gagal memuat statistik', 'error');
       if (rRes.success) setRecentSales(rRes.data);
@@ -163,6 +168,7 @@ export default function DashboardScreen({ navigation }) {
       if (vRes?.success) setValuationData(vRes.data);
       if (eRes?.success) setExpenseData(eRes.data);
       if (wRes?.data) setWallets(wRes.data);
+      if (uRes?.data) setUnsyncedProfits(uRes.data);
     } catch (e) {
       console.error('Error loading dashboard data:', e);
       showToast('Terjadi kesalahan', 'error');
@@ -330,6 +336,13 @@ export default function DashboardScreen({ navigation }) {
               )}
             </View>
           </View>
+
+          {/* UNSYNCED PROFIT WARNING */}
+          <UnsyncedProfitWarning 
+            wallets={wallets} 
+            unsyncedProfits={unsyncedProfits} 
+            onSyncSuccess={loadData} 
+          />
 
           {/* TOMBOL BAYAR SUPPLIER CEPAT (LUAR HERO CARD) */}
           {(() => {
@@ -575,6 +588,7 @@ export default function DashboardScreen({ navigation }) {
                   )}
                 </TouchableOpacity>
               </View>
+
             </View>
           </View>
         </Modal>

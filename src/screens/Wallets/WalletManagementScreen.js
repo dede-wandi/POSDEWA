@@ -8,6 +8,7 @@ import { formatCurrency } from '../../utils/currency';
 
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import UnsyncedProfitWarning from '../../components/UnsyncedProfitWarning';
 
 // Custom Wallet Picker (tidak butuh package tambahan, bekerja di Web & Native)
 const WalletPicker = ({ wallets, selectedId, onSelect, highlightColor = '#4F46E5' }) => (
@@ -45,9 +46,6 @@ export default function WalletManagementScreen() {
   const [wallets, setWallets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [unsyncedProfits, setUnsyncedProfits] = useState([]);
-  const [isSyncingProfit, setIsSyncingProfit] = useState(false);
-  const [syncProfitModalVisible, setSyncProfitModalVisible] = useState(false);
-  const [syncProfitData, setSyncProfitData] = useState({ totalProfit: 0, totalTrx: 0, cashWallet: null, profitWallet: null });
 
   // Form State
   const [modalVisible, setModalVisible] = useState(false);
@@ -165,48 +163,6 @@ export default function WalletManagementScreen() {
     if (profitData) setUnsyncedProfits(profitData);
     
     setLoading(false);
-  };
-
-  const handleManualSyncProfit = async () => {
-    let cashWallet = wallets.find(w => w.type === 'CASH');
-    if (!cashWallet) cashWallet = wallets.find(w => (w.name || '').toLowerCase().includes('kasir') || (w.name || '').toLowerCase().includes('laci'));
-    
-    let profitWallet = wallets.find(w => w.type === 'PROFIT');
-    if (!profitWallet) profitWallet = wallets.find(w => (w.name || '').toLowerCase().includes('laba') || (w.name || '').toLowerCase().includes('profit'));
-
-    if (!cashWallet || !profitWallet) {
-      showToast('Dompet Kasir atau Laba tidak ditemukan!', 'error');
-      return;
-    }
-
-    const totalProfit = unsyncedProfits.reduce((sum, item) => sum + Number(item.total_profit), 0);
-    const totalTrx = unsyncedProfits.reduce((sum, item) => sum + Number(item.total_transaksi), 0);
-
-    setSyncProfitData({
-      totalProfit,
-      totalTrx,
-      cashWallet,
-      profitWallet
-    });
-    setSyncProfitModalVisible(true);
-  };
-
-  const executeManualSyncProfit = async () => {
-    setIsSyncingProfit(true);
-    const { data, error } = await syncPendingProfits(
-      user?.id, 
-      syncProfitData.cashWallet.id, 
-      syncProfitData.profitWallet.id
-    );
-    setIsSyncingProfit(false);
-    setSyncProfitModalVisible(false);
-    
-    if (data?.success) {
-      showToast(`Berhasil menarik Rp ${formatCurrency(data.synced_amount)}`, 'success');
-      fetchWallets();
-    } else {
-      showToast(data?.message || error?.message || 'Gagal menarik profit', 'error');
-    }
   };
 
   const handleSaveWallet = async () => {
@@ -436,40 +392,13 @@ export default function WalletManagementScreen() {
       </View>
 
       {/* Unsynced Profit Section */}
-      {unsyncedProfits && unsyncedProfits.length > 0 && (
-        <View style={styles.profitAlertContainer}>
-          <View style={styles.profitAlertHeader}>
-            <Ionicons name="warning-outline" size={20} color="#f59e0b" />
-            <Text style={styles.profitAlertTitle}>Profit Belum Ditarik</Text>
-          </View>
-          <Text style={styles.profitAlertDesc}>
-            Anda memiliki profit yang belum disinkronkan ke Dompet Laba:
-          </Text>
-          {unsyncedProfits.map((item, index) => (
-            <View key={index} style={styles.profitAlertItem}>
-              <Text style={styles.profitAlertDate}>{item.tanggal}</Text>
-              <View style={styles.profitAlertItemRight}>
-                <Text style={styles.profitAlertTrx}>{item.total_transaksi} trx</Text>
-                <Text style={styles.profitAlertAmount}>{formatCurrency(item.total_profit)}</Text>
-              </View>
-            </View>
-          ))}
-          <TouchableOpacity 
-            style={[styles.profitAlertBtn, isSyncingProfit && { opacity: 0.7 }]} 
-            onPress={handleManualSyncProfit}
-            disabled={isSyncingProfit}
-          >
-            {isSyncingProfit ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <>
-                <Ionicons name="download-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
-                <Text style={styles.profitAlertBtnText}>Tarik Profit Sekarang</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
-      )}
+      <View style={{ marginHorizontal: 20 }}>
+        <UnsyncedProfitWarning 
+          wallets={wallets} 
+          unsyncedProfits={unsyncedProfits} 
+          onSyncSuccess={fetchWallets} 
+        />
+      </View>
 
       {/* Wallets List */}
       <View style={styles.listContainer}>
@@ -841,54 +770,6 @@ export default function WalletManagementScreen() {
               ) : (
                 <Text style={styles.submitButtonText}>Konfirmasi Setor</Text>
               )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Modal Konfirmasi Tarik Profit */}
-      <Modal visible={syncProfitModalVisible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { minHeight: 'auto', paddingBottom: 30 }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Konfirmasi Tarik Profit</Text>
-              <TouchableOpacity onPress={() => setSyncProfitModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={{ alignItems: 'center', marginBottom: 20 }}>
-              <View style={{ backgroundColor: '#fef3c7', padding: 16, borderRadius: 50, marginBottom: 16 }}>
-                <Ionicons name="swap-vertical" size={32} color="#d97706" />
-              </View>
-              <Text style={{ fontSize: 16, textAlign: 'center', color: '#4b5563', lineHeight: 24 }}>
-                Anda akan memindahkan total profit sejumlah
-              </Text>
-              <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#16a34a', marginVertical: 8 }}>
-                Rp {formatCurrency(syncProfitData.totalProfit)}
-              </Text>
-              <Text style={{ fontSize: 14, textAlign: 'center', color: '#6b7280' }}>
-                Dari <Text style={{ fontWeight: 'bold', color: '#374151' }}>{syncProfitData.cashWallet?.name}</Text> ke <Text style={{ fontWeight: 'bold', color: '#374151' }}>{syncProfitData.profitWallet?.name}</Text>
-              </Text>
-            </View>
-
-            <TouchableOpacity 
-              style={[styles.submitButton, { backgroundColor: '#f59e0b' }]} 
-              onPress={executeManualSyncProfit}
-              disabled={isSyncingProfit}
-            >
-              {isSyncingProfit ? (
-                <ActivityIndicator color="#FFF" />
-              ) : (
-                <Text style={styles.submitButtonText}>Ya, Pindahkan Sekarang</Text>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.submitButton, { backgroundColor: '#e5e7eb', marginTop: 10 }]} 
-              onPress={() => setSyncProfitModalVisible(false)}
-              disabled={isSyncingProfit}
-            >
-              <Text style={[styles.submitButtonText, { color: '#4b5563' }]}>Batal</Text>
             </TouchableOpacity>
           </View>
         </View>
