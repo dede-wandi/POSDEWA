@@ -205,3 +205,36 @@ export const getWalletTransactions = async (walletId) => {
     return { data: null, error };
   }
 };
+
+// ================================
+// MANUAL PROFIT SYNC (NEW)
+// ================================
+export const getUnsyncedProfits = async (userId) => {
+  try {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase.rpc('get_unsynced_profits', {
+      p_user_id: userId
+    });
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error fetching unsynced profits:', error);
+    return { data: null, error };
+  }
+};
+
+export const syncPendingProfits = async (userId, cashWalletId, profitWalletId) => {
+  try {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase.rpc('manual_sync_pending_profits', {
+      p_user_id: userId,
+      p_cash_wallet_id: cashWalletId,
+      p_profit_wallet_id: profitWalletId
+    });
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error syncing pending profits:', error);
+    return { data: null, error };
+  }
+};
