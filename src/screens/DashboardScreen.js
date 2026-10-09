@@ -338,11 +338,13 @@ export default function DashboardScreen({ navigation }) {
           </View>
 
           {/* UNSYNCED PROFIT WARNING */}
-          <UnsyncedProfitWarning 
-            wallets={wallets} 
-            unsyncedProfits={unsyncedProfits} 
-            onSyncSuccess={loadData} 
-          />
+          <View style={{ marginHorizontal: PAD }}>
+            <UnsyncedProfitWarning 
+              wallets={wallets} 
+              unsyncedProfits={unsyncedProfits} 
+              onSyncSuccess={loadData} 
+            />
+          </View>
 
           {/* TOMBOL BAYAR SUPPLIER CEPAT (LUAR HERO CARD) */}
           {(() => {
