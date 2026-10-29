@@ -10,7 +10,9 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
-  RefreshControl
+  RefreshControl,
+  Clipboard,
+  TextInput
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -50,6 +52,53 @@ export default function SalesReportScreen({ navigation }) {
   // Selection mode
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [filteredTotals, setFilteredTotals] = useState({ total: 0, profit: 0 });
+  const [collapsedSales, setCollapsedSales] = useState({});
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const toggleSaleCollapse = (saleId) => {
+    setCollapsedSales(prev => ({
+      ...prev,
+      [saleId]: !prev[saleId]
+    }));
+  };
+
+  const copyToClipboard = async (text, label = 'Nama produk') => {
+    if (!text) return;
+    try {
+      if (Platform.OS === 'web') {
+        if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else if (typeof document !== 'undefined') {
+          const el = document.createElement('textarea');
+          el.value = text;
+          document.body.appendChild(el);
+          el.select();
+          document.execCommand('copy');
+          document.body.removeChild(el);
+        }
+      } else {
+        if (Clipboard && Clipboard.setString) {
+          Clipboard.setString(text);
+        } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
+          await navigator.clipboard.writeText(text);
+        }
+      }
+      showToast(`${label} disalin`, 'success');
+    } catch (err) {
+      showToast(`Gagal menyalin ${label}`, 'error');
+    }
+  };
+
+  const copyProductItem = async (item) => {
+    if (!item) return;
+    const name = item.product_name || '';
+    const modal = Number(item.cost_price || 0);
+    const jual = Number(item.price || 0);
+    const barcode = item.barcode ? `\nBarcode: ${item.barcode}` : '';
+
+    const textToCopy = `Nama: ${name}\nModal: ${modal}\nJual: ${jual}${barcode}`;
+    await copyToClipboard(textToCopy, `Data "${name}" (Nama, Modal, Jual)`);
+  };
 
   // Column Visibility State
   const [visibleColumns, setVisibleColumns] = useState({
@@ -70,10 +119,10 @@ export default function SalesReportScreen({ navigation }) {
     loadDataForCurrentFilter();
   }, [filterType, customRange, selectedYear, selectedMonth]);
 
-  // Setiap kali data berhasil diload, hitung ulang totals & flatten items
+  // Setiap kali data berhasil diload atau kata kunci dicari, hitung ulang totals & flatten items
   useEffect(() => {
     processData();
-  }, [sales]);
+  }, [sales, searchQuery]);
 
 
   // Hitung range tanggal berdasarkan filter yang dipilih
@@ -179,9 +228,23 @@ export default function SalesReportScreen({ navigation }) {
   };
 
   const processData = () => {
-    // Data sudah difilter oleh server (getSalesHistoryByRange),
-    // cukup hitung total dan flatten items saja
-    const filteredSales = [...sales];
+    let filteredSales = [...sales];
+
+    // Filter pencarian jika user mengetik kata kunci
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      filteredSales = filteredSales.filter(sale => {
+        const matchInvoice = (sale.no_invoice || '').toLowerCase().includes(q) ||
+          (sale.id || '').toLowerCase().includes(q);
+        const matchCustomer = (sale.customer_name || '').toLowerCase().includes(q);
+        const saleItems = sale.items || sale.sale_items || [];
+        const matchItems = saleItems.some(it =>
+          (it.product_name || '').toLowerCase().includes(q) ||
+          (it.barcode || '').toLowerCase().includes(q)
+        );
+        return matchInvoice || matchCustomer || matchItems;
+      });
+    }
 
     // Jika filter year, hitung ringkasan per bulan
     if (filterType === 'year') {
@@ -216,6 +279,16 @@ export default function SalesReportScreen({ navigation }) {
       const saleItems = sale.items || sale.sale_items || [];
       if (saleItems.length > 0) {
         saleItems.forEach(item => {
+          if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase().trim();
+            const invoiceMatches = (sale.no_invoice || '').toLowerCase().includes(q);
+            const itemMatches = (item.product_name || '').toLowerCase().includes(q) ||
+              (item.barcode || '').toLowerCase().includes(q);
+            if (!invoiceMatches && !itemMatches) {
+              return;
+            }
+          }
+
           const displayedProfit = (typeof item.line_profit === 'number' && item.line_profit !== 0)
             ? item.line_profit
             : ((Number(item.price) - Number(item.cost_price || 0)) * Number(item.qty || 1));
@@ -472,6 +545,7 @@ export default function SalesReportScreen({ navigation }) {
     setFilterType('today');
     setCustomRange({ startDate: null, endDate: null });
     setMarkedDates({});
+    setSearchQuery('');
   };
 
   const openColumnModal = () => {
@@ -529,7 +603,7 @@ export default function SalesReportScreen({ navigation }) {
     <View style={styles.tableHeader}>
       {visibleColumns.no && <Text style={[styles.headerCell, { width: 30 }]}>No</Text>}
       {visibleColumns.date && <Text style={[styles.headerCell, { width: 65 }]}>Tanggal</Text>}
-      {visibleColumns.invoice && <Text style={[styles.headerCell, { width: 105, marginRight: 8 }]}>No. Inv</Text>}
+      {visibleColumns.invoice && <Text style={[styles.headerCell, { width: 95 }]}>No. Inv</Text>}
       {visibleColumns.product && <Text style={[styles.headerCell, { flex: 1 }]}>Nama Produk / Invoice</Text>}
       {visibleColumns.qty && <Text style={[styles.headerCell, { width: 35, textAlign: 'center' }]}>Qty</Text>}
       {visibleColumns.capitalPrice && <Text style={[styles.headerCell, { width: 75, textAlign: 'right' }]}>Modal</Text>}
@@ -544,6 +618,8 @@ export default function SalesReportScreen({ navigation }) {
   const renderItem = ({ item: sale, index }) => {
     const saleItems = sale.items || sale.sale_items || [];
     const totalQtyInSale = saleItems.reduce((sum, it) => sum + (it.qty || 0), 0);
+    const totalCostInSale = saleItems.reduce((sum, it) => sum + ((it.cost_price || 0) * (it.qty || 1)), 0);
+    const isCollapsed = searchQuery.trim() ? false : !!collapsedSales[sale.id];
 
     return (
       <View style={styles.transactionGroup}>
@@ -554,16 +630,44 @@ export default function SalesReportScreen({ navigation }) {
             setSelectedSale(sale);
             setShowDetailModal(true);
           }}
+          activeOpacity={0.7}
         >
           {visibleColumns.no && <Text style={[styles.cell, { width: 30, fontWeight: '700' }]}>{index + 1}</Text>}
           {visibleColumns.date && <Text style={[styles.cell, { width: 65, fontSize: 10, fontWeight: '600' }]}>{formatDateStr(sale.created_at)}</Text>}
           
-          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="receipt-outline" size={12} color={Colors.primary} style={{ marginRight: 4 }} />
-            <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.darkText }} numberOfLines={1}>
+          {visibleColumns.invoice && (
+            <Text style={[styles.cell, { width: 95, fontSize: 10, fontWeight: '700', color: Colors.primary }]} numberOfLines={1}>
               {sale.no_invoice || `TRX-${sale.id.slice(-6).toUpperCase()}`}
             </Text>
-          </View>
+          )}
+
+          {visibleColumns.product && (
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+              {!visibleColumns.invoice && (
+                <Ionicons name="receipt-outline" size={12} color={Colors.primary} style={{ marginRight: 4 }} />
+              )}
+              <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.darkText, flexShrink: 1 }} numberOfLines={1}>
+                {!visibleColumns.invoice ? (sale.no_invoice || `TRX-${sale.id.slice(-6).toUpperCase()}`) : ''}
+                <Text style={{ fontSize: 10, fontWeight: 'normal', color: Colors.muted }}>
+                  {!visibleColumns.invoice ? ` (${saleItems.length} item)` : `${saleItems.length} item terjual`}
+                </Text>
+              </Text>
+              <TouchableOpacity 
+                onPress={(e) => {
+                  e?.stopPropagation?.();
+                  toggleSaleCollapse(sale.id);
+                }}
+                style={{ padding: 4, marginLeft: 2 }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons 
+                  name={isCollapsed ? "chevron-forward" : "chevron-down"} 
+                  size={14} 
+                  color={Colors.primary} 
+                />
+              </TouchableOpacity>
+            </View>
+          )}
 
           {visibleColumns.qty && (
             <Text style={[styles.cell, { width: 35, textAlign: 'center', fontWeight: '700', fontSize: 11 }]}>
@@ -573,7 +677,7 @@ export default function SalesReportScreen({ navigation }) {
           
           {visibleColumns.capitalPrice && (
             <Text style={[styles.cell, { width: 75, textAlign: 'right', fontSize: 10, color: Colors.muted }]}>
-              -
+              {formatCurrency(totalCostInSale)}
             </Text>
           )}
 
@@ -592,7 +696,10 @@ export default function SalesReportScreen({ navigation }) {
           {visibleColumns.action && isSelectMode && (
             <View style={[styles.cell, { width: 40, alignItems: 'center', justifyContent: 'center' }]}>
               <TouchableOpacity 
-                onPress={() => handleDeleteSale(sale.id)}
+                onPress={(e) => {
+                  e?.stopPropagation?.();
+                  handleDeleteSale(sale.id);
+                }}
                 style={styles.deleteButton}
               >
                 <Ionicons name="trash-outline" size={18} color={Colors.danger} />
@@ -600,6 +707,77 @@ export default function SalesReportScreen({ navigation }) {
             </View>
           )}
         </TouchableOpacity>
+
+        {/* Transaction Child Items (Produk yang Terjual) */}
+        {!isCollapsed && saleItems.length > 0 && (
+          <View style={styles.childRowsContainer}>
+            {saleItems.map((item, itemIdx) => {
+              const itemProfit = (typeof item.line_profit === 'number' && item.line_profit !== 0)
+                ? item.line_profit
+                : ((Number(item.price) - Number(item.cost_price || 0)) * Number(item.qty || 1));
+
+              return (
+                <View key={`${item.id || itemIdx}-${itemIdx}`} style={styles.childRow}>
+                  {visibleColumns.no && <View style={{ width: 30 }} />}
+                  {visibleColumns.date && <View style={{ width: 65 }} />}
+                  {visibleColumns.invoice && <View style={{ width: 95 }} />}
+                  
+                  {visibleColumns.product && (
+                    <TouchableOpacity 
+                      style={{ flex: 1, paddingLeft: 8, paddingRight: 4 }}
+                      onPress={() => copyProductItem(item)}
+                      onLongPress={() => copyProductItem(item)}
+                      activeOpacity={0.6}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={[styles.childProductName, { flexShrink: 1 }]} numberOfLines={2} selectable={true}>
+                          ↳ {item.product_name}
+                        </Text>
+                        <Ionicons name="copy-outline" size={11} color="#94A3B8" style={{ marginLeft: 4 }} />
+                      </View>
+                      {item.barcode ? <Text style={styles.childProductBarcode} selectable={true}>{item.barcode}</Text> : null}
+                    </TouchableOpacity>
+                  )}
+
+                  {visibleColumns.qty && (
+                    <Text style={[styles.cell, { width: 35, textAlign: 'center', color: Colors.text, fontSize: 11 }]}>
+                      {item.qty || 1}
+                    </Text>
+                  )}
+
+                  {visibleColumns.capitalPrice && (
+                    <Text style={[styles.cell, { width: 75, textAlign: 'right', color: Colors.muted, fontSize: 10 }]}>
+                      {formatCurrency((item.cost_price || 0) * (item.qty || 1))}
+                    </Text>
+                  )}
+
+                  {visibleColumns.price && (
+                    <Text style={[styles.cell, { width: 75, textAlign: 'right', color: Colors.darkText, fontSize: 11 }]}>
+                      {formatCurrency(item.line_total)}
+                    </Text>
+                  )}
+
+                  {visibleColumns.profit && (
+                    <Text style={[styles.cell, { width: 75, textAlign: 'right', color: itemProfit >= 0 ? '#10B981' : '#EF4444', fontSize: 11, fontWeight: '600' }]}>
+                      {formatCurrency(itemProfit)}
+                    </Text>
+                  )}
+
+                  {visibleColumns.action && isSelectMode && (
+                    <View style={[styles.cell, { width: 40, alignItems: 'center', justifyContent: 'center' }]}>
+                      <TouchableOpacity 
+                        onPress={() => handleDeleteItem(item)}
+                        style={styles.deleteButton}
+                      >
+                        <Ionicons name="close-circle-outline" size={16} color={Colors.danger} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        )}
       </View>
     );
   };
@@ -635,6 +813,26 @@ export default function SalesReportScreen({ navigation }) {
           <TouchableOpacity 
             style={{ display: 'none' }}
           />
+        </View>
+      </View>
+
+      {/* Search Input */}
+      <View style={styles.searchSection}>
+        <View style={styles.searchContainer}>
+          <Ionicons name="search-outline" size={17} color={Colors.muted} style={{ marginRight: 8 }} />
+          <TextInput
+            placeholder="Cari produk, barcode, no. invoice..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            style={styles.searchInput}
+            placeholderTextColor={Colors.muted}
+            clearButtonMode="while-editing"
+          />
+          {searchQuery ? (
+            <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
+              <Ionicons name="close-circle" size={18} color={Colors.muted} />
+            </TouchableOpacity>
+          ) : null}
         </View>
       </View>
 
@@ -960,12 +1158,15 @@ export default function SalesReportScreen({ navigation }) {
             {selectedSale && (
               <ScrollView style={{ padding: 20 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: Colors.borderLight, borderStyle: 'dashed' }}>
-                  <View>
-                    <Text style={{ fontSize: 11, color: Colors.muted, marginBottom: 2 }}>No. Invoice</Text>
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.darkText }}>
-                      {selectedSale.no_invoice || `TRX-${selectedSale.id.slice(-6).toUpperCase()}`}
-                    </Text>
-                  </View>
+                  <TouchableOpacity onPress={() => copyToClipboard(selectedSale.no_invoice, 'No. Invoice')}>
+                    <Text style={{ fontSize: 11, color: Colors.muted, marginBottom: 2 }}>No. Invoice (ketuk untuk salin)</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.darkText }} selectable={true}>
+                        {selectedSale.no_invoice || `TRX-${selectedSale.id.slice(-6).toUpperCase()}`}
+                      </Text>
+                      <Ionicons name="copy-outline" size={12} color={Colors.primary} style={{ marginLeft: 4 }} />
+                    </View>
+                  </TouchableOpacity>
                   <View style={{ alignItems: 'flex-end' }}>
                     <Text style={{ fontSize: 11, color: Colors.muted, marginBottom: 2 }}>Tanggal</Text>
                     <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.darkText }}>
@@ -975,15 +1176,25 @@ export default function SalesReportScreen({ navigation }) {
                 </View>
                 
                 {(selectedSale.items || selectedSale.sale_items || []).map((item, idx) => (
-                  <View key={idx} style={{ marginBottom: 12 }}>
+                  <TouchableOpacity 
+                    key={idx} 
+                    style={{ marginBottom: 12 }}
+                    onPress={() => copyProductItem(item)}
+                    activeOpacity={0.7}
+                  >
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.darkText, flex: 1, paddingRight: 8 }}>{item.product_name}</Text>
+                      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', paddingRight: 8 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.darkText, flexShrink: 1 }} selectable={true}>
+                          {item.product_name}
+                        </Text>
+                        <Ionicons name="copy-outline" size={13} color={Colors.primary} style={{ marginLeft: 6 }} />
+                      </View>
                       <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.darkText }}>{formatCurrency(item.line_total)}</Text>
                     </View>
                     <Text style={{ fontSize: 11, color: Colors.muted, marginTop: 2 }}>
                       {item.qty || 1} x {formatCurrency(item.price)}
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 ))}
 
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: Colors.borderLight, borderStyle: 'dashed', marginBottom: 30 }}>
@@ -1055,6 +1266,28 @@ const styles = StyleSheet.create({
   },
   selectButtonTextActive: {
     color: Colors.white,
+  },
+  searchSection: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 2,
+    backgroundColor: Colors.lightBg,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.card,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: Platform.OS === 'ios' ? 8 : 4,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.text,
+    paddingVertical: 4,
   },
   filterContainer: {
     flexDirection: 'row',
@@ -1208,23 +1441,34 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   childRowsContainer: {
-    paddingVertical: 4,
+    paddingVertical: 2,
+    backgroundColor: '#FAFCFF',
+    borderBottomLeftRadius: 6,
+    borderBottomRightRadius: 6,
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.primary,
+    marginLeft: 6,
+    marginRight: 6,
+    marginTop: 2,
+    marginBottom: 4,
   },
   childRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 6,
     paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
   },
   childProductName: {
     fontSize: 11,
-    color: '#475569',
-    fontWeight: '500',
+    color: '#334155',
+    fontWeight: '600',
   },
   childProductBarcode: {
     fontSize: 9,
-    color: Colors.placeholder,
-    marginLeft: 12,
+    color: '#94A3B8',
+    marginLeft: 10,
     marginTop: 1,
   },
 });

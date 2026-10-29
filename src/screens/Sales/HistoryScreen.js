@@ -185,15 +185,15 @@ export default function HistoryScreen({ navigation }) {
     setRefreshing(false);
   };
 
-  // Auto-load ALL data (with pagination) when user starts searching
+  // Auto-load ALL data (with pagination) when user starts searching with debounce
   useEffect(() => {
     if (searchQuery.trim()) {
-      // When searching, paginate through ALL sales — bypass 1000-row Supabase limit
-      setLoading(true);
-      searchAllSalesHistory(user?.id)
-        .then(result => setSales(result || []))
-        .catch(() => showToast('Gagal memuat data pencarian', 'error'))
-        .finally(() => setLoading(false));
+      const handler = setTimeout(() => {
+        searchAllSalesHistory(user?.id)
+          .then(result => setSales(result || []))
+          .catch(() => showToast('Gagal memuat data pencarian', 'error'));
+      }, 400);
+      return () => clearTimeout(handler);
     } else {
       // When clearing search, reload based on current period
       if (RANGE_PERIODS.includes(filterPeriod)) {
@@ -207,16 +207,19 @@ export default function HistoryScreen({ navigation }) {
   const filterSales = () => {
     let filtered = [...sales];
 
-    // Filter by search query (invoice/id/nama item)
-    if (searchQuery) {
-      const q = String(searchQuery).toLowerCase();
+    // Filter by search query (invoice/id/nama item/barcode/customer)
+    if (searchQuery.trim()) {
+      const q = String(searchQuery).toLowerCase().trim();
       filtered = filtered.filter(sale => {
         const matchInvoice = (sale.no_invoice && sale.no_invoice.toLowerCase().includes(q)) ||
           (sale.id || '').toLowerCase().includes(q);
-        const matchItems = (sale.items || []).some(it =>
-          (it.product_name || '').toLowerCase().includes(q)
+        const matchCustomer = (sale.customer_name || '').toLowerCase().includes(q);
+        const saleItems = sale.items || sale.sale_items || [];
+        const matchItems = saleItems.some(it =>
+          (it.product_name || '').toLowerCase().includes(q) ||
+          (it.barcode || '').toLowerCase().includes(q)
         );
-        return matchInvoice || matchItems;
+        return matchInvoice || matchCustomer || matchItems;
       });
     }
 
@@ -644,6 +647,11 @@ export default function HistoryScreen({ navigation }) {
             style={styles.searchInput}
             placeholderTextColor="#999"
           />
+          {searchQuery ? (
+            <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
+              <Ionicons name="close-circle" size={18} color="#999" />
+            </TouchableOpacity>
+          ) : null}
         </View>
       </View>
 

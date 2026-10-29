@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, StyleSheet, Image, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, StyleSheet, Image, Platform, Clipboard } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../theme';
 import { createProduct, getProductById, updateProduct, getCategories, getBrands, addCategory, addBrand, getProducts } from '../../services/products';
@@ -122,6 +122,165 @@ export default function FormScreen({ navigation, route }) {
   useEffect(() => {
     loadMasterData();
   }, [user]);
+
+  // Parser data produk dari clipboard (Nama, Modal, Jual, Barcode)
+  const parsePastedProductData = (rawText) => {
+    if (!rawText || typeof rawText !== 'string') return null;
+    const text = rawText.trim();
+    if (!text) return null;
+
+    // 1. Format JSON
+    try {
+      if (text.startsWith('{') && text.endsWith('}')) {
+        const parsed = JSON.parse(text);
+        if (parsed.name || parsed.title || parsed.product_name) {
+          return {
+            name: parsed.name || parsed.title || parsed.product_name || '',
+            costPrice: parsed.costPrice ?? parsed.cost_price ?? parsed.modal ?? '',
+            price: parsed.price ?? parsed.jual ?? '',
+            barcode: parsed.barcode || ''
+          };
+        }
+      }
+    } catch (e) {}
+
+    // 2. Format baris teks (Nama, Modal, Jual)
+    const hasNama = /Nama\s*:/i.test(text);
+    const hasModal = /Modal\s*:/i.test(text);
+    const hasJual = /(Jual|Harga)\s*:/i.test(text);
+
+    if (hasModal || hasJual) {
+      let parsedName = '';
+      let parsedCostPrice = '';
+      let parsedPrice = '';
+      let parsedBarcode = '';
+
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+      for (const line of lines) {
+        if (/^Nama\s*:/i.test(line)) {
+          parsedName = line.replace(/^Nama\s*:/i, '').trim();
+        } else if (/^Modal\s*:/i.test(line)) {
+          const val = line.replace(/^Modal\s*:/i, '').replace(/[^0-9]/g, '');
+          if (val) parsedCostPrice = val;
+        } else if (/^(Jual|Harga\s*Jual|Harga)\s*:/i.test(line)) {
+          const val = line.replace(/^(Jual|Harga\s*Jual|Harga)\s*:/i, '').replace(/[^0-9]/g, '');
+          if (val) parsedPrice = val;
+        } else if (/^Barcode\s*:/i.test(line)) {
+          parsedBarcode = line.replace(/^Barcode\s*:/i, '').trim();
+        } else if (!parsedName && !hasNama) {
+          parsedName = line;
+        }
+      }
+
+      if (parsedName || parsedCostPrice || parsedPrice) {
+        return {
+          name: parsedName || '',
+          costPrice: parsedCostPrice ? String(parsedCostPrice) : '',
+          price: parsedPrice ? String(parsedPrice) : '',
+          barcode: parsedBarcode || ''
+        };
+      }
+    }
+
+    // 3. Format pemisah garis tegak / titik koma (| atau ;)
+    if (text.includes('|') || text.includes(';')) {
+      const parts = text.split(/[|;]/).map(p => p.trim());
+      let parsedName = parts[0];
+      let parsedCostPrice = '';
+      let parsedPrice = '';
+      parts.slice(1).forEach(part => {
+        if (/modal/i.test(part)) {
+          parsedCostPrice = part.replace(/[^0-9]/g, '');
+        } else if (/jual/i.test(part)) {
+          parsedPrice = part.replace(/[^0-9]/g, '');
+        }
+      });
+      if (parsedCostPrice || parsedPrice) {
+        return {
+          name: parsedName.replace(/^Nama\s*:/i, '').trim(),
+          costPrice: parsedCostPrice ? String(parsedCostPrice) : '',
+          price: parsedPrice ? String(parsedPrice) : '',
+          barcode: ''
+        };
+      }
+    }
+
+    return null;
+  };
+
+  const applyParsedProduct = (parsed, sourceLabel = 'Paste') => {
+    if (!parsed) return false;
+    let filled = [];
+    if (parsed.name) {
+      setName(parsed.name);
+      filled.push('Nama');
+    }
+    if (parsed.costPrice !== undefined && parsed.costPrice !== '') {
+      setCostPrice(String(parsed.costPrice));
+      filled.push('Modal');
+    }
+    if (parsed.price !== undefined && parsed.price !== '') {
+      setPrice(String(parsed.price));
+      filled.push('Harga Jual');
+    }
+    if (parsed.barcode) {
+      setBarcodes(prev => {
+        if (!prev || prev.length === 0 || (prev.length === 1 && !prev[0])) {
+          return [parsed.barcode];
+        }
+        if (!prev.includes(parsed.barcode)) {
+          return [...prev, parsed.barcode];
+        }
+        return prev;
+      });
+      filled.push('Barcode');
+    }
+    if (filled.length > 0) {
+      showToast(`${sourceLabel} otomatis terisi: ${filled.join(', ')}`, 'success');
+      return true;
+    }
+    return false;
+  };
+
+  const handleNameChange = (text) => {
+    const parsed = parsePastedProductData(text);
+    if (parsed) {
+      applyParsedProduct(parsed, 'Data');
+    } else {
+      setName(text);
+    }
+  };
+
+  const handlePasteFromClipboard = async () => {
+    try {
+      let clipText = '';
+      if (Platform.OS === 'web') {
+        if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.readText) {
+          clipText = await navigator.clipboard.readText();
+        }
+      } else {
+        if (Clipboard && Clipboard.getString) {
+          clipText = await Clipboard.getString();
+        }
+      }
+
+      if (!clipText || !clipText.trim()) {
+        showToast('Clipboard kosong', 'info');
+        return;
+      }
+
+      const parsed = parsePastedProductData(clipText);
+      if (parsed) {
+        applyParsedProduct(parsed, 'Clipboard');
+      } else {
+        setName(clipText.trim());
+        showToast('Nama produk ditempel dari clipboard', 'info');
+      }
+    } catch (e) {
+      showToast('Gagal membaca clipboard: ' + (e?.message || ''), 'error');
+    }
+  };
 
   const handleAddCategory = async () => {
     if (!newCategoryName.trim()) {
@@ -784,17 +943,39 @@ export default function FormScreen({ navigation, route }) {
         <View style={styles.inputGroup}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <Text style={[styles.label, { marginBottom: 0 }]}>Nama Produk *</Text>
-            {isNameDuplicate && (
-              <Text style={{ color: 'red', fontSize: 12, fontWeight: 'bold' }}>
-                ⚠️ Produk dengan Nama ini Sudah tersedia
+            
+            <TouchableOpacity 
+              onPress={handlePasteFromClipboard}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#EFF6FF',
+                borderColor: '#BFDBFE',
+                borderWidth: 1,
+                paddingHorizontal: 10,
+                paddingVertical: 5,
+                borderRadius: 8
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="clipboard-outline" size={14} color={Colors.primary} style={{ marginRight: 4 }} />
+              <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.primary }}>
+                Tempel Data (Auto-Fill)
               </Text>
-            )}
+            </TouchableOpacity>
           </View>
+
+          {isNameDuplicate && (
+            <Text style={{ color: 'red', fontSize: 12, fontWeight: 'bold', marginBottom: 6 }}>
+              ⚠️ Produk dengan Nama ini Sudah tersedia
+            </Text>
+          )}
+
           <TextInput
             value={name}
-            onChangeText={setName}
+            onChangeText={handleNameChange}
             style={[styles.input, styles.textArea, isNameDuplicate && { borderColor: 'red', borderWidth: 1 }]}
-            placeholder="Masukkan nama produk"
+            placeholder="Masukkan nama produk (atau paste data di sini)"
             placeholderTextColor={Colors.muted}
             multiline
             numberOfLines={3}
