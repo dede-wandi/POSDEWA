@@ -265,6 +265,7 @@ export default function WalletManagementScreen() {
 
     // Check balance
     const sourceWallet = wallets.find(w => w.id === mutationFromWallet);
+    const destWallet = wallets.find(w => w.id === mutationToWallet);
     if (!sourceWallet || sourceWallet.balance < (numAmount + numAdminFee)) {
       Alert.alert('Gagal', 'Saldo dompet asal tidak mencukupi (termasuk biaya admin).');
       return;
@@ -274,6 +275,8 @@ export default function WalletManagementScreen() {
     const { error } = await transferBalance({
       from_wallet_id: mutationFromWallet,
       to_wallet_id: mutationToWallet,
+      from_wallet_name: sourceWallet?.name,
+      to_wallet_name: destWallet?.name,
       amount: numAmount,
       admin_fee: numAdminFee,
       description: mutationDesc || 'Pindah Saldo'
@@ -305,6 +308,13 @@ export default function WalletManagementScreen() {
     }
     if (!adjDesc.trim()) {
       setAdjError('Keterangan penyesuaian wajib diisi.');
+      return;
+    }
+
+    // Cek jika penyesuaian KELUAR melebihi saldo yang tersedia
+    const targetWallet = wallets.find(w => w.id === adjWalletId);
+    if (adjType === 'OUT' && targetWallet && targetWallet.balance < cleanAmount) {
+      setAdjError(`Saldo dompet tidak mencukupi untuk pengurangan ini (Saldo saat ini: ${formatCurrency(targetWallet.balance)}).`);
       return;
     }
 

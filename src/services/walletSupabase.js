@@ -31,21 +31,49 @@ export const addWallet = async (walletData) => {
   try {
     const supabase = getSupabaseClient();
     if (!supabase) return { data: null, error: 'Supabase tidak tersedia' };
-    const { data, error } = await supabase
+
+    const initialBal = Number(walletData.balance) || 0;
+
+    // Buat wallet baru dengan saldo awal 0 terlebih dahulu jika ada initial balance
+    // agar saldo awalnya dicatat secara transparan di tabel ledger wallet_transactions
+    const { data: newWallet, error } = await supabase
       .from('wallets')
       .insert([
         {
           user_id: walletData.user_id,
           name: walletData.name,
-          type: walletData.type, // 'CASH', 'BANK', 'APP_BALANCE'
-          balance: walletData.balance || 0,
+          type: walletData.type, // 'CASH', 'BANK', 'APP_BALANCE', 'PROFIT'
+          balance: initialBal > 0 ? 0 : 0,
           is_active: true,
         },
       ])
-      .select();
+      .select()
+      .single();
 
     if (error) throw error;
-    return { data, error: null };
+
+    // Jika ada saldo awal, catat sebagai mutasi masuk pertama (Saldo Awal)
+    if (initialBal > 0 && newWallet?.id) {
+      await addWalletTransaction({
+        wallet_id: newWallet.id,
+        type: 'IN',
+        amount: initialBal,
+        reference_type: 'ADJUSTMENT',
+        description: 'Saldo Awal Dompet',
+        balance_before: 0,
+        balance_after: initialBal,
+      });
+
+      // Pastikan saldo di wallets terisi (fallback bila trigger DB belum terpasang)
+      await supabase
+        .from('wallets')
+        .update({ balance: initialBal })
+        .eq('id', newWallet.id);
+
+      newWallet.balance = initialBal;
+    }
+
+    return { data: newWallet, error: null };
   } catch (error) {
     console.error('Error adding wallet:', error);
     return { data: null, error };
@@ -154,6 +182,7 @@ export const transferBalance = async (mutationData) => {
     if (mutationError) throw mutationError;
 
     // 2. Catat 'OUT' dari dompet asal
+    const toName = mutationData.to_wallet_name ? ` ke ${mutationData.to_wallet_name}` : '';
     const { error: outError } = await supabase
       .from('wallet_transactions')
       .insert([
@@ -163,13 +192,14 @@ export const transferBalance = async (mutationData) => {
           amount: mutationData.amount + (mutationData.admin_fee || 0),
           reference_type: 'MUTATION',
           reference_id: mutation.id,
-          description: `Mutasi Keluar ke Dompet Tujuan: ${mutationData.description}`,
+          description: `Mutasi Keluar${toName}: ${mutationData.description}`,
         }
       ]);
     
     if (outError) throw outError;
 
     // 3. Catat 'IN' ke dompet tujuan
+    const fromName = mutationData.from_wallet_name ? ` dari ${mutationData.from_wallet_name}` : '';
     const { error: inError } = await supabase
       .from('wallet_transactions')
       .insert([
@@ -179,7 +209,7 @@ export const transferBalance = async (mutationData) => {
           amount: mutationData.amount,
           reference_type: 'MUTATION',
           reference_id: mutation.id,
-          description: `Mutasi Masuk dari Dompet Asal: ${mutationData.description}`,
+          description: `Mutasi Masuk${fromName}: ${mutationData.description}`,
         }
       ]);
 
