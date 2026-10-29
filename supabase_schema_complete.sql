@@ -435,6 +435,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Hapus trigger lama (nama berbeda) agar saldo tidak terupdate dobel
+DROP TRIGGER IF EXISTS trigger_update_wallet_balance ON public.wallet_transactions;
 DROP TRIGGER IF EXISTS trg_update_wallet_balance ON public.wallet_transactions;
 CREATE TRIGGER trg_update_wallet_balance
   AFTER INSERT OR UPDATE OR DELETE ON public.wallet_transactions
