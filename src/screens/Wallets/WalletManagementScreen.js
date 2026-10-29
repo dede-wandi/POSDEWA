@@ -543,7 +543,10 @@ export default function WalletManagementScreen() {
             showToast('Anda belum memiliki dompet.', 'info');
             return;
           }
-          setAdjWalletId(wallets[0].id);
+          setAdjWalletId('');
+          setAdjAmount('');
+          setAdjDesc('');
+          setAdjError('');
           setAdjModalVisible(true);
         }}>
           <Ionicons name="options" size={20} color="#FFF" />
@@ -817,11 +820,21 @@ export default function WalletManagementScreen() {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Pilih Dompet / Kas</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <Text style={styles.label}>Pilih Dompet / Kas</Text>
+                {!adjWalletId && (
+                  <Text style={{ fontSize: 11, color: '#DC2626', fontWeight: '600' }}>
+                    * Wajib klik salah satu dompet
+                  </Text>
+                )}
+              </View>
               <WalletPicker 
                 wallets={wallets} 
                 selectedId={adjWalletId} 
-                onSelect={setAdjWalletId} 
+                onSelect={(id) => {
+                  setAdjWalletId(id);
+                  setAdjError('');
+                }} 
                 highlightColor={Colors.primary}
               />
             </View>
