@@ -22,10 +22,57 @@ export default function PaymentScreen({ navigation, route }) {
   const [cashAmount, setCashAmount] = useState(total ? formatNumberWithDots(total) : '');
   const [isProcessing, setIsProcessing] = useState(false);
   
+  // Helper Cerdas Deteksi Layanan Digital Real-Time (Top-up / Transfer / Pulsa Langsung)
+  // Produk fisik dan voucher yang sudah di-inject TIDAK memotong saldo digital lagi di kasir
+  const isRealTimeDigitalService = (item) => {
+    if (!item) return false;
+
+    const type = item.product_type || item.productType;
+    const nameLower = (item.name || '').toLowerCase();
+    const catLower = (item.category_name || item.category || '').toLowerCase();
+
+    // 1. Voucher fisik & Perdana: HPP sudah terpotong saat inject voucher / beli stok fisik
+    if (type === 'voucher' || nameLower.includes('voucher') || nameLower.includes('perdana')) {
+      return false;
+    }
+
+    // 2. Barang titipan / konsinyasi: HPP masuk ke pencatatan hutang supplier terpisah
+    if (type === 'consignment' || item.consignorName || nameLower.includes('titipan') || nameLower.includes('konsinyasi')) {
+      return false;
+    }
+
+    // 3. Jasa finansial / Top up e-wallet / Pulsa langsung
+    if (type === 'digital' || type === 'financial_service') return true;
+
+    // 4. Deteksi kata kunci layanan digital / transfer
+    const isServiceKeyword = nameLower.includes('transfer') || nameLower.includes('tarik tunai') || 
+                             nameLower.includes('top up') || nameLower.includes('topup') || 
+                             nameLower.includes('dana') || nameLower.includes('gopay') || 
+                             nameLower.includes('ovo') || nameLower.includes('shopeepay') || 
+                             nameLower.includes('linkaja') || nameLower.includes('token pln') || 
+                             nameLower.includes('pulsa') || nameLower.includes('paket data');
+    if (isServiceKeyword) return true;
+
+    if (catLower.includes('ppob') || catLower.includes('digital') || catLower.includes('transfer') || catLower.includes('tarik tunai')) {
+      return true;
+    }
+
+    // Produk fisik biasa (casing, charger, kabel, tempered glass, dll)
+    return false;
+  };
+
   // Wallet States
   const [wallets, setWallets] = useState([]);
   const [selectedWalletId, setSelectedWalletId] = useState(null); // Dompet tujuan uang masuk
-  const [digitalWalletId, setDigitalWalletId] = useState(null); // Dompet sumber HPP dipotong (jika ada barang digital)
+  const [digitalWalletId, setDigitalWalletId] = useState(null); // Dompet sumber HPP dipotong (hanya untuk barang digital)
+
+  // Pisahkan modal produk digital vs fisik
+  const digitalCartItems = cart.filter(isRealTimeDigitalService);
+  const totalDigitalCost = digitalCartItems.reduce((sum, item) => sum + (item.costPrice || 0) * item.qty, 0);
+
+  const physicalCartItems = cart.filter(item => !isRealTimeDigitalService(item));
+  const totalPhysicalCost = physicalCartItems.reduce((sum, item) => sum + (item.costPrice || 0) * item.qty, 0);
+  const totalCartCost = totalDigitalCost + totalPhysicalCost;
 
   useEffect(() => {
     const fetchWallets = async () => {
@@ -35,24 +82,53 @@ export default function PaymentScreen({ navigation, route }) {
         setWallets(data);
         const isTarikTunai = cart.some(item => (item.name || '').toLowerCase().includes('tarik tunai'));
         const cashWallet = data.find(w => w.type === 'CASH');
-        const digitalWallet = data.find(w => w.type !== 'CASH' && w.type !== 'PROFIT');
 
+        // Uang masuk default ke Laci Kasir (CASH)
         if (isTarikTunai) {
+          const digitalWallet = data.find(w => w.type !== 'CASH' && w.type !== 'PROFIT');
           setSelectedWalletId(digitalWallet ? digitalWallet.id : data[0].id);
           setDigitalWalletId(cashWallet ? cashWallet.id : null);
         } else {
           setSelectedWalletId(cashWallet ? cashWallet.id : data[0].id);
-          setDigitalWalletId(null);
+
+          // Cek apakah ada produk digital real-time di keranjang
+          if (digitalCartItems.length === 0) {
+            // MURNI PRODUK FISIK / VOUCHER STOK -> Otomatis SKIP potong saldo digital
+            setDigitalWalletId(null);
+          } else {
+            // ADA BARANG DIGITAL -> Otomatis pilihkan dompet yang sesuai
+            const firstDigital = digitalCartItems[0];
+            const nameLower = (firstDigital.name || '').toLowerCase();
+
+            let matchedWallet = null;
+            if (nameLower.includes('dana')) {
+              matchedWallet = data.find(w => (w.name || '').toLowerCase().includes('dana'));
+            } else if (nameLower.includes('ovo')) {
+              matchedWallet = data.find(w => (w.name || '').toLowerCase().includes('ovo'));
+            } else if (nameLower.includes('gopay')) {
+              matchedWallet = data.find(w => (w.name || '').toLowerCase().includes('gopay'));
+            } else if (nameLower.includes('shopee')) {
+              matchedWallet = data.find(w => (w.name || '').toLowerCase().includes('shopee'));
+            } else if (nameLower.includes('digipos')) {
+              matchedWallet = data.find(w => (w.name || '').toLowerCase().includes('digipos'));
+            } else if (nameLower.includes('transfer') || nameLower.includes('kirim uang')) {
+              matchedWallet = data.find(w => w.type === 'BANK') || data.find(w => (w.name || '').toLowerCase().includes('bank') || (w.name || '').toLowerCase().includes('bca') || (w.name || '').toLowerCase().includes('bri'));
+            } else {
+              matchedWallet = data.find(w => (w.name || '').toLowerCase().includes('pulsa')) || data.find(w => w.type === 'APP_BALANCE');
+            }
+
+            if (matchedWallet) {
+              setDigitalWalletId(matchedWallet.id);
+            } else {
+              const fallback = data.find(w => w.type !== 'CASH' && w.type !== 'PROFIT');
+              setDigitalWalletId(fallback ? fallback.id : null);
+            }
+          }
         }
       }
     };
     fetchWallets();
   }, [user?.id]);
-
-  // Semua wallet bisa jadi channel pemrosesan (sumber modal → OUT)
-
-  // Total modal (HPP) seluruh item di cart — ini yang dipotong dari platform (QGROW/Digipos)
-  const totalCartCost = cart.reduce((sum, item) => sum + (item.costPrice || 0) * item.qty, 0);
 
   const cashValue = parseFloat(cashAmount.replace(/\./g, '')) || 0;
   const change = cashValue - total;
@@ -129,16 +205,16 @@ export default function PaymentScreen({ navigation, route }) {
         });
       }
 
-      // 2b. INTEGRASI WALLET: Potong saldo platform (QGROW/Digipos) sebesar total HPP
-      if (digitalWalletId && totalCartCost > 0) {
+      // 2b. INTEGRASI WALLET: Potong saldo platform (HANYA untuk item digital / transfer real-time)
+      if (digitalWalletId && totalDigitalCost > 0) {
         const digitalWallet = wallets.find(w => w.id === digitalWalletId);
         await addWalletTransaction({
           wallet_id: digitalWalletId,
           type: 'OUT',
-          amount: totalCartCost,
+          amount: totalDigitalCost,
           reference_type: 'PURCHASE',
           reference_id: saleResult.data?.sale?.id || null,
-          description: `Modal trx #${saleResult.data?.sale?.no_invoice || ''} via ${digitalWallet?.name || 'Platform'}`
+          description: `Modal digital #${saleResult.data?.sale?.no_invoice || ''} via ${digitalWallet?.name || 'Platform'}`
         });
       }
 
@@ -334,8 +410,10 @@ export default function PaymentScreen({ navigation, route }) {
             </View>
             <Text style={styles.cardSubtitle}>
               {digitalWalletId
-                ? `HPP ${formatIDR(totalCartCost)} dipotong dari channel → Laci Kasir bertambah`
-                : 'Pilih channel jika ada biaya modal. Kosongkan untuk produk fisik biasa.'}
+                ? `HPP digital ${formatIDR(totalDigitalCost)} dipotong dari channel → Laci Kasir bertambah`
+                : (digitalCartItems.length === 0
+                    ? '✓ Semua produk fisik / voucher stok. Uang masuk ke laci kasir (tidak ada saldo digital dipotong).'
+                    : 'Pilih channel sumber modal jika ada transaksi digital. Kosongkan untuk produk fisik.')}
             </Text>
 
             <View style={styles.walletGrid}>

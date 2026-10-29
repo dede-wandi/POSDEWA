@@ -275,6 +275,85 @@ export const syncWalletBalanceWithTransactions = async (walletId) => {
   }
 };
 
+// Sinkronkan SEMUA dompet user dengan total transaksi riwayat masing-masing
+export const syncAllWalletsWithTransactions = async (userId) => {
+  try {
+    const supabase = getSupabaseClient();
+    if (!supabase) return { count: 0, error: 'Supabase tidak tersedia' };
+
+    const { data: userWallets, error: wError } = await supabase
+      .from('wallets')
+      .select('id, name')
+      .eq('user_id', userId);
+
+    if (wError) throw wError;
+    if (!userWallets || userWallets.length === 0) return { count: 0, error: null };
+
+    let syncedCount = 0;
+    for (const w of userWallets) {
+      await syncWalletBalanceWithTransactions(w.id);
+      syncedCount++;
+    }
+
+    return { count: syncedCount, error: null };
+  } catch (err) {
+    console.error('Error syncing all wallets:', err);
+    return { count: 0, error: err };
+  }
+};
+
+// Setel saldo dompet ke nilai riil secara langsung (menghasilkan transaksi penyesuaian di ledger)
+export const setWalletDirectBalance = async (walletId, targetBalance, description = 'Koreksi Saldo Riil') => {
+  try {
+    const supabase = getSupabaseClient();
+    if (!supabase) return { success: false, error: 'Supabase tidak tersedia' };
+
+    // 1. Ambil saldo saat ini
+    const { data: currentWallet, error: fetchErr } = await supabase
+      .from('wallets')
+      .select('balance, name')
+      .eq('id', walletId)
+      .single();
+
+    if (fetchErr) throw fetchErr;
+
+    const currentBal = Number(currentWallet?.balance) || 0;
+    const targetBal = Number(targetBalance) || 0;
+    const diff = targetBal - currentBal;
+
+    if (Math.abs(diff) < 0.01) {
+      return { success: true, message: 'Saldo sudah sesuai', balance: targetBal };
+    }
+
+    const adjType = diff > 0 ? 'IN' : 'OUT';
+    const adjAmount = Math.abs(diff);
+
+    // 2. Tambah transaksi penyesuaian agar tercatat transparan di buku besar
+    const { error: txErr } = await addWalletTransaction({
+      wallet_id: walletId,
+      type: adjType,
+      amount: adjAmount,
+      reference_type: 'ADJUSTMENT',
+      description: `${description} (Penyesuaian nilai riil dari ${currentBal} ke ${targetBal})`,
+      balance_before: currentBal,
+      balance_after: targetBal,
+    });
+
+    if (txErr) throw txErr;
+
+    // 3. Pastikan saldo dompet terupdate
+    await supabase
+      .from('wallets')
+      .update({ balance: targetBal, updated_at: new Date().toISOString() })
+      .eq('id', walletId);
+
+    return { success: true, balance: targetBal, diff, error: null };
+  } catch (err) {
+    console.error('Error setting direct wallet balance:', err);
+    return { success: false, error: err };
+  }
+};
+
 // ================================
 // MANUAL PROFIT SYNC (NEW)
 // ================================

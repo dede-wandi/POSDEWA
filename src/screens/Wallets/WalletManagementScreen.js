@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../theme';
-import { getWallets, deleteWallet, addWallet, transferBalance, addWalletTransaction, getWalletTransactions, syncWalletBalanceWithTransactions, getUnsyncedProfits, syncPendingProfits } from '../../services/walletSupabase';
+import { getWallets, deleteWallet, addWallet, transferBalance, addWalletTransaction, getWalletTransactions, syncWalletBalanceWithTransactions, syncAllWalletsWithTransactions, setWalletDirectBalance, getUnsyncedProfits, syncPendingProfits } from '../../services/walletSupabase';
 import { useNavigation } from '@react-navigation/native';
 import { formatCurrency } from '../../utils/currency';
 
@@ -232,6 +232,22 @@ export default function WalletManagementScreen() {
     setHistoryLoading(false);
   };
 
+  const [isSyncingAll, setIsSyncingAll] = useState(false);
+  const [adjMode, setAdjMode] = useState('RELATIVE'); // 'RELATIVE' (Tambah/Kurang) atau 'DIRECT' (Setel Saldo Riil)
+
+  const handleSyncAllWallets = async () => {
+    if (!user?.id) return;
+    setIsSyncingAll(true);
+    const { count, error } = await syncAllWalletsWithTransactions(user.id);
+    setIsSyncingAll(false);
+    if (error) {
+      showToast('Gagal menyinkronkan saldo dompet', 'error');
+    } else {
+      showToast(`Berhasil menyinkronkan ${count} dompet dengan riwayat transaksi!`, 'success');
+      fetchWallets();
+    }
+  };
+
   const handleSyncWalletBalance = async () => {
     if (!selectedWalletForHistory?.id) return;
     setIsSyncing(true);
@@ -360,7 +376,7 @@ export default function WalletManagementScreen() {
       return;
     }
     const cleanAmount = parseInt(adjAmount.replace(/\D/g, '')) || 0;
-    if (cleanAmount <= 0) {
+    if (cleanAmount < 0) {
       setAdjError('Masukkan nominal penyesuaian yang valid.');
       return;
     }
@@ -369,14 +385,43 @@ export default function WalletManagementScreen() {
       return;
     }
 
-    // Cek jika penyesuaian KELUAR melebihi saldo yang tersedia
     const targetWallet = wallets.find(w => w.id === adjWalletId);
+
+    setIsAdjusting(true);
+
+    if (adjMode === 'DIRECT') {
+      // Mode Langsung: Setel saldo dompet ke nilai riil
+      const { success, error } = await setWalletDirectBalance(adjWalletId, cleanAmount, adjDesc);
+      setIsAdjusting(false);
+      if (!success || error) {
+        setAdjError(`Gagal menyetel saldo riil: ${error?.message || error}`);
+      } else {
+        showToast('Saldo riil berhasil disetel!', 'success');
+        setAdjModalVisible(false);
+        setAdjWalletId('');
+        setAdjAmount('');
+        setAdjDesc('');
+        setAdjError('');
+        setAdjMode('RELATIVE');
+        fetchWallets();
+      }
+      return;
+    }
+
+    // Mode Relatif (Tambah/Kurang)
+    if (cleanAmount <= 0) {
+      setIsAdjusting(false);
+      setAdjError('Masukkan nominal penyesuaian yang lebih dari 0.');
+      return;
+    }
+
+    // Cek jika penyesuaian KELUAR melebihi saldo yang tersedia
     if (adjType === 'OUT' && targetWallet && targetWallet.balance < cleanAmount) {
+      setIsAdjusting(false);
       setAdjError(`Saldo dompet tidak mencukupi untuk pengurangan ini (Saldo saat ini: ${formatCurrency(targetWallet.balance)}).`);
       return;
     }
 
-    setIsAdjusting(true);
     const { error } = await addWalletTransaction({
       wallet_id: adjWalletId,
       type: adjType,
@@ -397,6 +442,7 @@ export default function WalletManagementScreen() {
       setAdjDesc('');
       setAdjError('');
       setAdjType('IN');
+      setAdjMode('RELATIVE');
       fetchWallets();
     }
   };
@@ -521,7 +567,33 @@ export default function WalletManagementScreen() {
 
       {/* Wallets List */}
       <View style={styles.listContainer}>
-        <Text style={styles.sectionTitle}>Daftar Kas & Dompet Anda</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <Text style={styles.sectionTitle}>Daftar Kas & Dompet Anda</Text>
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: '#EFF6FF',
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: '#BFDBFE',
+              gap: 4
+            }}
+            onPress={handleSyncAllWallets}
+            disabled={isSyncingAll}
+          >
+            {isSyncingAll ? (
+              <ActivityIndicator size="small" color="#2563EB" />
+            ) : (
+              <>
+                <Ionicons name="sync-outline" size={14} color="#2563EB" />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: '#2563EB' }}>Sinkronkan Semua</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
         {loading ? (
           <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 20 }} />
         ) : (
@@ -709,6 +781,41 @@ export default function WalletManagementScreen() {
               </View>
             ) : null}
 
+            {/* Pilihan Mode Penyesuaian */}
+            <View style={{ flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 8, padding: 3, marginBottom: 16 }}>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  paddingVertical: 8,
+                  alignItems: 'center',
+                  borderRadius: 6,
+                  backgroundColor: adjMode === 'RELATIVE' ? '#FFF' : 'transparent',
+                }}
+                onPress={() => setAdjMode('RELATIVE')}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '700', color: adjMode === 'RELATIVE' ? '#1E293B' : '#64748B' }}>
+                  Tambah / Kurang Saldo
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  paddingVertical: 8,
+                  alignItems: 'center',
+                  borderRadius: 6,
+                  backgroundColor: adjMode === 'DIRECT' ? '#FFF' : 'transparent',
+                }}
+                onPress={() => {
+                  setAdjMode('DIRECT');
+                  if (!adjDesc) setAdjDesc('Koreksi Saldo Riil');
+                }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '700', color: adjMode === 'DIRECT' ? '#2563EB' : '#64748B' }}>
+                  Set Saldo Riil Langsung
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             <View style={styles.formGroup}>
               <Text style={styles.label}>Pilih Dompet / Kas</Text>
               <WalletPicker 
@@ -719,33 +826,57 @@ export default function WalletManagementScreen() {
               />
             </View>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Tipe Penyesuaian</Text>
-              <View style={styles.typeSelector}>
-                <TouchableOpacity
-                  style={[styles.typeButton, adjType === 'IN' && { backgroundColor: Colors.success, borderColor: Colors.success }]}
-                  onPress={() => setAdjType('IN')}
-                >
-                  <Text style={[styles.typeButtonText, adjType === 'IN' && { color: '#FFF' }]}>
-                    Masuk (+ Saldo)
+            {/* Info Saldo Saat Ini jika Mode Direct */}
+            {adjMode === 'DIRECT' && adjWalletId ? (() => {
+              const selW = wallets.find(w => w.id === adjWalletId);
+              const currBal = Number(selW?.balance) || 0;
+              const targetNum = parseInt(adjAmount.replace(/\D/g, '')) || 0;
+              const diff = targetNum - currBal;
+              return (
+                <View style={{ backgroundColor: '#EFF6FF', borderRadius: 8, padding: 10, marginBottom: 14, borderWidth: 1, borderColor: '#BFDBFE' }}>
+                  <Text style={{ fontSize: 12, color: '#1E40AF' }}>
+                    Saldo di aplikasi saat ini: <Text style={{ fontWeight: 'bold' }}>{formatCurrency(currBal)}</Text>
                   </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.typeButton, adjType === 'OUT' && { backgroundColor: Colors.danger, borderColor: Colors.danger }]}
-                  onPress={() => setAdjType('OUT')}
-                >
-                  <Text style={[styles.typeButtonText, adjType === 'OUT' && { color: '#FFF' }]}>
-                    Keluar (- Saldo)
-                  </Text>
-                </TouchableOpacity>
+                  {adjAmount ? (
+                    <Text style={{ fontSize: 12, color: diff >= 0 ? '#16A34A' : '#DC2626', fontWeight: '600', marginTop: 4 }}>
+                      Penyesuaian: {diff >= 0 ? '+' : ''}{formatCurrency(diff)} (menjadi {formatCurrency(targetNum)})
+                    </Text>
+                  ) : null}
+                </View>
+              );
+            })() : null}
+
+            {adjMode === 'RELATIVE' ? (
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Tipe Penyesuaian</Text>
+                <View style={styles.typeSelector}>
+                  <TouchableOpacity
+                    style={[styles.typeButton, adjType === 'IN' && { backgroundColor: Colors.success, borderColor: Colors.success }]}
+                    onPress={() => setAdjType('IN')}
+                  >
+                    <Text style={[styles.typeButtonText, adjType === 'IN' && { color: '#FFF' }]}>
+                      Masuk (+ Saldo)
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.typeButton, adjType === 'OUT' && { backgroundColor: Colors.danger, borderColor: Colors.danger }]}
+                    onPress={() => setAdjType('OUT')}
+                  >
+                    <Text style={[styles.typeButtonText, adjType === 'OUT' && { color: '#FFF' }]}>
+                      Keluar (- Saldo)
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
+            ) : null}
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Nominal (Rp)</Text>
+              <Text style={styles.label}>
+                {adjMode === 'DIRECT' ? 'Saldo Riil di Tangan / Aplikasi Sebenarnya (Rp)' : 'Nominal (Rp)'}
+              </Text>
               <TextInput
                 style={styles.input}
-                placeholder="Cth: 50.000"
+                placeholder={adjMode === 'DIRECT' ? 'Cth: 500.000' : 'Cth: 50.000'}
                 keyboardType="numeric"
                 value={adjAmount}
                 onChangeText={(text) => {
@@ -763,7 +894,7 @@ export default function WalletManagementScreen() {
               <Text style={styles.label}>Keterangan / Alasan</Text>
               <TextInput
                 style={[styles.input, { height: 70 }]}
-                placeholder="Cth: Selisih kasir, Uang receh kembalian, dsb."
+                placeholder={adjMode === 'DIRECT' ? 'Cth: Koreksi modal saldo riil' : 'Cth: Selisih kasir, Uang receh kembalian, dsb.'}
                 value={adjDesc}
                 onChangeText={setAdjDesc}
                 multiline
