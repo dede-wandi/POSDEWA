@@ -241,6 +241,40 @@ export const getWalletTransactions = async (walletId) => {
   }
 };
 
+// Rekonsiliasi & Sinkronisasi Saldo Dompet dengan Total Transaksi Riwayat
+export const syncWalletBalanceWithTransactions = async (walletId) => {
+  try {
+    const supabase = getSupabaseClient();
+    if (!supabase) return { data: null, calculatedBalance: 0, error: 'Supabase tidak tersedia' };
+
+    // Ambil semua transaksi dompet ini
+    const { data: txs, error: txError } = await supabase
+      .from('wallet_transactions')
+      .select('type, amount')
+      .eq('wallet_id', walletId);
+
+    if (txError) throw txError;
+
+    const sumIn = (txs || []).filter(t => t.type === 'IN').reduce((acc, t) => acc + Number(t.amount || 0), 0);
+    const sumOut = (txs || []).filter(t => t.type === 'OUT').reduce((acc, t) => acc + Number(t.amount || 0), 0);
+    const calculatedBalance = sumIn - sumOut;
+
+    // Update tabel wallets agar saldonya sesuai dengan riwayat
+    const { data, error: updateError } = await supabase
+      .from('wallets')
+      .update({ balance: calculatedBalance, updated_at: new Date().toISOString() })
+      .eq('id', walletId)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+    return { data, calculatedBalance, error: null };
+  } catch (err) {
+    console.error('Error syncing wallet balance:', err);
+    return { data: null, calculatedBalance: 0, error: err };
+  }
+};
+
 // ================================
 // MANUAL PROFIT SYNC (NEW)
 // ================================

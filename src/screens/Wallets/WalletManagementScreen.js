@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../theme';
-import { getWallets, deleteWallet, addWallet, transferBalance, addWalletTransaction, getWalletTransactions, getUnsyncedProfits, syncPendingProfits } from '../../services/walletSupabase';
+import { getWallets, deleteWallet, addWallet, transferBalance, addWalletTransaction, getWalletTransactions, syncWalletBalanceWithTransactions, getUnsyncedProfits, syncPendingProfits } from '../../services/walletSupabase';
 import { useNavigation } from '@react-navigation/native';
 import { formatCurrency } from '../../utils/currency';
 
@@ -130,41 +130,67 @@ export default function WalletManagementScreen() {
     );
   };
 
-  // History Modal State & Calculations
+  // History Modal State & Summary
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
   const [historyData, setHistoryData] = useState([]);
   const [historySearch, setHistorySearch] = useState('');
   const [historyLoading, setHistoryLoading] = useState(false);
   const [selectedWalletForHistory, setSelectedWalletForHistory] = useState(null);
+  const [historySummary, setHistorySummary] = useState({
+    totalIn: 0,
+    totalOut: 0,
+    netLedger: 0,
+    hasDiscrepancy: false,
+    diffAmount: 0
+  });
+  const [isSyncing, setIsSyncing] = useState(false);
 
-  // Hitung saldo Sebelum & Sesudah untuk setiap mutasi (Ledger)
+  // Hitung saldo Sebelum & Sesudah untuk setiap mutasi (Ledger) secara KRONOLOGIS
   const calculateTransactionBalances = (transactions, currentWalletBalance) => {
     if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
-      return [];
+      return {
+        items: [],
+        totalIn: 0,
+        totalOut: 0,
+        netLedger: 0,
+        hasDiscrepancy: false,
+        diffAmount: 0
+      };
     }
 
-    // List transaksi diurutkan DESC (paling baru di index 0)
-    let runningAfter = Number(currentWalletBalance) || 0;
+    // 1. Hitung total uang masuk dan keluar dari semua transaksi
+    let totalIn = 0;
+    let totalOut = 0;
+    transactions.forEach(t => {
+      const amt = Number(t.amount) || 0;
+      if (t.type === 'IN') totalIn += amt;
+      else if (t.type === 'OUT') totalOut += amt;
+    });
 
-    return transactions.map((item) => {
-      const amount = Number(item.amount) || 0;
+    const netLedger = totalIn - totalOut;
+    const currentBal = Number(currentWalletBalance) || 0;
+    const diff = currentBal - netLedger;
+    const hasDiscrepancy = Math.abs(diff) > 0.01;
+
+    // 2. Urutkan transaksi secara KRONOLOGIS (lama ke baru / ASC)
+    // agar running balance dihitung maju dari saldo awal secara akurat
+    const chronological = [...transactions].sort((a, b) => {
+      const tA = new Date(a.created_at || 0).getTime();
+      const tB = new Date(b.created_at || 0).getTime();
+      return tA - tB;
+    });
+
+    // Titik awal saldo: jika ada selisih positif (misal saldo awal dompet sebelum transaksi pertama tercatat),
+    // gunakan selisihnya, jika tidak mulai dari 0
+    let running = (diff > 0) ? diff : 0;
+
+    const processedChronological = chronological.map(item => {
+      const amt = Number(item.amount) || 0;
       const isOut = item.type === 'OUT';
 
-      let balBefore;
-      let balAfter;
-
-      // Jika dari database sudah tercatat balance_before & balance_after
-      if (item.balance_before !== undefined && item.balance_before !== null &&
-          item.balance_after !== undefined && item.balance_after !== null) {
-        balBefore = Number(item.balance_before);
-        balAfter = Number(item.balance_after);
-        runningAfter = balBefore;
-      } else {
-        // Kalkulasi running balance secara retroaktif dari saldo terkini
-        balAfter = runningAfter;
-        balBefore = isOut ? (runningAfter + amount) : (runningAfter - amount);
-        runningAfter = balBefore;
-      }
+      const balBefore = running;
+      const balAfter = isOut ? (running - amt) : (running + amt);
+      running = balAfter;
 
       return {
         ...item,
@@ -172,6 +198,16 @@ export default function WalletManagementScreen() {
         balance_after: balAfter,
       };
     });
+
+    // 3. Tampilkan list terbaru di atas (DESC)
+    return {
+      items: processedChronological.reverse(),
+      totalIn,
+      totalOut,
+      netLedger,
+      hasDiscrepancy,
+      diffAmount: diff
+    };
   };
 
   const handleViewHistory = async (wallet) => {
@@ -181,12 +217,34 @@ export default function WalletManagementScreen() {
     setHistoryLoading(true);
     const { data, error } = await getWalletTransactions(wallet.id);
     if (data) {
-      const processed = calculateTransactionBalances(data, wallet.balance);
-      setHistoryData(processed);
+      const result = calculateTransactionBalances(data, wallet.balance);
+      setHistoryData(result.items);
+      setHistorySummary({
+        totalIn: result.totalIn,
+        totalOut: result.totalOut,
+        netLedger: result.netLedger,
+        hasDiscrepancy: result.hasDiscrepancy,
+        diffAmount: result.diffAmount
+      });
     } else {
       showToast('Gagal memuat riwayat', 'error');
     }
     setHistoryLoading(false);
+  };
+
+  const handleSyncWalletBalance = async () => {
+    if (!selectedWalletForHistory?.id) return;
+    setIsSyncing(true);
+    const { data, calculatedBalance, error } = await syncWalletBalanceWithTransactions(selectedWalletForHistory.id);
+    setIsSyncing(false);
+    if (error) {
+      showToast('Gagal menyinkronkan saldo', 'error');
+    } else {
+      showToast(`Saldo berhasil disinkronkan ke ${formatCurrency(calculatedBalance)}`, 'success');
+      setSelectedWalletForHistory(prev => ({ ...prev, balance: calculatedBalance }));
+      setHistorySummary(prev => ({ ...prev, hasDiscrepancy: false, diffAmount: 0 }));
+      fetchWallets();
+    }
   };
 
   const filteredHistoryData = useMemo(() => {
@@ -775,6 +833,146 @@ export default function WalletManagementScreen() {
                 </TouchableOpacity>
               ) : null}
             </View>
+
+            {/* Ringkasan Akumulasi Mutasi */}
+            {!historyLoading && (
+              <View style={{
+                flexDirection: 'row',
+                backgroundColor: '#F8FAFC',
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: '#E2E8F0',
+                padding: 10,
+                marginBottom: 12,
+                justifyContent: 'space-around',
+              }}>
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '500' }}>Total Masuk</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#16A34A', marginTop: 2 }}>
+                    +{formatCurrency(historySummary.totalIn)}
+                  </Text>
+                </View>
+                <View style={{ width: 1, backgroundColor: '#E2E8F0' }} />
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '500' }}>Total Keluar</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#DC2626', marginTop: 2 }}>
+                    -{formatCurrency(historySummary.totalOut)}
+                  </Text>
+                </View>
+                <View style={{ width: 1, backgroundColor: '#E2E8F0' }} />
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '500' }}>Akumulasi Riwayat</Text>
+                  <Text style={{
+                    fontSize: 12,
+                    fontWeight: '700',
+                    color: historySummary.netLedger >= 0 ? '#1E293B' : '#DC2626',
+                    marginTop: 2
+                  }}>
+                    {formatCurrency(historySummary.netLedger)}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {/* Banner Peringatan Selisih Saldo */}
+            {!historyLoading && historySummary.hasDiscrepancy && (
+              <View style={{
+                backgroundColor: '#FEF3C7',
+                borderWidth: 1,
+                borderColor: '#F59E0B',
+                borderRadius: 10,
+                padding: 12,
+                marginBottom: 12,
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                  <Ionicons name="warning" size={18} color="#D97706" style={{ marginRight: 6 }} />
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#92400E' }}>
+                    Terdeteksi Selisih Saldo
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 12, color: '#78350F', lineHeight: 18 }}>
+                  Saldo di dompet: <Text style={{ fontWeight: 'bold' }}>{formatCurrency(selectedWalletForHistory?.balance || 0)}</Text>
+                  {'\n'}Total mutasi riwayat: <Text style={{ fontWeight: 'bold' }}>{formatCurrency(historySummary.netLedger)}</Text>
+                  {'\n'}Selisih: <Text style={{ fontWeight: 'bold' }}>{formatCurrency(Math.abs(historySummary.diffAmount))}</Text>
+                </Text>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#D97706',
+                    borderRadius: 8,
+                    paddingVertical: 8,
+                    paddingHorizontal: 12,
+                    marginTop: 8,
+                    alignItems: 'center',
+                    flexDirection: 'row',
+                    justifyContent: 'center',
+                    gap: 6
+                  }}
+                  onPress={handleSyncWalletBalance}
+                  disabled={isSyncing}
+                >
+                  {isSyncing ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <>
+                      <Ionicons name="sync" size={16} color="#FFF" />
+                      <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold' }}>
+                        Sinkronkan Saldo ke {formatCurrency(historySummary.netLedger)}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Banner Bantuan Saldo Minus (Defisit) */}
+            {!historyLoading && (Number(selectedWalletForHistory?.balance) < 0 || historySummary.netLedger < 0) && (
+              <View style={{
+                backgroundColor: '#EFF6FF',
+                borderWidth: 1,
+                borderColor: '#93C5FD',
+                borderRadius: 10,
+                padding: 12,
+                marginBottom: 12,
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                  <Ionicons name="information-circle" size={18} color="#2563EB" style={{ marginRight: 6 }} />
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#1E40AF' }}>
+                    Saldo Dompet Bernilai Minus
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 12, color: '#1E3A8A', lineHeight: 18 }}>
+                  Saldo dompet ini bernilai minus karena pengeluaran inject/modal dicatat tanpa ada mutasi masuk saldo modal/top-up. Masukkan saldo modal riil agar kembali positif.
+                </Text>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#2563EB',
+                    borderRadius: 8,
+                    paddingVertical: 8,
+                    paddingHorizontal: 12,
+                    marginTop: 8,
+                    alignItems: 'center',
+                    flexDirection: 'row',
+                    justifyContent: 'center',
+                    gap: 6
+                  }}
+                  onPress={() => {
+                    const targetId = selectedWalletForHistory.id;
+                    const defAmount = Math.abs(Number(selectedWalletForHistory.balance || 0));
+                    setHistoryModalVisible(false);
+                    setAdjWalletId(targetId);
+                    setAdjType('IN');
+                    setAdjAmount(defAmount > 0 ? defAmount.toLocaleString('id-ID') : '');
+                    setAdjDesc('Top-Up Modal / Saldo Awal');
+                    setAdjModalVisible(true);
+                  }}
+                >
+                  <Ionicons name="add-circle" size={16} color="#FFF" />
+                  <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold' }}>
+                    Top-Up / Sesuaikan Saldo Sekarang
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {historyLoading ? (
               <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 20 }} />
