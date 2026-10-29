@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../theme';
@@ -130,24 +130,75 @@ export default function WalletManagementScreen() {
     );
   };
 
-  // History Modal State
+  // History Modal State & Calculations
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
   const [historyData, setHistoryData] = useState([]);
+  const [historySearch, setHistorySearch] = useState('');
   const [historyLoading, setHistoryLoading] = useState(false);
   const [selectedWalletForHistory, setSelectedWalletForHistory] = useState(null);
 
+  // Hitung saldo Sebelum & Sesudah untuk setiap mutasi (Ledger)
+  const calculateTransactionBalances = (transactions, currentWalletBalance) => {
+    if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
+      return [];
+    }
+
+    // List transaksi diurutkan DESC (paling baru di index 0)
+    let runningAfter = Number(currentWalletBalance) || 0;
+
+    return transactions.map((item) => {
+      const amount = Number(item.amount) || 0;
+      const isOut = item.type === 'OUT';
+
+      let balBefore;
+      let balAfter;
+
+      // Jika dari database sudah tercatat balance_before & balance_after
+      if (item.balance_before !== undefined && item.balance_before !== null &&
+          item.balance_after !== undefined && item.balance_after !== null) {
+        balBefore = Number(item.balance_before);
+        balAfter = Number(item.balance_after);
+        runningAfter = balBefore;
+      } else {
+        // Kalkulasi running balance secara retroaktif dari saldo terkini
+        balAfter = runningAfter;
+        balBefore = isOut ? (runningAfter + amount) : (runningAfter - amount);
+        runningAfter = balBefore;
+      }
+
+      return {
+        ...item,
+        balance_before: balBefore,
+        balance_after: balAfter,
+      };
+    });
+  };
+
   const handleViewHistory = async (wallet) => {
     setSelectedWalletForHistory(wallet);
+    setHistorySearch('');
     setHistoryModalVisible(true);
     setHistoryLoading(true);
     const { data, error } = await getWalletTransactions(wallet.id);
     if (data) {
-      setHistoryData(data);
+      const processed = calculateTransactionBalances(data, wallet.balance);
+      setHistoryData(processed);
     } else {
       showToast('Gagal memuat riwayat', 'error');
     }
     setHistoryLoading(false);
   };
+
+  const filteredHistoryData = useMemo(() => {
+    if (!historySearch.trim()) return historyData;
+    const q = historySearch.toLowerCase();
+    return historyData.filter((item) => {
+      const desc = (item.description || '').toLowerCase();
+      const ref = (item.reference_type || '').toLowerCase();
+      const amt = String(item.amount || '');
+      return desc.includes(q) || ref.includes(q) || amt.includes(q);
+    });
+  }, [historyData, historySearch]);
 
   useEffect(() => {
     if (user?.id) fetchWallets();
@@ -676,39 +727,163 @@ export default function WalletManagementScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { minHeight: '80%', maxHeight: '90%' }]}>
             <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalTitle}>Riwayat Mutasi</Text>
-                <Text style={{ fontSize: 13, color: '#64748b' }}>{selectedWalletForHistory?.name}</Text>
+              <View style={{ flex: 1, marginRight: 10 }}>
+                <Text style={styles.modalTitle}>Riwayat Mutasi Saldo</Text>
+                <Text style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>
+                  {selectedWalletForHistory?.name} • Saldo Saat Ini: <Text style={{ fontWeight: 'bold', color: '#1e293b' }}>{formatCurrency(selectedWalletForHistory?.balance || 0)}</Text>
+                </Text>
               </View>
-              <TouchableOpacity onPress={() => setHistoryModalVisible(false)}>
+              <TouchableOpacity onPress={() => setHistoryModalVisible(false)} style={{ padding: 4 }}>
                 <Ionicons name="close" size={24} color="#333" />
               </TouchableOpacity>
             </View>
 
+            {/* Pencarian dalam Riwayat */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: '#f1f5f9',
+              borderRadius: 8,
+              paddingHorizontal: 12,
+              paddingVertical: Platform.OS === 'ios' ? 8 : 4,
+              marginTop: 10,
+              marginBottom: 12,
+              borderWidth: 1,
+              borderColor: '#e2e8f0',
+            }}>
+              <Ionicons name="search" size={16} color="#64748b" style={{ marginRight: 8 }} />
+              <TextInput
+                style={{ flex: 1, fontSize: 13, color: '#1e293b', padding: 0 }}
+                placeholder="Cari keterangan, nominal, tipe..."
+                placeholderTextColor="#94a3b8"
+                value={historySearch}
+                onChangeText={setHistorySearch}
+              />
+              {historySearch ? (
+                <TouchableOpacity onPress={() => setHistorySearch('')}>
+                  <Ionicons name="close-circle" size={18} color="#94a3b8" />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
             {historyLoading ? (
               <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 20 }} />
-            ) : historyData.length === 0 ? (
-              <Text style={{ textAlign: 'center', color: '#94a3b8', marginTop: 20 }}>Belum ada riwayat mutasi.</Text>
+            ) : filteredHistoryData.length === 0 ? (
+              <Text style={{ textAlign: 'center', color: '#94a3b8', marginTop: 20 }}>
+                {historySearch ? 'Tidak ada transaksi yang cocok.' : 'Belum ada riwayat mutasi.'}
+              </Text>
             ) : (
               <FlatList
-                data={historyData}
-                keyExtractor={(item) => item.id}
+                data={filteredHistoryData}
+                keyExtractor={(item) => item.id || String(Math.random())}
                 contentContainerStyle={{ gap: 10, paddingBottom: 20 }}
                 renderItem={({ item }) => {
                   const isOut = item.type === 'OUT';
+                  const beforeBal = Number(item.balance_before) || 0;
+                  const afterBal = Number(item.balance_after) || 0;
+
                   return (
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, backgroundColor: '#f8fafc', borderRadius: 10, borderWidth: 1, borderColor: '#e2e8f0' }}>
-                      <View style={{ flex: 1, marginRight: 10 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#1e293b' }}>
-                          {item.description || (item.reference_type === 'TRANSFER' ? 'Transfer Saldo' : 'Mutasi')}
-                        </Text>
-                        <Text style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
-                          {new Date(item.created_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    <View style={{
+                      backgroundColor: '#ffffff',
+                      borderRadius: 12,
+                      padding: 12,
+                      borderWidth: 1,
+                      borderColor: '#e2e8f0',
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.04,
+                      shadowRadius: 2,
+                      elevation: 1,
+                    }}>
+                      {/* Baris 1: Tipe Mutasi & Nominal */}
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <View style={{
+                            backgroundColor: isOut ? '#FEE2E2' : '#DCFCE7',
+                            paddingHorizontal: 8,
+                            paddingVertical: 3,
+                            borderRadius: 6,
+                          }}>
+                            <Text style={{
+                              fontSize: 11,
+                              fontWeight: '700',
+                              color: isOut ? '#991B1B' : '#166534',
+                            }}>
+                              {isOut ? '↓ KELUAR' : '↑ MASUK'}
+                            </Text>
+                          </View>
+                          {item.reference_type ? (
+                            <View style={{
+                              backgroundColor: '#F1F5F9',
+                              paddingHorizontal: 7,
+                              paddingVertical: 3,
+                              borderRadius: 6,
+                            }}>
+                              <Text style={{ fontSize: 10, fontWeight: '600', color: '#475569' }}>
+                                {item.reference_type}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </View>
+                        <Text style={{
+                          fontSize: 15,
+                          fontWeight: 'bold',
+                          color: isOut ? '#DC2626' : '#16A34A',
+                        }}>
+                          {isOut ? '-' : '+'}{formatCurrency(item.amount)}
                         </Text>
                       </View>
-                      <Text style={{ fontSize: 14, fontWeight: 'bold', color: isOut ? '#dc2626' : '#16a34a' }}>
-                        {isOut ? '-' : '+'}{formatCurrency(item.amount)}
+
+                      {/* Baris 2: Deskripsi & Timestamp */}
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#1E293B', marginBottom: 3 }}>
+                        {item.description || (item.reference_type === 'MUTATION' ? 'Mutasi Saldo' : 'Transaksi Saldo')}
                       </Text>
+                      <Text style={{ fontSize: 11, color: '#94A3B8', marginBottom: 8 }}>
+                        🕒 {new Date(item.created_at).toLocaleString('id-ID', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                        })}
+                      </Text>
+
+                      {/* Baris 3: Saldo Before & After */}
+                      <View style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        backgroundColor: '#F8FAFC',
+                        borderWidth: 1,
+                        borderColor: '#E2E8F0',
+                        paddingHorizontal: 10,
+                        paddingVertical: 7,
+                        borderRadius: 8,
+                      }}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '500' }}>Saldo Sebelum</Text>
+                          <Text style={{ fontSize: 12, fontWeight: '600', color: '#334155', marginTop: 1 }}>
+                            {formatCurrency(beforeBal)}
+                          </Text>
+                        </View>
+
+                        <View style={{ paddingHorizontal: 8 }}>
+                          <Ionicons name="arrow-forward" size={14} color="#94A3B8" />
+                        </View>
+
+                        <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                          <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '500' }}>Saldo Sesudah</Text>
+                          <Text style={{
+                            fontSize: 12,
+                            fontWeight: 'bold',
+                            color: isOut ? '#B91C1C' : '#15803D',
+                            marginTop: 1,
+                          }}>
+                            {formatCurrency(afterBal)}
+                          </Text>
+                        </View>
+                      </View>
                     </View>
                   );
                 }}

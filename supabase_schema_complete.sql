@@ -342,6 +342,8 @@ CREATE TABLE IF NOT EXISTS public.wallet_transactions (
   wallet_id UUID NOT NULL REFERENCES public.wallets(id) ON DELETE CASCADE,
   type TEXT NOT NULL CHECK (type IN ('IN', 'OUT')),
   amount NUMERIC(20,2) NOT NULL,
+  balance_before NUMERIC(20,2),
+  balance_after NUMERIC(20,2),
   reference_type TEXT DEFAULT 'ADJUSTMENT', -- 'SALE', 'PURCHASE', 'MUTATION', 'ADJUSTMENT'
   reference_id UUID,
   description TEXT,
@@ -359,6 +361,44 @@ DO $$ BEGIN
     EXISTS (SELECT 1 FROM public.wallets WHERE wallets.id = wallet_transactions.wallet_id AND wallets.user_id = auth.uid())
   );
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- Trigger Otomatis Snapshot Saldo Sebelum & Sesudah pada Transaksi Dompet
+CREATE OR REPLACE FUNCTION populate_wallet_transaction_balance()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_curr_balance NUMERIC(20,2);
+BEGIN
+  SELECT COALESCE(balance, 0) INTO v_curr_balance 
+  FROM public.wallets 
+  WHERE id = NEW.wallet_id;
+
+  IF v_curr_balance IS NULL THEN
+    v_curr_balance := 0;
+  END IF;
+
+  IF NEW.balance_before IS NULL THEN
+    NEW.balance_before := v_curr_balance;
+  END IF;
+
+  IF NEW.balance_after IS NULL THEN
+    IF NEW.type = 'IN' THEN
+      NEW.balance_after := NEW.balance_before + NEW.amount;
+    ELSIF NEW.type = 'OUT' THEN
+      NEW.balance_after := NEW.balance_before - NEW.amount;
+    ELSE
+      NEW.balance_after := NEW.balance_before;
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_populate_wallet_transaction_balance ON public.wallet_transactions;
+CREATE TRIGGER trg_populate_wallet_transaction_balance
+  BEFORE INSERT ON public.wallet_transactions
+  FOR EACH ROW
+  EXECUTE FUNCTION populate_wallet_transaction_balance();
 
 -- Trigger Sinkronisasi Saldo Otomatis pada Dompet (Auto Balance Sync)
 CREATE OR REPLACE FUNCTION update_wallet_balance_from_transaction()

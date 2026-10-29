@@ -99,18 +99,23 @@ export const addWalletTransaction = async (transactionData) => {
   try {
     const supabase = getSupabaseClient();
     if (!supabase) return { data: null, error: 'Supabase tidak tersedia' };
+    const payload = {
+      wallet_id: transactionData.wallet_id,
+      type: transactionData.type, // 'IN' atau 'OUT'
+      amount: transactionData.amount,
+      reference_type: transactionData.reference_type || 'ADJUSTMENT', 
+      reference_id: transactionData.reference_id || null,
+      description: transactionData.description || '',
+    };
+    if (transactionData.balance_before !== undefined) {
+      payload.balance_before = transactionData.balance_before;
+    }
+    if (transactionData.balance_after !== undefined) {
+      payload.balance_after = transactionData.balance_after;
+    }
     const { data, error } = await supabase
       .from('wallet_transactions')
-      .insert([
-        {
-          wallet_id: transactionData.wallet_id,
-          type: transactionData.type, // 'IN' atau 'OUT'
-          amount: transactionData.amount,
-          reference_type: transactionData.reference_type || 'ADJUSTMENT', 
-          reference_id: transactionData.reference_id || null,
-          description: transactionData.description || '',
-        }
-      ])
+      .insert([payload])
       .select();
 
     if (error) throw error;
