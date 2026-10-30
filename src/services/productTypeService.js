@@ -234,7 +234,14 @@ export function detectProductType(product, meta = {}) {
   const nameLower = (product.name || '').toLowerCase();
   const catLower = (product.category_name || product.category || '').toLowerCase();
 
-  if (nameLower.includes('voucher') || catLower.includes('voucher') || nameLower.includes('perdana') || catLower.includes('perdana')) {
+  if (
+    nameLower.includes('voucher') ||
+    catLower.includes('voucher') ||
+    nameLower.includes('perdana') ||
+    catLower.includes('perdana') ||
+    nameLower.includes('gesek') ||
+    catLower.includes('gesek')
+  ) {
     return 'voucher';
   }
   if (nameLower.includes('tarik tunai') || nameLower.includes('transfer') || catLower.includes('tarik tunai') || catLower.includes('transfer')) {
