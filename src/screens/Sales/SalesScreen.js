@@ -462,6 +462,21 @@ export default function SalesScreen({ navigation, route }) {
     );
   };
 
+  const openNominalModal = (prod, variant = null) => {
+    setSelectedProductForVariant(prod);
+    setSelectedVariantForDynamic(variant);
+    // Cek apakah di nama produk ada nominal awal (misal: "Top Up DANA 200.000" -> default "200.000")
+    const match = (prod?.name || '').match(/\b(\d{1,3}(\.\d{3})+|\d{4,9})\b/);
+    if (match) {
+      const rawDigits = match[0].replace(/\./g, '');
+      const formatted = parseInt(rawDigits, 10).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+      setNominalInput(formatted);
+    } else {
+      setNominalInput('');
+    }
+    setShowNominalModal(true);
+  };
+
   const addToCart = (product, matchedVariant = null) => {
     const categoryName = product.category_name || categories.find(c => c.id === product.category_id)?.name;
     const enrichedProduct = categoryName && !product.category_name 
@@ -476,10 +491,7 @@ export default function SalesScreen({ navigation, route }) {
         return;
       }
       if (isDynamicProduct(enrichedProduct, matchedVariant, productTypesMap)) {
-        setSelectedProductForVariant(enrichedProduct);
-        setSelectedVariantForDynamic(matchedVariant);
-        setNominalInput('');
-        setShowNominalModal(true);
+        openNominalModal(enrichedProduct, matchedVariant);
         return;
       }
       addProductToCart(enrichedProduct, null, matchedVariant);
@@ -500,10 +512,7 @@ export default function SalesScreen({ navigation, route }) {
 
     // Check if this is a dynamic product without variants
     if (isDynamicProduct(enrichedProduct, null, productTypesMap)) {
-      setSelectedProductForVariant(enrichedProduct);
-      setSelectedVariantForDynamic(null);
-      setNominalInput('');
-      setShowNominalModal(true);
+      openNominalModal(enrichedProduct, null);
       return;
     }
 
@@ -584,10 +593,22 @@ export default function SalesScreen({ navigation, route }) {
       return;
     }
 
-    const adminFee = selectedVariantForDynamic ? Number(selectedVariantForDynamic.price || 0) : 0;
+    const adminFee = selectedVariantForDynamic 
+      ? Number(selectedVariantForDynamic.price || 0) 
+      : Number(selectedProductForVariant?.price || 0);
+
     const finalPrice = nominal + adminFee;
     const formattedNominal = nominal.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-    const customName = `${selectedProductForVariant?.name} ${formattedNominal}`;
+
+    let baseName = selectedProductForVariant?.name || '';
+    let customName;
+    if (baseName.includes(formattedNominal)) {
+      customName = selectedVariantForDynamic ? `${baseName} - ${selectedVariantForDynamic.name}` : baseName;
+    } else {
+      const cleanedBaseName = baseName.replace(/\s*\b(\d{1,3}(\.\d{3})+|\d+[kK]|\d+\s?rb)\b/g, '').trim();
+      const variantSuffix = selectedVariantForDynamic ? ` (${selectedVariantForDynamic.name})` : '';
+      customName = `${cleanedBaseName} ${formattedNominal}${variantSuffix}`;
+    }
 
     addProductToCart(selectedProductForVariant, null, selectedVariantForDynamic, nominal, finalPrice, customName);
     
@@ -1075,9 +1096,7 @@ export default function SalesScreen({ navigation, route }) {
                   onPress={() => {
                     if (isUnlimited || v.stock > 0) {
                       if (isDynamicProduct(selectedProductForVariant, v, productTypesMap)) {
-                        setSelectedVariantForDynamic(v);
-                        setNominalInput('');
-                        setShowNominalModal(true);
+                        openNominalModal(selectedProductForVariant, v);
                         setShowVariantModal(false);
                       } else {
                         addProductToCart(selectedProductForVariant, null, v);
@@ -1143,6 +1162,32 @@ export default function SalesScreen({ navigation, route }) {
               keyboardType="number-pad"
               autoFocus={true}
             />
+
+            {/* Live calculation info */}
+            {(() => {
+              const currentNom = parseInt((nominalInput || '').replace(/\./g, '') || '0', 10);
+              const fee = selectedVariantForDynamic 
+                ? Number(selectedVariantForDynamic.price || 0) 
+                : Number(selectedProductForVariant?.price || 0);
+              const totalEst = currentNom + fee;
+              return (
+                <View style={{ backgroundColor: '#F8FAFC', borderRadius: 8, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <Text style={{ fontSize: 13, color: Colors.muted }}>Nominal Topup / Transfer:</Text>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.text }}>{formatIDR(currentNom)}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <Text style={{ fontSize: 13, color: Colors.muted }}>Biaya Admin (Dipilih):</Text>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.primary }}>+{formatIDR(fee)}</Text>
+                  </View>
+                  <View style={{ height: 1, backgroundColor: '#CBD5E1', marginVertical: 6 }} />
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.text }}>Total Bayar Pelanggan:</Text>
+                    <Text style={{ fontSize: 16, fontWeight: '800', color: Colors.success }}>{formatIDR(totalEst)}</Text>
+                  </View>
+                </View>
+              );
+            })()}
 
             <View style={styles.modalButtons}>
               <TouchableOpacity 
