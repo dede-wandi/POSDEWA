@@ -470,16 +470,31 @@ export const deleteSaleItem = async (itemId) => {
       
     if (updateError) throw updateError;
     
-    // Check if sale has no more items, if so delete the sale?
-    // For now, let's just leave the empty sale or we could check count
+    // Check if sale has no more items
     const { count, error: countError } = await supabase
       .from('sale_items')
       .select('id', { count: 'exact', head: true })
       .eq('sale_id', sale_id);
       
     if (!countError && count === 0) {
-      // Delete the empty sale record
-      await supabase.from('sales').delete().eq('id', sale_id);
+      // Jika semua item habis dihapus, hapus transaksi penjualan beserta mutasi dompetnya (auto-revert)
+      await deleteSale(sale_id);
+    } else {
+      // Sinkronkan mutasi uang masuk penjualan di wallet_transactions dengan total baru
+      const { data: saleTx } = await supabase
+        .from('wallet_transactions')
+        .select('id, amount')
+        .eq('reference_id', sale_id)
+        .eq('type', 'IN')
+        .eq('reference_type', 'SALE')
+        .maybeSingle();
+
+      if (saleTx) {
+        await supabase
+          .from('wallet_transactions')
+          .update({ amount: Math.max(0, newTotal) })
+          .eq('id', saleTx.id);
+      }
     }
 
     return { success: true };

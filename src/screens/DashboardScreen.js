@@ -63,7 +63,7 @@ export default function DashboardScreen({ navigation }) {
   const [unsyncedProfits, setUnsyncedProfits] = useState([]);
 
   const handleQuickSettleSupplier = (titipanWallet) => {
-    const cashWallet = wallets.find(w => w.type === 'CASH');
+    const cashWallet = wallets.find(w => w.type === 'CASH' && !(w.name || '').toLowerCase().includes('titipan') && !(w.name || '').toLowerCase().includes('supplier')) || wallets.find(w => (w.name || '').toLowerCase().includes('laci'));
     if (!cashWallet) {
       showToast('Tidak ada dompet TUNAI (Kasir) untuk pembayaran.', 'error');
       return;

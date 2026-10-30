@@ -493,7 +493,7 @@ export default function WalletManagementScreen() {
           onPress={() => {
             setSettleTitipanWallet(item);
             setSettleAmount(item.balance.toString());
-            const firstCash = wallets.find(w => w.type === 'CASH');
+            const firstCash = wallets.find(w => w.type === 'CASH' && !(w.name || '').toLowerCase().includes('titipan') && !(w.name || '').toLowerCase().includes('supplier')) || wallets.find(w => (w.name || '').toLowerCase().includes('laci'));
             if (firstCash) setSettleCashWalletId(firstCash.id);
             setSettleModalVisible(true);
           }}

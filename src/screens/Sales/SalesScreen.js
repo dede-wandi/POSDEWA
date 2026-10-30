@@ -522,9 +522,9 @@ export default function SalesScreen({ navigation, route }) {
         lineTotal: itemPrice,
         tokenCode: tokenCode,
         stock: maxStock,
-        consignorName: product.consignor_name || null,
-        productType: product.product_type || null,
-        category: product.category_name || product.category?.name || null
+        consignorName: product.consignor_name || product.consignorName || null,
+        productType: product.product_type || product.productType || null,
+        category: product.category_name || product.category?.name || product.category || null
       };
       setCart([...cart, newItem]);
     }
