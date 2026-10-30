@@ -1,5 +1,5 @@
-import { getSupabaseClient } from './supabase';
-import { isUnlimitedProduct } from './productTypeService';
+import { getSupabaseClient } from './supabase.js';
+import { isUnlimitedProduct } from './productTypeService.js';
 
 export async function listProducts(userId) {
   const supabase = getSupabaseClient();
@@ -276,14 +276,14 @@ export async function createProduct(payload) {
       name: payload.name,
       barcode: payload.barcode || null,
       price: Number(payload.price || 0),
-      cost_price: Number(payload.costPrice || 0), // Gunakan cost_price sesuai schema database
+      cost_price: Number(payload.costPrice ?? payload.cost_price ?? 0), // Gunakan cost_price sesuai schema database
       stock: Number(payload.stock || 0),
       variants: Array.isArray(payload.variants) ? payload.variants : [],
       image_urls: Array.isArray(payload.image_urls) ? payload.image_urls : [],
       category_id: payload.category_id || null,
       brand_id: payload.brand_id || null,
-      product_type: payload.product_type || 'physical',
-      consignor_name: payload.consignor_name || null,
+      product_type: payload.product_type || payload.productType || 'physical',
+      consignor_name: payload.consignor_name || payload.consignorName || null,
       owner_id: session.user.id,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -442,14 +442,14 @@ export async function updateProduct(userId, id, payload) {
     if (payload.name != null) patch.name = String(payload.name);
     if (payload.barcode != null) patch.barcode = String(payload.barcode || '').trim() || null;
     if (payload.price != null) patch.price = Number(payload.price);
-    if (payload.costPrice != null) patch.cost_price = Number(payload.costPrice);
+    if (payload.costPrice != null || payload.cost_price != null) patch.cost_price = Number(payload.costPrice ?? payload.cost_price);
     if (payload.stock != null) patch.stock = Number(payload.stock);
     if (payload.variants != null) patch.variants = payload.variants;
     if (payload.image_urls != null) patch.image_urls = payload.image_urls;
     if (payload.category_id !== undefined) patch.category_id = payload.category_id;
     if (payload.brand_id !== undefined) patch.brand_id = payload.brand_id;
-    if (payload.product_type !== undefined) patch.product_type = payload.product_type;
-    if (payload.consignor_name !== undefined) patch.consignor_name = payload.consignor_name;
+    if (payload.product_type !== undefined || payload.productType !== undefined) patch.product_type = payload.product_type || payload.productType;
+    if (payload.consignor_name !== undefined || payload.consignorName !== undefined) patch.consignor_name = payload.consignor_name || payload.consignorName;
     if (payload.consignor_phone !== undefined) patch.consignor_phone = payload.consignor_phone;
     if (payload.is_unlimited !== undefined) patch.is_unlimited = Boolean(payload.is_unlimited);
     if (payload.track_stock !== undefined) patch.track_stock = Boolean(payload.track_stock);

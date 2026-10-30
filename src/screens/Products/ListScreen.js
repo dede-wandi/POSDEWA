@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, FontSize, FontWeight, Radii, Spacing, Shadows } from '../../theme';
 import { ProductEditableTable } from './components/table/ProductEditableTable';
 import { sortProductsIntelligently } from '../../utils/productSorting';
-import { isUnlimitedProduct } from '../../services/productTypeService';
+import { isUnlimitedProduct, detectProductType, PRODUCT_TYPES } from '../../services/productTypeService';
 
 const { width } = Dimensions.get('window');
 
@@ -561,6 +561,8 @@ export default function ListScreen({ navigation, route }) {
               const marginPercentage = basePrice > 0 ? ((margin / basePrice) * 100).toFixed(1) : 0;
               const categoryName = categories.find(c => c.id === item.category_id)?.name;
               const brandName = brands.find(b => b.id === item.brand_id)?.name;
+              const pType = item.product_type || item.productType || detectProductType(item);
+              const pTypeInfo = PRODUCT_TYPES.find(t => t.id === pType) || PRODUCT_TYPES[0];
             const isUnlimited = isUnlimitedProduct(item);
             let stockBadgeStyle = isUnlimited ? { backgroundColor: '#F5F3FF', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 } : styles.stockBadgeNormal;
             let stockTextStyle = isUnlimited ? { color: '#6D28D9', fontSize: 12, fontWeight: '600' } : styles.stockTextNormal;
@@ -641,6 +643,18 @@ export default function ListScreen({ navigation, route }) {
                       <View style={stockBadgeStyle}>
                         <Text style={stockTextStyle}>{stockLabel}</Text>
                       </View>
+                    </View>
+
+                    {/* Product Type Badge */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                      <View style={{ backgroundColor: pTypeInfo.bg, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: pTypeInfo.color + '40' }}>
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: pTypeInfo.color }}>{pTypeInfo.shortLabel || pTypeInfo.label}</Text>
+                      </View>
+                      {pType === 'consignment' && (item.consignor_name || item.consignorName) ? (
+                        <Text style={{ fontSize: 10, color: '#64748B' }} numberOfLines={1}>
+                          ({item.consignor_name || item.consignorName})
+                        </Text>
+                      ) : null}
                     </View>
   
                     <View style={styles.cardDivider} />
@@ -727,7 +741,17 @@ export default function ListScreen({ navigation, route }) {
                   
                   {/* Price & Stock Row */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-                    <Text style={styles.productPriceText}>{displayPrice}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: 1, marginRight: 8 }}>
+                      <Text style={styles.productPriceText}>{displayPrice}</Text>
+                      <View style={{ backgroundColor: pTypeInfo.bg, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: pTypeInfo.color + '40' }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: pTypeInfo.color }}>{pTypeInfo.shortLabel || pTypeInfo.label}</Text>
+                      </View>
+                      {pType === 'consignment' && (item.consignor_name || item.consignorName) ? (
+                        <Text style={{ fontSize: 11, color: '#64748B' }}>
+                          (Penitip: {item.consignor_name || item.consignorName})
+                        </Text>
+                      ) : null}
+                    </View>
                     <View style={stockBadgeStyle}>
                       <Text style={stockTextStyle}>{stockLabel}</Text>
                     </View>

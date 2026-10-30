@@ -7,7 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { formatIDR } from '../../utils/currency';
-import { getProductTypesMap, setProductTypeMeta, PRODUCT_TYPES } from '../../services/productTypeService';
+import { getProductTypesMap, setProductTypeMeta, PRODUCT_TYPES, detectProductType } from '../../services/productTypeService';
 export default function FormScreen({ navigation, route }) {
   const { id } = route.params || {};
   const { user } = useAuth();
@@ -341,6 +341,11 @@ export default function FormScreen({ navigation, route }) {
           setBrandId(draft.brandId || null);
           setImageUrls(draft.imageUrls || ['', '', '', '', '']);
 
+          const pType = draft.productType || draft.product_type || (initialData ? (initialData.product_type || initialData.productType || detectProductType(initialData)) : 'physical');
+          setProductType(pType);
+          const cName = draft.consignorName || draft.consignor_name || (initialData ? (initialData.consignor_name || initialData.consignorName || '') : '');
+          setConsignorName(cName);
+
           setIsDraftRestored(true);
 
           if (initialData) {
@@ -409,12 +414,9 @@ export default function FormScreen({ navigation, route }) {
         setCategoryId(vals.categoryId);
         setBrandId(vals.brandId);
         setImageUrls(vals.imageUrls);
-        if (initialData.product_type) {
-          setProductType(initialData.product_type);
-        }
-        if (initialData.consignor_name) {
-          setConsignorName(initialData.consignor_name);
-        }
+        const pType = initialData.product_type || initialData.productType || detectProductType(initialData);
+        setProductType(pType);
+        setConsignorName(initialData.consignor_name || initialData.consignorName || '');
         initialValuesRef.current = vals;
       } else {
         const vals = {
@@ -450,6 +452,8 @@ export default function FormScreen({ navigation, route }) {
           categoryId,
           brandId,
           imageUrls,
+          productType,
+          consignorName,
         };
         await AsyncStorage.setItem(draftKey, JSON.stringify(draftData));
       } catch (err) {
@@ -457,7 +461,7 @@ export default function FormScreen({ navigation, route }) {
       }
     };
     saveDraft();
-  }, [loading, id, name, barcodes, price, costPrice, stock, variants, categoryId, brandId, imageUrls]);
+  }, [loading, id, name, barcodes, price, costPrice, stock, variants, categoryId, brandId, imageUrls, productType, consignorName]);
 
   const performAutoSave = async () => {
     if (isSavingRef.current || hasSavedRef.current || !latestFormState.current.user?.id) return;
@@ -1058,7 +1062,7 @@ export default function FormScreen({ navigation, route }) {
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Tipe & Kepemilikan Barang</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: 6 }}>
-            {PRODUCT_TYPES.slice(0, 4).map(pt => {
+            {PRODUCT_TYPES.map(pt => {
               const isSelected = productType === pt.id;
               return (
                 <TouchableOpacity
@@ -1131,7 +1135,7 @@ export default function FormScreen({ navigation, route }) {
                 />
               </View>
 
-              {productType === 'digital' || productType === 'service' ? (
+              {productType === 'digital' || productType === 'financial_service' || productType === 'service' ? (
                 <View style={[styles.inputGroup, { flex: 1, marginBottom: 0 }]}>
                   <Text style={styles.label}>Stok</Text>
                   <View style={[styles.input, { justifyContent: 'center', backgroundColor: '#F1F5F9' }]}>
@@ -1263,7 +1267,7 @@ export default function FormScreen({ navigation, route }) {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.muted, marginBottom: 4 }}>Stok</Text>
-                    {productType === 'digital' || productType === 'service' ? (
+                    {productType === 'digital' || productType === 'financial_service' || productType === 'service' ? (
                       <View style={[styles.input, { paddingVertical: 8, paddingHorizontal: 10, justifyContent: 'center', backgroundColor: '#F1F5F9' }]}>
                         <Text style={{ fontSize: 14, color: '#475569', fontWeight: 'bold' }}>∞</Text>
                       </View>

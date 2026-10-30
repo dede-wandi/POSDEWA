@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getSupabaseClient } from './supabase';
+import { getSupabaseClient } from './supabase.js';
 
 const PRODUCT_TYPE_STORAGE_PREFIX = '@posdewa_prod_types_';
 
@@ -7,6 +7,7 @@ export const PRODUCT_TYPES = [
   {
     id: 'physical',
     label: 'Produk Fisik Toko',
+    shortLabel: '📦 Fisik Toko',
     icon: 'cube-outline',
     color: '#3B82F6',
     bg: '#EFF6FF',
@@ -14,7 +15,8 @@ export const PRODUCT_TYPES = [
   },
   {
     id: 'consignment',
-    label: 'Barang Titipan / Konsinyasi',
+    label: 'Barang Titipan (Konsinyasi)',
+    shortLabel: '🤝 Barang Titipan',
     icon: 'hand-right-outline',
     color: '#8B5CF6',
     bg: '#F5F3FF',
@@ -22,7 +24,8 @@ export const PRODUCT_TYPES = [
   },
   {
     id: 'voucher',
-    label: 'Voucher Internet Fisik',
+    label: 'Voucher Fisik / Perdana',
+    shortLabel: '🎟️ Voucher Fisik',
     icon: 'card-outline',
     color: '#10B981',
     bg: '#ECFDF5',
@@ -30,7 +33,8 @@ export const PRODUCT_TYPES = [
   },
   {
     id: 'digital',
-    label: 'Produk Digital / Non-Fisik',
+    label: 'Produk Digital / PPOB',
+    shortLabel: '⚡ Produk Digital',
     icon: 'flash-outline',
     color: '#F59E0B',
     bg: '#FFFBEB',
@@ -39,6 +43,7 @@ export const PRODUCT_TYPES = [
   {
     id: 'financial_service',
     label: 'Jasa Tarik Tunai / Transfer',
+    shortLabel: '💳 Tarik Tunai / Transfer',
     icon: 'swap-horizontal-outline',
     color: '#EC4899',
     bg: '#FDF2F8',
@@ -185,7 +190,8 @@ export function getProductTypeConfig(typeId) {
  */
 export function isConsignmentProduct(product, meta = {}) {
   if (!product) return false;
-  if (product.product_type === 'consignment') return true;
+  if (product.product_type === 'consignment' || product.productType === 'consignment') return true;
+  if (Boolean(product.consignor_name || product.consignorName)) return true;
 
   const idStr = String(product.id || '');
   const idNum = Number(product.id);

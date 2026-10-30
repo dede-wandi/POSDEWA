@@ -554,7 +554,7 @@ export function ProductEditableTable({
                         >
                           {PRODUCT_TYPES.map(t => (
                             <option key={t.id} value={t.id}>
-                              {t.label.split(' ')[0]} {t.label.split(' ')[1] || ''}
+                              {t.shortLabel || t.label}
                             </option>
                           ))}
                         </select>
@@ -568,7 +568,7 @@ export function ProductEditableTable({
                             style={[styles.dropdownButtonText, { color: item.typeInfo.color }]}
                             numberOfLines={1}
                           >
-                            {item.typeInfo.label.split(' ')[0]}
+                            {item.typeInfo.shortLabel || item.typeInfo.label}
                           </Text>
                           <Ionicons name="chevron-down" size={12} color={item.typeInfo.color} />
                         </TouchableOpacity>

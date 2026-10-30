@@ -8,28 +8,28 @@ export function TypeBadge({ item }) {
   if (item.isConsignment) {
     return (
       <View style={styles.badgeConsignment}>
-        <Text style={styles.badgeConsignmentText}>🤝 Titipan</Text>
+        <Text style={styles.badgeConsignmentText}>🤝 Barang Titipan</Text>
       </View>
     );
   }
   if (item.productType === 'digital') {
     return (
       <View style={styles.badgeDigital}>
-        <Text style={styles.badgeDigitalText}>⚡ Digital/PPOB</Text>
+        <Text style={styles.badgeDigitalText}>⚡ Produk Digital</Text>
       </View>
     );
   }
   if (item.productType === 'voucher') {
     return (
       <View style={styles.badgeVoucher}>
-        <Text style={styles.badgeVoucherText}>🎟️ Voucher</Text>
+        <Text style={styles.badgeVoucherText}>🎟️ Voucher Fisik</Text>
       </View>
     );
   }
   if (item.productType === 'financial_service') {
     return (
       <View style={styles.badgeService}>
-        <Text style={styles.badgeServiceText}>💳 Jasa/Admin</Text>
+        <Text style={styles.badgeServiceText}>💳 Tarik Tunai / Transfer</Text>
       </View>
     );
   }

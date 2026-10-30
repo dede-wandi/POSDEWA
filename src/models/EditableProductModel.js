@@ -1,6 +1,6 @@
-import { formatIDR } from '../utils/currency';
-import { updateProduct } from '../services/products';
-import { setProductTypeMeta, PRODUCT_TYPES } from '../services/productTypeService';
+import { formatIDR } from '../utils/currency.js';
+import { updateProduct } from '../services/products.js';
+import { setProductTypeMeta, PRODUCT_TYPES, detectProductType } from '../services/productTypeService.js';
 
 /**
  * Domain Model (OOP) representing an inline-editable product row.
@@ -44,7 +44,7 @@ export class EditableProduct {
       price: Number(raw.price || 0),
       stock: Number(raw.stock || 0),
       variants: JSON.parse(JSON.stringify(this.variants)),
-      productType: raw.product_type || raw.productType || (isUnlim ? 'digital' : 'physical'),
+      productType: raw.product_type || raw.productType || detectProductType(raw),
       categoryId: raw.category_id || raw.categoryId || null,
       brandId: raw.brand_id || raw.brandId || null,
       consignorName: String(raw.consignor_name || raw.consignorName || '').trim(),
@@ -71,8 +71,8 @@ export class EditableProduct {
     } else {
       this.draft[field] = value;
     }
-    if (field === 'productType' && (value === 'digital' || value === 'financial_service')) {
-      this.draft.isUnlimited = true;
+    if (field === 'productType') {
+      this.draft.isUnlimited = (value === 'digital' || value === 'financial_service');
     }
     this.savedJustNow = false;
     this.errorMessage = null;

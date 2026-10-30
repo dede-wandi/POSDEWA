@@ -1,4 +1,4 @@
-import { formatIDR } from '../utils/currency';
+import { formatIDR } from '../utils/currency.js';
 
 /**
  * Domain Model (OOP) representing a single product valuation item.
@@ -49,10 +49,10 @@ export class ValuationProductItem {
 
   // --- Type Getters ---
   get typeBadgeLabel() {
-    if (this.isConsignment) return '🤝 Titipan';
-    if (this.productType === 'digital') return '⚡ Digital/PPOB';
-    if (this.productType === 'voucher') return '🎟️ Voucher';
-    if (this.productType === 'financial_service') return '💳 Jasa/Admin';
+    if (this.isConsignment) return '🤝 Barang Titipan';
+    if (this.productType === 'digital') return '⚡ Produk Digital';
+    if (this.productType === 'voucher') return '🎟️ Voucher Fisik';
+    if (this.productType === 'financial_service') return '💳 Tarik Tunai / Transfer';
     return '📦 Fisik Toko';
   }
 
