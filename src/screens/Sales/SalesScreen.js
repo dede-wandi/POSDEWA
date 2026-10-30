@@ -261,17 +261,38 @@ export default function SalesScreen({ navigation, route }) {
     return listWithHeaders;
   }, [results, selectedCategoryId, productLayout, brands, categories]);
 
+  const enrichProducts = (rawProducts, cats = categories, brs = brands) => {
+    if (!Array.isArray(rawProducts)) return [];
+    return rawProducts.map(p => {
+      const cat = cats?.find(c => c.id === p.category_id);
+      const br = brs?.find(b => b.id === p.brand_id);
+      return {
+        ...p,
+        category_name: p.category_name || cat?.name || null,
+        brand_name: p.brand_name || br?.name || null,
+      };
+    });
+  };
+
   const loadInitialProducts = async () => {
     try {
       if (!user?.id) return;
       setRefreshing(true);
-      const [products, typeMap] = await Promise.all([
+      const [prods, typeMap, cats, brs] = await Promise.all([
         getProducts(user.id),
-        getProductTypesMap(user.id)
+        getProductTypesMap(user.id),
+        getCategories(user.id),
+        getBrands(user.id)
       ]);
       setProductTypesMap(typeMap || {});
-      setAllProducts(products || []);
-      setResults(products || []);
+      const activeCats = cats || categories;
+      const activeBrs = brs || brands;
+      if (cats) setCategories(cats);
+      if (brs) setBrands(brs);
+
+      const enriched = enrichProducts(prods || [], activeCats, activeBrs);
+      setAllProducts(enriched);
+      setResults(enriched);
     } catch (error) {
       showToast('Gagal memuat produk', 'error');
     } finally {
@@ -319,7 +340,8 @@ export default function SalesScreen({ navigation, route }) {
 
     try {
       const searchResults = await findByBarcodeOrName(user?.id, query.trim());
-      setResults(applyFilters(searchResults || []));
+      const enriched = enrichProducts(searchResults || [], categories, brands);
+      setResults(applyFilters(enriched));
     } catch (error) {
       showToast('Gagal mencari produk', 'error');
       setResults(applyFilters([]));
@@ -441,39 +463,44 @@ export default function SalesScreen({ navigation, route }) {
   };
 
   const addToCart = (product, matchedVariant = null) => {
-    const isUnlim = isUnlimitedProduct(product, productTypesMap);
+    const categoryName = product.category_name || categories.find(c => c.id === product.category_id)?.name;
+    const enrichedProduct = categoryName && !product.category_name 
+      ? { ...product, category_name: categoryName } 
+      : product;
+
+    const isUnlim = isUnlimitedProduct(enrichedProduct, productTypesMap);
 
     if (matchedVariant) {
       if (!isUnlim && Number(matchedVariant.stock) <= 0) {
         showToast(`Stok varian ${matchedVariant.name} habis`, 'error');
         return;
       }
-      if (isDynamicProduct(product, matchedVariant, productTypesMap)) {
-        setSelectedProductForVariant(product);
+      if (isDynamicProduct(enrichedProduct, matchedVariant, productTypesMap)) {
+        setSelectedProductForVariant(enrichedProduct);
         setSelectedVariantForDynamic(matchedVariant);
         setNominalInput('');
         setShowNominalModal(true);
         return;
       }
-      addProductToCart(product, null, matchedVariant);
+      addProductToCart(enrichedProduct, null, matchedVariant);
       return;
     }
 
-    if (!isUnlim && Number(product.stock) <= 0 && (!Array.isArray(product.variants) || product.variants.length === 0)) {
+    if (!isUnlim && Number(enrichedProduct.stock) <= 0 && (!Array.isArray(enrichedProduct.variants) || enrichedProduct.variants.length === 0)) {
       showToast('Stok habis, tidak bisa menambahkan produk', 'error');
       return;
     }
 
     // Check if product has variants
-    if (Array.isArray(product.variants) && product.variants.length > 0) {
-      setSelectedProductForVariant(product);
+    if (Array.isArray(enrichedProduct.variants) && enrichedProduct.variants.length > 0) {
+      setSelectedProductForVariant(enrichedProduct);
       setShowVariantModal(true);
       return;
     }
 
     // Check if this is a dynamic product without variants
-    if (isDynamicProduct(product, null, productTypesMap)) {
-      setSelectedProductForVariant(product);
+    if (isDynamicProduct(enrichedProduct, null, productTypesMap)) {
+      setSelectedProductForVariant(enrichedProduct);
       setSelectedVariantForDynamic(null);
       setNominalInput('');
       setShowNominalModal(true);
@@ -481,7 +508,7 @@ export default function SalesScreen({ navigation, route }) {
     }
 
     // For non-token products, add directly
-    addProductToCart(product);
+    addProductToCart(enrichedProduct);
   };
 
   const addProductToCart = (product, tokenCode = null, variant = null, customCostPrice = null, customPrice = null, customName = null) => {

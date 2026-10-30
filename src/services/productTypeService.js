@@ -234,13 +234,26 @@ export function detectProductType(product, meta = {}) {
   const nameLower = (product.name || '').toLowerCase();
   const catLower = (product.category_name || product.category || '').toLowerCase();
 
-  if (nameLower.includes('voucher') || catLower.includes('voucher') || nameLower.includes('perdana')) {
+  if (nameLower.includes('voucher') || catLower.includes('voucher') || nameLower.includes('perdana') || catLower.includes('perdana')) {
     return 'voucher';
   }
-  if (nameLower.includes('tarik tunai') || nameLower.includes('transfer') || catLower.includes('tarik tunai')) {
+  if (nameLower.includes('tarik tunai') || nameLower.includes('transfer') || catLower.includes('tarik tunai') || catLower.includes('transfer')) {
     return 'financial_service';
   }
-  if (nameLower.includes('paket data') || nameLower.includes('pulsa') || catLower.includes('ppob') || catLower.includes('digital') || nameLower.includes('token pln')) {
+  if (
+    nameLower.includes('paket data') ||
+    nameLower.includes('pulsa') ||
+    nameLower.includes('token pln') ||
+    nameLower.includes('kuota') ||
+    catLower.includes('paket data') ||
+    catLower.includes('paket') ||
+    catLower.includes('pulsa') ||
+    catLower.includes('ppob') ||
+    catLower.includes('digital') ||
+    catLower.includes('isi ulang') ||
+    catLower.includes('games') ||
+    /\b(\d+gb|\d+mb|\d+\s*hari|\d+\s*hr)\b/i.test(nameLower)
+  ) {
     return 'digital';
   }
 
@@ -264,6 +277,10 @@ export function isUnlimitedProduct(product, meta = {}) {
   const idNum = Number(product.id);
   const pMeta = meta[product.id] || meta[idStr] || (!isNaN(idNum) ? meta[idNum] : null);
   if (pMeta?.isUnlimited === true) return true;
+
+  // Direct product_type property from object or meta
+  const directType = product.product_type || product.productType || pMeta?.type;
+  if (directType === 'digital' || directType === 'financial_service') return true;
 
   // 3. Check detected type (digital and financial services are inherently unlimited)
   const pType = detectProductType(product, meta);
