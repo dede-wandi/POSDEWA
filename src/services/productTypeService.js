@@ -272,3 +272,55 @@ export function isUnlimitedProduct(product, meta = {}) {
   return false;
 }
 
+/**
+ * Helper to determine if a product requires dynamic nominal input (e.g. open transfer, open tarik tunai).
+ * Prevents non-financial products, telco brands (e.g. Smartfren, Telkomsel), pulsa, vouchers,
+ * and fixed-denomination products from triggering the nominal input modal.
+ */
+export function isDynamicProduct(product, variant = null, meta = {}) {
+  if (!product) return false;
+  const name = (product.name || '').toLowerCase();
+  const pType = detectProductType(product, meta);
+
+  // 1. Never dynamic for physical, consignment, or voucher products
+  if (pType === 'physical' || pType === 'consignment' || pType === 'voucher') {
+    return false;
+  }
+
+  // 2. Never dynamic for telco brands, pulsa, data packages, vouchers, perdana, tokens
+  const telcoExclude = [
+    'smartfren', 'telkomsel', 'indosat', 'tri', 'axis', 'xl', 'by.u',
+    'pulsa', 'token', 'pln', 'listrik', 'voucher', 'perdana', 'kuota', 'paket data'
+  ];
+  if (telcoExclude.some(word => name.includes(word))) {
+    return false;
+  }
+
+  // 3. If product has a fixed nominal in name (e.g. 200.000, 50k, 100rb) -> fixed denomination package
+  const hasFixedNominalInName = /(\d{1,3}(\.\d{3})+|\d+\s?[kK]|\d+\s?rb|\d+\s?ribu)/.test(name);
+  if (hasFixedNominalInName) {
+    return false;
+  }
+
+  // 4. If product already has fixed cost > 0 and price > cost -> fixed product with set margins
+  const cost = variant ? Number(variant.costPrice || 0) : Number(product.cost_price || product.costPrice || 0);
+  const price = variant ? Number(variant.price || 0) : Number(product.price || 0);
+  if (cost > 0 && price > cost) {
+    return false;
+  }
+
+  // 5. Explicit dynamic indicator in name
+  if (/\b(bebas|manual|dinamis|custom|input\s*nominal|open\s*nominal)\b/i.test(name)) {
+    return true;
+  }
+
+  // 6. Generic financial services with 0 cost or admin fee only
+  const dynamicFinancialRegex = /\b(transfer|\btf\b|tarik\s+tunai|tarik|topup|top\s+up|kirim\s+uang|dana|gopay|ovo|shopee|spay|linkaja|bri|bca|bni|mandiri|bsi|bank)\b/i;
+  if (pType === 'financial_service' || dynamicFinancialRegex.test(name)) {
+    return true;
+  }
+
+  return false;
+}
+
+

@@ -6,6 +6,7 @@ import { formatIDR } from '../../utils/currency';
 import { useAuth } from '../../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../theme';
+import { isUnlimitedProduct, getProductTypesMap } from '../../services/productTypeService';
 
 const { width } = Dimensions.get('window');
 
@@ -15,13 +16,18 @@ export default function ProductListScreen({ navigation, route }) {
   const [localCart, setLocalCart] = useState(cart);
   const [query, setQuery] = useState('');
   const [products, setProducts] = useState([]);
+  const [productTypesMap, setProductTypesMap] = useState({});
   const [refreshing, setRefreshing] = useState(false);
   const [isGrid, setIsGrid] = useState(Boolean(route?.params?.initialLayout));
 
   const loadProducts = async () => {
     try {
       const searchQuery = query.trim();
-      const result = await findByBarcodeOrName(user?.id, searchQuery);
+      const [result, typeMap] = await Promise.all([
+        findByBarcodeOrName(user?.id, searchQuery),
+        getProductTypesMap(user?.id)
+      ]);
+      setProductTypesMap(typeMap || {});
       setProducts(result || []);
     } catch (error) {
       setProducts([]);
@@ -44,7 +50,9 @@ export default function ProductListScreen({ navigation, route }) {
   }, [query, user]);
 
   const addToCart = (product) => {
-    if (product.stock <= 0 && (!Array.isArray(product.variants) || product.variants.length === 0)) {
+    const isUnlimited = isUnlimitedProduct(product, productTypesMap);
+
+    if (!isUnlimited && product.stock <= 0 && (!Array.isArray(product.variants) || product.variants.length === 0)) {
       showToast('Stok Habis', 'error');
       return;
     }
@@ -57,8 +65,8 @@ export default function ProductListScreen({ navigation, route }) {
     const existingItem = localCart.find(item => item.productId === product.id);
     const currentQtyInCart = existingItem ? existingItem.qty : 0;
     
-    // Validasi: tidak boleh melebihi stock yang tersedia
-    if (currentQtyInCart >= product.stock) {
+    // Validasi: tidak boleh melebihi stock yang tersedia jika bukan unlimited
+    if (!isUnlimited && currentQtyInCart >= product.stock) {
       showToast(`Stok tidak cukup. Sisa: ${product.stock}`, 'error');
       return;
     }
@@ -79,7 +87,8 @@ export default function ProductListScreen({ navigation, route }) {
         price: product.price,
         costPrice: product.cost_price || product.costPrice || 0,
         qty: 1,
-        maxStock: product.stock
+        maxStock: isUnlimited ? Infinity : product.stock,
+        isUnlimited
       }];
     }
 
@@ -155,7 +164,7 @@ export default function ProductListScreen({ navigation, route }) {
         renderItem={({ item }) => {
           const inCart = localCart.find(cartItem => cartItem.productId === item.id);
           const qtyInCart = inCart ? inCart.qty : 0;
-          const isUnlimited = item.product_type === 'digital' || item.product_type === 'service';
+          const isUnlimited = isUnlimitedProduct(item, productTypesMap);
           const availableStock = isUnlimited ? 999999 : item.stock - qtyInCart;
           if (isGrid) {
             return (

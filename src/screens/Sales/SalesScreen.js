@@ -8,6 +8,7 @@ import { findByBarcodeOrName, findByBarcodeExact, getProducts, getCategories, ge
 import { formatIDR } from '../../utils/currency';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { isUnlimitedProduct, isDynamicProduct, getProductTypesMap } from '../../services/productTypeService';
 
 const { width } = Dimensions.get('window');
 
@@ -172,6 +173,7 @@ export default function SalesScreen({ navigation, route }) {
   const [showNominalModal, setShowNominalModal] = useState(false);
   const [nominalInput, setNominalInput] = useState('');
   const [selectedVariantForDynamic, setSelectedVariantForDynamic] = useState(null);
+  const [productTypesMap, setProductTypesMap] = useState({});
 
   const total = useMemo(() => {
     return cart.reduce((sum, item) => sum + Number(item.lineTotal || 0), 0);
@@ -263,7 +265,11 @@ export default function SalesScreen({ navigation, route }) {
     try {
       if (!user?.id) return;
       setRefreshing(true);
-      const products = await getProducts(user.id);
+      const [products, typeMap] = await Promise.all([
+        getProducts(user.id),
+        getProductTypesMap(user.id)
+      ]);
+      setProductTypesMap(typeMap || {});
       setAllProducts(products || []);
       setResults(products || []);
     } catch (error) {
@@ -434,27 +440,15 @@ export default function SalesScreen({ navigation, route }) {
     );
   };
 
-  const isDynamicProduct = (productName) => {
-    if (!productName) return false;
-    const lowerName = productName.toLowerCase();
-    
-    // Jangan anggap pulsa/token sebagai produk dinamis (yang butuh input nominal)
-    const excludeKeywords = ['pulsa', 'token', 'pln'];
-    if (excludeKeywords.some(keyword => lowerName.includes(keyword))) {
-      return false;
-    }
-
-    const keywords = ['transfer', 'tf', 'topup', 'top up', 'dana', 'gopay', 'ovo', 'shopee', 'spay', 'linkaja', 'bri', 'bca', 'bni', 'mandiri', 'bsi', 'bank', 'tarik', 'tunai', 'cash'];
-    return keywords.some(keyword => lowerName.includes(keyword));
-  };
-
   const addToCart = (product, matchedVariant = null) => {
+    const isUnlim = isUnlimitedProduct(product, productTypesMap);
+
     if (matchedVariant) {
-      if (Number(matchedVariant.stock) <= 0) {
+      if (!isUnlim && Number(matchedVariant.stock) <= 0) {
         showToast(`Stok varian ${matchedVariant.name} habis`, 'error');
         return;
       }
-      if (isDynamicProduct(product.name)) {
+      if (isDynamicProduct(product, matchedVariant, productTypesMap)) {
         setSelectedProductForVariant(product);
         setSelectedVariantForDynamic(matchedVariant);
         setNominalInput('');
@@ -465,7 +459,7 @@ export default function SalesScreen({ navigation, route }) {
       return;
     }
 
-    if (product.stock <= 0 && (!Array.isArray(product.variants) || product.variants.length === 0)) {
+    if (!isUnlim && Number(product.stock) <= 0 && (!Array.isArray(product.variants) || product.variants.length === 0)) {
       showToast('Stok habis, tidak bisa menambahkan produk', 'error');
       return;
     }
@@ -478,7 +472,7 @@ export default function SalesScreen({ navigation, route }) {
     }
 
     // Check if this is a dynamic product without variants
-    if (isDynamicProduct(product.name)) {
+    if (isDynamicProduct(product, null, productTypesMap)) {
       setSelectedProductForVariant(product);
       setSelectedVariantForDynamic(null);
       setNominalInput('');
@@ -491,17 +485,18 @@ export default function SalesScreen({ navigation, route }) {
   };
 
   const addProductToCart = (product, tokenCode = null, variant = null, customCostPrice = null, customPrice = null, customName = null) => {
+    const isUnlim = isUnlimitedProduct(product, productTypesMap);
     const baseItemId = variant ? `${product.id}-${variant.name}` : product.id;
     const cartItemId = customCostPrice !== null ? `${baseItemId}-${customCostPrice}` : baseItemId;
     const existingItem = cart.find(item => item.id === cartItemId);
     
-    const maxStock = variant ? Number(variant.stock) : Number(product.stock);
+    const maxStock = isUnlim ? Infinity : (variant ? Number(variant.stock) : Number(product.stock));
     const itemCostPrice = customCostPrice !== null ? Number(customCostPrice) : (variant ? Number(variant.costPrice || 0) : Number(product.cost_price || product.costPrice || product.cost || 0));
     const itemPrice = customPrice !== null ? Number(customPrice) : (variant ? Number(variant.price) : Number(product.price));
     const itemName = customName !== null ? customName : (variant ? `${product.name} - ${variant.name}` : product.name);
 
     if (existingItem) {
-      if (existingItem.qty >= maxStock) {
+      if (!isUnlim && existingItem.qty >= maxStock) {
         showToast(`Stok tidak cukup. Sisa stok hanya ${maxStock}`, 'error');
         return;
       }
@@ -522,6 +517,7 @@ export default function SalesScreen({ navigation, route }) {
         lineTotal: itemPrice,
         tokenCode: tokenCode,
         stock: maxStock,
+        isUnlimited: isUnlim,
         consignorName: product.consignor_name || product.consignorName || null,
         productType: product.product_type || product.productType || null,
         category: product.category_name || product.category?.name || product.category || null
@@ -581,7 +577,7 @@ export default function SalesScreen({ navigation, route }) {
     }
 
     const item = cart.find(i => i.id === id);
-    if (item && item.stock !== undefined && newQty > item.stock) {
+    if (item && !item.isUnlimited && item.stock !== undefined && item.stock !== Infinity && newQty > item.stock) {
       showToast(`Stok tidak cukup. Sisa stok hanya ${item.stock}`, 'error');
       return;
     }
@@ -850,7 +846,7 @@ export default function SalesScreen({ navigation, route }) {
                 stock = stocks.reduce((sum, s) => sum + s, 0);
               }
               
-              const isUnlimited = item.product_type === 'digital' || item.product_type === 'service';
+              const isUnlimited = isUnlimitedProduct(item, productTypesMap);
               const stockLabel = isUnlimited ? '∞ Unlimited' : (stock > 0 ? `Stok: ${stock}` : 'Habis');
 
               if (productLayout === 'grid') {
@@ -1034,7 +1030,7 @@ export default function SalesScreen({ navigation, route }) {
             
             <ScrollView style={{ marginBottom: 20, maxHeight: 300 }} contentContainerStyle={{ gap: 10 }}>
               {selectedProductForVariant?.variants?.slice().sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0)).map((v, idx) => {
-                const isUnlimited = selectedProductForVariant?.product_type === 'digital' || selectedProductForVariant?.product_type === 'service';
+                const isUnlimited = isUnlimitedProduct(selectedProductForVariant, productTypesMap);
                 const isDisabled = !isUnlimited && v.stock <= 0;
                 
                 return (
@@ -1051,7 +1047,7 @@ export default function SalesScreen({ navigation, route }) {
                   disabled={isDisabled}
                   onPress={() => {
                     if (isUnlimited || v.stock > 0) {
-                      if (isDynamicProduct(selectedProductForVariant?.name)) {
+                      if (isDynamicProduct(selectedProductForVariant, v, productTypesMap)) {
                         setSelectedVariantForDynamic(v);
                         setNominalInput('');
                         setShowNominalModal(true);
