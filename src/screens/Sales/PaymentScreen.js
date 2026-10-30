@@ -10,6 +10,7 @@ import { adjustStockOnSale } from '../../services/productsSupabase';
 import { createSale } from '../../services/sales';
 import { sendWhatsAppNotification } from '../../services/whatsappService';
 import { getWallets, addWalletTransaction } from '../../services/walletSupabase';
+import { isRealTimeDigitalService, computeCartCosts, pickDefaultWallets, buildSaleWalletPostings } from '../../services/posWalletLogic';
 import { Colors, Spacing, Radii, Shadows, Typography } from '../../theme';
 
 export default function PaymentScreen({ navigation, route }) {
@@ -22,57 +23,14 @@ export default function PaymentScreen({ navigation, route }) {
   const [cashAmount, setCashAmount] = useState(total ? formatNumberWithDots(total) : '');
   const [isProcessing, setIsProcessing] = useState(false);
   
-  // Helper Cerdas Deteksi Layanan Digital Real-Time (Top-up / Transfer / Pulsa Langsung)
-  // Produk fisik dan voucher yang sudah di-inject TIDAK memotong saldo digital lagi di kasir
-  const isRealTimeDigitalService = (item) => {
-    if (!item) return false;
-
-    const type = item.product_type || item.productType;
-    const nameLower = (item.name || '').toLowerCase();
-    const catLower = (item.category_name || item.category || '').toLowerCase();
-
-    // 1. Voucher fisik & Perdana: HPP sudah terpotong saat inject voucher / beli stok fisik
-    if (type === 'voucher' || nameLower.includes('voucher') || nameLower.includes('perdana')) {
-      return false;
-    }
-
-    // 2. Barang titipan / konsinyasi: HPP masuk ke pencatatan hutang supplier terpisah
-    if (type === 'consignment' || item.consignorName || nameLower.includes('titipan') || nameLower.includes('konsinyasi')) {
-      return false;
-    }
-
-    // 3. Jasa finansial / Top up e-wallet / Pulsa langsung
-    if (type === 'digital' || type === 'financial_service') return true;
-
-    // 4. Deteksi kata kunci layanan digital / transfer
-    const isServiceKeyword = nameLower.includes('transfer') || nameLower.includes('tarik tunai') || 
-                             nameLower.includes('top up') || nameLower.includes('topup') || 
-                             nameLower.includes('dana') || nameLower.includes('gopay') || 
-                             nameLower.includes('ovo') || nameLower.includes('shopeepay') || 
-                             nameLower.includes('linkaja') || nameLower.includes('token pln') || 
-                             nameLower.includes('pulsa') || nameLower.includes('paket data');
-    if (isServiceKeyword) return true;
-
-    if (catLower.includes('ppob') || catLower.includes('digital') || catLower.includes('transfer') || catLower.includes('tarik tunai')) {
-      return true;
-    }
-
-    // Produk fisik biasa (casing, charger, kabel, tempered glass, dll)
-    return false;
-  };
-
   // Wallet States
   const [wallets, setWallets] = useState([]);
   const [selectedWalletId, setSelectedWalletId] = useState(null); // Dompet tujuan uang masuk
   const [digitalWalletId, setDigitalWalletId] = useState(null); // Dompet sumber HPP dipotong (hanya untuk barang digital)
 
-  // Pisahkan modal produk digital vs fisik
+  // Pisahkan modal produk digital vs fisik (logika di services/posWalletLogic.js)
   const digitalCartItems = cart.filter(isRealTimeDigitalService);
-  const totalDigitalCost = digitalCartItems.reduce((sum, item) => sum + (item.costPrice || 0) * item.qty, 0);
-
-  const physicalCartItems = cart.filter(item => !isRealTimeDigitalService(item));
-  const totalPhysicalCost = physicalCartItems.reduce((sum, item) => sum + (item.costPrice || 0) * item.qty, 0);
-  const totalCartCost = totalDigitalCost + totalPhysicalCost;
+  const { totalDigitalCost, totalCartCost } = computeCartCosts(cart);
 
   useEffect(() => {
     const fetchWallets = async () => {
@@ -80,51 +38,9 @@ export default function PaymentScreen({ navigation, route }) {
       const { data } = await getWallets(user.id);
       if (data && data.length > 0) {
         setWallets(data);
-        const isTarikTunai = cart.some(item => (item.name || '').toLowerCase().includes('tarik tunai'));
-        const cashWallet = data.find(w => w.type === 'CASH');
-
-        // Uang masuk default ke Laci Kasir (CASH)
-        if (isTarikTunai) {
-          const digitalWallet = data.find(w => w.type !== 'CASH' && w.type !== 'PROFIT');
-          setSelectedWalletId(digitalWallet ? digitalWallet.id : data[0].id);
-          setDigitalWalletId(cashWallet ? cashWallet.id : null);
-        } else {
-          setSelectedWalletId(cashWallet ? cashWallet.id : data[0].id);
-
-          // Cek apakah ada produk digital real-time di keranjang
-          if (digitalCartItems.length === 0) {
-            // MURNI PRODUK FISIK / VOUCHER STOK -> Otomatis SKIP potong saldo digital
-            setDigitalWalletId(null);
-          } else {
-            // ADA BARANG DIGITAL -> Otomatis pilihkan dompet yang sesuai
-            const firstDigital = digitalCartItems[0];
-            const nameLower = (firstDigital.name || '').toLowerCase();
-
-            let matchedWallet = null;
-            if (nameLower.includes('dana')) {
-              matchedWallet = data.find(w => (w.name || '').toLowerCase().includes('dana'));
-            } else if (nameLower.includes('ovo')) {
-              matchedWallet = data.find(w => (w.name || '').toLowerCase().includes('ovo'));
-            } else if (nameLower.includes('gopay')) {
-              matchedWallet = data.find(w => (w.name || '').toLowerCase().includes('gopay'));
-            } else if (nameLower.includes('shopee')) {
-              matchedWallet = data.find(w => (w.name || '').toLowerCase().includes('shopee'));
-            } else if (nameLower.includes('digipos')) {
-              matchedWallet = data.find(w => (w.name || '').toLowerCase().includes('digipos'));
-            } else if (nameLower.includes('transfer') || nameLower.includes('kirim uang')) {
-              matchedWallet = data.find(w => w.type === 'BANK') || data.find(w => (w.name || '').toLowerCase().includes('bank') || (w.name || '').toLowerCase().includes('bca') || (w.name || '').toLowerCase().includes('bri'));
-            } else {
-              matchedWallet = data.find(w => (w.name || '').toLowerCase().includes('pulsa')) || data.find(w => w.type === 'APP_BALANCE');
-            }
-
-            if (matchedWallet) {
-              setDigitalWalletId(matchedWallet.id);
-            } else {
-              const fallback = data.find(w => w.type !== 'CASH' && w.type !== 'PROFIT');
-              setDigitalWalletId(fallback ? fallback.id : null);
-            }
-          }
-        }
+        const defaults = pickDefaultWallets(cart, data);
+        setSelectedWalletId(defaults.selectedWalletId);
+        setDigitalWalletId(defaults.digitalWalletId);
       }
     };
     fetchWallets();
@@ -161,6 +77,27 @@ export default function PaymentScreen({ navigation, route }) {
   const processPaymentTransaction = async () => {
     if (!validatePayment()) return;
 
+    // Cek saldo dompet sumber modal jika ada transaksi digital
+    if (digitalWalletId && totalDigitalCost > 0) {
+      const digitalWallet = wallets.find(w => w.id === digitalWalletId);
+      const curBal = Number(digitalWallet?.balance) || 0;
+      if (curBal < totalDigitalCost) {
+        Alert.alert(
+          'Peringatan Saldo Dompet',
+          `Saldo ${digitalWallet?.name || 'Platform'} di aplikasi (${formatIDR(curBal)}) lebih kecil dari modal yang dibutuhkan (${formatIDR(totalDigitalCost)}).\n\nSaldo dompet akan menjadi minus jika dilanjutkan. Tetap lanjutkan?`,
+          [
+            { text: 'Batal', style: 'cancel' },
+            { text: 'Tetap Lanjutkan', onPress: () => executePaymentTransaction() }
+          ]
+        );
+        return;
+      }
+    }
+
+    await executePaymentTransaction();
+  };
+
+  const executePaymentTransaction = async () => {
     setIsProcessing(true);
 
     try {
@@ -192,49 +129,22 @@ export default function PaymentScreen({ navigation, route }) {
         throw new Error(saleResult.error || 'Gagal menyimpan transaksi');
       }
       
-      // 2. INTEGRASI WALLET: Catat uang masuk (Pendapatan) sesuai dompet terpilih
-      if (selectedWalletId) {
-        const selectedWallet = wallets.find(w => w.id === selectedWalletId);
-        await addWalletTransaction({
-          wallet_id: selectedWalletId,
-          type: 'IN',
-          amount: total, // Uang yang diterima pelanggan
-          reference_type: 'SALE',
-          reference_id: saleResult.data?.sale?.id || null,
-          description: `Penjualan #${saleResult.data?.sale?.no_invoice || ''} via ${selectedWallet?.name || 'Kas'}`
-        });
-      }
-
-      // 2b. INTEGRASI WALLET: Potong saldo platform (HANYA untuk item digital / transfer real-time)
-      if (digitalWalletId && totalDigitalCost > 0) {
-        const digitalWallet = wallets.find(w => w.id === digitalWalletId);
-        await addWalletTransaction({
-          wallet_id: digitalWalletId,
-          type: 'OUT',
-          amount: totalDigitalCost,
-          reference_type: 'PURCHASE',
-          reference_id: saleResult.data?.sale?.id || null,
-          description: `Modal digital #${saleResult.data?.sale?.no_invoice || ''} via ${digitalWallet?.name || 'Platform'}`
-        });
-      }
-
-      // 2c. INTEGRASI WALLET: Otomatis Catat Hutang Titipan Supplier
-      const titipanItems = cart.filter(item => item.consignorName || (item.name || '').toLowerCase().includes('titipan') || (item.name || '').toLowerCase().includes('konsinyasi'));
-      const totalTitipanCost = titipanItems.reduce((sum, item) => sum + (item.costPrice || 0) * item.qty, 0);
-
-      if (totalTitipanCost > 0) {
-         // Cari dompet yang namanya mengandung kata 'titipan' atau 'supplier'
-         const titipanWallet = wallets.find(w => (w.name || '').toLowerCase().includes('titipan') || (w.name || '').toLowerCase().includes('supplier'));
-         if (titipanWallet) {
-           await addWalletTransaction({
-             wallet_id: titipanWallet.id,
-             type: 'IN', // Hutang bertambah
-             amount: totalTitipanCost,
-             reference_type: 'SALE',
-             reference_id: saleResult.data?.sale?.id || null,
-             description: `Akumulasi Modal Terjual trx #${saleResult.data?.sale?.no_invoice || ''}`
-           });
-         }
+      // 2. INTEGRASI WALLET: uang masuk, potong modal digital, hutang titipan
+      //    (logika terpusat di services/posWalletLogic.js agar bisa diuji otomatis)
+      const postings = buildSaleWalletPostings({
+        cart,
+        total,
+        wallets,
+        selectedWalletId,
+        digitalWalletId,
+        saleId: saleResult.data?.sale?.id || null,
+        invoice: saleResult.data?.sale?.no_invoice || '',
+      });
+      for (const posting of postings) {
+        const { error: walletErr } = await addWalletTransaction(posting);
+        if (walletErr) {
+          showToast(`Transaksi tersimpan, tapi gagal mencatat mutasi dompet: ${walletErr.message || walletErr}`, 'warning');
+        }
       }
 
       // 3. Adjust stock
