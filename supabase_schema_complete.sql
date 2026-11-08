@@ -752,6 +752,28 @@ DO $$ BEGIN
   CREATE POLICY "wa_notif_config_policy" ON public.wa_notif_config FOR ALL USING (auth.uid() = owner_id) WITH CHECK (auth.uid() = owner_id);
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
+-- Table persistensi sesi WhatsApp Baileys (Multi-Device Engine)
+CREATE TABLE IF NOT EXISTS public.whatsapp_sessions (
+  session_id TEXT PRIMARY KEY,
+  creds JSONB NOT NULL,
+  keys JSONB DEFAULT '{}'::jsonb,
+  phone TEXT,
+  profile_name TEXT,
+  status TEXT DEFAULT 'DISCONNECTED',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.whatsapp_sessions ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  CREATE POLICY "service_role_all_whatsapp_sessions" 
+  ON public.whatsapp_sessions 
+  FOR ALL 
+  USING (auth.jwt() ->> 'role' = 'service_role')
+  WITH CHECK (auth.jwt() ->> 'role' = 'service_role');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
 -- ==============================================================================
 -- 11. MODUL ANTI GORES (TEMPERED GLASS / AG SEARCH)
 -- ==============================================================================
