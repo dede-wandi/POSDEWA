@@ -155,9 +155,9 @@ export function ProductEditableTable({
     [modelMap, userId, showToast, onProductUpdated, triggerRender]
   );
 
-  // Trigger auto-save with optional debounce (or immediate on blur / dropdown selection)
+  // Trigger auto-save (hanya dijalankan saat Enter ditekan, klik di luar / blur, atau aksi eksplisit)
   const triggerAutoSave = useCallback(
-    (productId, immediate = false) => {
+    (productId, immediate = true) => {
       if (debounceTimersRef.current[productId]) {
         clearTimeout(debounceTimersRef.current[productId]);
       }
@@ -173,17 +173,13 @@ export function ProductEditableTable({
     [executeAutoSave]
   );
 
-  // Field change handler
-  const handleFieldChange = (id, field, value, shouldAutoSave = true) => {
+  // Field change handler: hanya update draft di memori saat mengetik, jangan simpan sebelum Enter
+  const handleFieldChange = (id, field, value) => {
     const item = modelMap[id];
     if (!item) return;
 
     item.updateField(field, value);
     triggerRender();
-
-    if (shouldAutoSave) {
-      triggerAutoSave(id, false);
-    }
   };
 
   // Adjust stock via +/- stepper
@@ -194,7 +190,7 @@ export function ProductEditableTable({
     const next = Math.max(0, current + delta);
     item.updateField('stock', next);
     triggerRender();
-    triggerAutoSave(id, false);
+    triggerAutoSave(id, true);
   };
 
   // Toggle Unlimited (tanpa stok) vs Stok terhitung
@@ -206,17 +202,13 @@ export function ProductEditableTable({
     triggerAutoSave(id, true);
   };
 
-  // Variant field change handler
-  const handleVariantFieldChange = (id, vIdx, field, value, shouldAutoSave = true) => {
+  // Variant field change handler: hanya update draft di memori saat mengetik
+  const handleVariantFieldChange = (id, vIdx, field, value) => {
     const item = modelMap[id];
     if (!item) return;
 
     item.updateVariant(vIdx, field, value);
     triggerRender();
-
-    if (shouldAutoSave) {
-      triggerAutoSave(id, false);
-    }
   };
 
   // Adjust variant stock via +/- stepper
@@ -226,7 +218,7 @@ export function ProductEditableTable({
 
     item.stepVariantStock(vIdx, delta);
     triggerRender();
-    triggerAutoSave(id, false);
+    triggerAutoSave(id, true);
   };
 
   // Open native selection modal
@@ -268,7 +260,7 @@ export function ProductEditableTable({
           <Text style={styles.statusText}>
             {globalSavingCount > 0
               ? 'Menyimpan perubahan ke database...'
-              : 'Auto-Save Aktif: Setiap perubahan harga, modal, stok & tipe langsung otomatis tersimpan.'}
+              : 'Mode Edit: Ketik perubahan lalu tekan Enter atau selesai untuk menyimpan.'}
           </Text>
         </View>
 
@@ -390,6 +382,8 @@ export function ProductEditableTable({
                         placeholder="SKU / Barcode"
                         placeholderTextColor="#94A3B8"
                         selectTextOnFocus={true}
+                        returnKeyType="done"
+                        onSubmitEditing={() => triggerAutoSave(item.id, true)}
                         onFocus={() => setFocusedCell(`${item.id}-barcode`)}
                         onBlur={() => {
                           setFocusedCell(null);
@@ -412,6 +406,8 @@ export function ProductEditableTable({
                           value={item.name}
                           placeholder="Nama produk..."
                           placeholderTextColor="#94A3B8"
+                          returnKeyType="done"
+                          onSubmitEditing={() => triggerAutoSave(item.id, true)}
                           onFocus={() => setFocusedCell(`${item.id}-name`)}
                           onBlur={() => {
                             setFocusedCell(null);
@@ -443,6 +439,8 @@ export function ProductEditableTable({
                           style={styles.moneyInput}
                           keyboardType="numeric"
                           selectTextOnFocus={true}
+                          returnKeyType="done"
+                          onSubmitEditing={() => triggerAutoSave(item.id, true)}
                           value={String(item.costPrice ?? 0)}
                           placeholder="0"
                           placeholderTextColor="#94A3B8"
@@ -469,6 +467,8 @@ export function ProductEditableTable({
                           style={styles.moneyInput}
                           keyboardType="numeric"
                           selectTextOnFocus={true}
+                          returnKeyType="done"
+                          onSubmitEditing={() => triggerAutoSave(item.id, true)}
                           value={String(item.price ?? 0)}
                           placeholder="0"
                           placeholderTextColor="#94A3B8"
@@ -512,6 +512,8 @@ export function ProductEditableTable({
                           ]}
                           keyboardType="numeric"
                           selectTextOnFocus={true}
+                          returnKeyType="done"
+                          onSubmitEditing={() => triggerAutoSave(item.id, true)}
                           value={String(item.stock ?? 0)}
                           onFocus={() => setFocusedCell(`${item.id}-stock`)}
                           onBlur={() => {
@@ -711,6 +713,8 @@ export function ProductEditableTable({
                               placeholder="SKU Varian"
                               placeholderTextColor="#94A3B8"
                               selectTextOnFocus={true}
+                              returnKeyType="done"
+                              onSubmitEditing={() => triggerAutoSave(item.id, true)}
                               onFocus={() => setFocusedCell(`${cellKey}-barcode`)}
                               onBlur={() => {
                                 setFocusedCell(null);
@@ -738,6 +742,8 @@ export function ProductEditableTable({
                                 value={v.name || v.variantName || ''}
                                 placeholder="Nama varian..."
                                 placeholderTextColor="#94A3B8"
+                                returnKeyType="done"
+                                onSubmitEditing={() => triggerAutoSave(item.id, true)}
                                 onFocus={() => setFocusedCell(`${cellKey}-name`)}
                                 onBlur={() => {
                                   setFocusedCell(null);
@@ -762,6 +768,8 @@ export function ProductEditableTable({
                                 style={[styles.moneyInput, styles.variantMoneyInput]}
                                 keyboardType="numeric"
                                 selectTextOnFocus={true}
+                                returnKeyType="done"
+                                onSubmitEditing={() => triggerAutoSave(item.id, true)}
                                 value={String(vCost)}
                                 placeholder="0"
                                 placeholderTextColor="#94A3B8"
@@ -789,6 +797,8 @@ export function ProductEditableTable({
                                 style={[styles.moneyInput, styles.variantMoneyInput]}
                                 keyboardType="numeric"
                                 selectTextOnFocus={true}
+                                returnKeyType="done"
+                                onSubmitEditing={() => triggerAutoSave(item.id, true)}
                                 value={String(vPrice)}
                                 placeholder="0"
                                 placeholderTextColor="#94A3B8"
@@ -828,6 +838,8 @@ export function ProductEditableTable({
                                 ]}
                                 keyboardType="numeric"
                                 selectTextOnFocus={true}
+                                returnKeyType="done"
+                                onSubmitEditing={() => triggerAutoSave(item.id, true)}
                                 value={String(vStock)}
                                 onFocus={() => setFocusedCell(`${cellKey}-stock`)}
                                 onBlur={() => {
