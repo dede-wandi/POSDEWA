@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Arsitektur & Flowchart Ekosistem Multi-Tenant APOGEE, Whitelabel Dedicated & Open API</title>
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 12mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #0F172A;
+      background: #FFFFFF;
+      font-size: 11px;
+      line-height: 1.45;
+    }
+    .page {
+      width: 100%;
+      min-height: 182mm;
+      page-break-after: always;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 4px;
+    }
+    .page:last-child {
+      page-break-after: auto;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2.5px solid #1E5EFF;
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+    }
+    .header-left h1 {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 900;
+      color: #0F172A;
+      letter-spacing: -0.3px;
+    }
+    .header-left p {
+      margin: 2px 0 0;
+      font-size: 11px;
+      color: #475569;
+      font-weight: 600;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 99px;
+      font-size: 10px;
+      font-weight: 800;
+      background: #EFF6FF;
+      color: #1D4ED8;
+      border: 1px solid #BFDBFE;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .diagram-box {
+      border: 1.5px solid #E2E8F0;
+      border-radius: 12px;
+      background: #F8FAFC;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    .card {
+      background: #FFFFFF;
+      border: 1px solid #CBD5E1;
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+    .card h3 {
+      margin: 0 0 5px;
+      font-size: 12px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .card ul {
+      margin: 0;
+      padding-left: 15px;
+    }
+    .card li {
+      margin-bottom: 3px;
+      color: #334155;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10.5px;
+      background: #FFFFFF;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    th, td {
+      border: 1px solid #CBD5E1;
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #0F172A;
+      color: #FFFFFF;
+      font-weight: 800;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    tr:nth-child(even) td {
+      background: #F8FAFC;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 9.8px;
+      background: #E2E8F0;
+      padding: 1px 4px;
+      border-radius: 4px;
+      color: #0F172A;
+      font-weight: 700;
+    }
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid #CBD5E1;
+      padding-top: 6px;
+      font-size: 9.5px;
+      color: #64748B;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== HALAMAN 1 ==================== -->
+  <div class="page">
+    <div>
+      <div class="header">
+        <div class="header-left">
+          <h1>1. ARSITEKTUR GLOBAL EKOSISTEM: APOGEE MASTER, PARTNER DEDICATED & OPEN API H2H</h1>
+          <p>Bagaimana 1 Web Portal APOGEE Melayani Banyak Partner Dedicated (Partner A, B, C) & Klien Open API (A, B) Secara Terisolasi</p>
+        </div>
+        <span class="badge">Halaman 1 / 4 • Topologi Sistem APOGEE</span>
+      </div>
+
+      <div class="diagram-box">
+        <svg viewBox="0 0 1000 320" width="100%" height="295" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arrowBlue" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+              <path d="M0,0 L8,4 L0,8 Z" fill="#1E5EFF" />
+            </marker>
+            <marker id="arrowGreen" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+              <path d="M0,0 L8,4 L0,8 Z" fill="#059669" />
+            </marker>
+            <marker id="arrowPurple" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+              <path d="M0,0 L8,4 L0,8 Z" fill="#7C3AED" />
+            </marker>
+            <marker id="arrowOrange" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+              <path d="M0,0 L8,4 L0,8 Z" fill="#D97706" />
+            </marker>
+          </defs>
+
+          <!-- PORTAL WEB FRONTEND (KIRI) -->
+          <rect x="10" y="15" width="250" height="115" rx="10" fill="#EFF6FF" stroke="#2563EB" stroke-width="2" />
+          <text x="135" y="36" text-anchor="middle" font-weight="900" font-size="12" fill="#1E3A8A">🌐 PORTAL APOGEE MASTER</text>
+          <text x="135" y="53" text-anchor="middle" font-weight="700" font-size="10.5" fill="#1E5EFF">APOGEE Superadmin Console</text>
+          <text x="24" y="74" font-size="9.5" fill="#334155">• Mengelola seluruh Lisensi Whitelabel (WL-xxx)</text>
+          <text x="24" y="90" font-size="9.5" fill="#334155">• Mengelola Klien Open API, Produk & Vendor Pusat</text>
+          <text x="24" y="106" font-size="9.5" fill="#334155">• Mengatur Allowed Menus, WL Domain & WL IP</text>
+
+          <rect x="10" y="150" width="250" height="155" rx="10" fill="#F0FDF4" stroke="#059669" stroke-width="2" />
+          <text x="135" y="172" text-anchor="middle" font-weight="900" font-size="12" fill="#065F46">🚀 PORTAL UNIFIED PARTNER & OPEN API</text>
+          <text x="135" y="189" text-anchor="middle" font-weight="700" font-size="10.5" fill="#059669">APOGEE Partner & Open API Console</text>
+          <rect x="22" y="200" width="226" height="44" rx="6" fill="#FFFFFF" stroke="#86EFAC" />
+          <text x="135" y="216" text-anchor="middle" font-weight="800" font-size="9.5" fill="#047857">Mode 1: Login Akun Partner Dedicated (A, B, C)</text>
+          <text x="135" y="232" text-anchor="middle" font-size="9" fill="#475569">Otomatis switch BASE_URL & WS ke Domain Partner</text>
+          <rect x="22" y="250" width="226" height="44" rx="6" fill="#FFFFFF" stroke="#93C5FD" />
+          <text x="135" y="266" text-anchor="middle" font-weight="800" font-size="9.5" fill="#1D4ED8">Mode 2: Login Akun Open API H2H (A, B)</text>
+          <text x="135" y="282" text-anchor="middle" font-size="9" fill="#475569">Terkunci ke APOGEE Master API (Tanpa DB Terpisah)</text>
+
+          <!-- MASTER SERVER (TENGAH ATAS) -->
+          <rect x="345" y="15" width="320" height="145" rx="12" fill="#FFFBEB" stroke="#D97706" stroke-width="2.2" />
+          <text x="505" y="36" text-anchor="middle" font-weight="900" font-size="12.5" fill="#92400E">🏢 MASTER SERVER APOGEE (PUSAT)</text>
+          <text x="505" y="52" text-anchor="middle" font-weight="800" font-size="10" fill="#B45309">APOGEE Core Engine • IP Master: 43.173.26.120</text>
+          <text x="360" y="72" font-size="9.5" fill="#334155">• Endpoint Admin: /api/v1/admin/*</text>
+          <text x="360" y="87" font-size="9.5" fill="#334155">• Endpoint Open API H2H: /api/open/v1/* & /api/v1/openapi-portal/*</text>
+          <text x="360" y="102" font-size="9.5" fill="#334155">• Endpoint Supplier Whitelabel: /api/v1/whitelabel/partner/orders</text>
+          <text x="360" y="117" font-size="9.5" fill="#334155">• Centrifugo Master: wss://&lt;master-apogee&gt;/connection/websocket</text>
+          <rect x="360" y="126" width="290" height="24" rx="5" fill="#FEF3C7" stroke="#F59E0B" />
+          <text x="505" y="142" text-anchor="middle" font-weight="800" font-size="9.5" fill="#92400E">🗄️ DB Master APOGEE (Users, Orders, OpenAPI, Licenses)</text>
+
+          <!-- PARTNER DEDICATED SERVERS (TENGAH BAWAH) -->
+          <rect x="345" y="180" width="320" height="125" rx="12" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2.2" />
+          <text x="505" y="200" text-anchor="middle" font-weight="900" font-size="12" fill="#5B21B6">🖥️ VPS DEDICATED PARTNER (MITRA A / B / C)</text>
+          <text x="505" y="216" text-anchor="middle" font-weight="800" font-size="10" fill="#6D28D9">Contoh: mitrapulsa.my.id • WL IP: 101.32.254.43</text>
+          <text x="360" y="235" font-size="9.5" fill="#334155">• Endpoint Partner Admin: /api/v1/partner/*</text>
+          <text x="360" y="250" font-size="9.5" fill="#334155">• Endpoint Mobile Apps Partner: /api/v1/transactions/order</text>
+          <text x="360" y="265" font-size="9.5" fill="#334155">• Centrifugo Partner: wss://mitrapulsa.my.id/connection/websocket</text>
+          <rect x="360" y="273" width="290" height="24" rx="5" fill="#EDE9FE" stroke="#8B5CF6" />
+          <text x="505" y="289" text-anchor="middle" font-weight="800" font-size="9.5" fill="#5B21B6">🗄️ DB Dedicated Partner Masing-Masing (100% Terisolasi)</text>
+
+          <!-- VENDOR & APPS (KANAN) -->
+          <rect x="745" y="15" width="245" height="90" rx="10" fill="#FFF1F2" stroke="#E11D48" stroke-width="2" />
+          <text x="867" y="36" text-anchor="middle" font-weight="900" font-size="11.5" fill="#9F1239">🔌 VENDOR H2H MILIK APOGEE MASTER</text>
+          <text x="867" y="53" text-anchor="middle" font-size="9.5" fill="#881337">Saudagarhost, OkeConnect, DFlash, Digiflazz</text>
+          <text x="867" y="70" text-anchor="middle" font-weight="700" font-size="9.5" fill="#BE123C">Whitelist IP: 43.173.26.120 (IP Master)</text>
+          <text x="867" y="86" text-anchor="middle" font-size="9" fill="#881337">Callback -> APOGEE Master /api/v1/callback</text>
+
+          <rect x="745" y="120" width="245" height="85" rx="10" fill="#ECFEFF" stroke="#0891B2" stroke-width="2" />
+          <text x="867" y="140" text-anchor="middle" font-weight="900" font-size="11.5" fill="#155E75">🔌 VENDOR H2H SENDIRI (PARTNER)</text>
+          <text x="867" y="156" text-anchor="middle" font-size="9.5" fill="#164E63">Akun Digiflazz / OkeConnect Milik Partner</text>
+          <text x="867" y="172" text-anchor="middle" font-weight="700" font-size="9.5" fill="#0E7490">Whitelist IP: 101.32.254.43 (IP Partner)</text>
+          <text x="867" y="188" text-anchor="middle" font-size="9" fill="#164E63">Callback -> mitrapulsa.my.id/api/v1/callback</text>
+
+          <rect x="745" y="220" width="245" height="85" rx="10" fill="#F8FAFC" stroke="#475569" stroke-width="2" />
+          <text x="867" y="240" text-anchor="middle" font-weight="900" font-size="11.5" fill="#0F172A">📱 MOBILE APPS (APK WHITELABEL)</text>
+          <text x="867" y="256" text-anchor="middle" font-size="9.5" fill="#334155">• App APOGEE Master (i1 • Apps)</text>
+          <text x="867" y="272" text-anchor="middle" font-size="9.5" fill="#334155">• App Partner -> mitrapulsa.my.id (i1 • Apps)</text>
+          <text x="867" y="288" text-anchor="middle" font-weight="700" font-size="9" fill="#059669">Keystore Rilis Permanen (V1 + V2 Signing)</text>
+
+          <!-- PANAH KONEKSI -->
+          <line x1="260" y1="65" x2="340" y2="65" stroke="#1E5EFF" stroke-width="2" marker-end="url(#arrowBlue)" />
+          <line x1="248" y1="270" x2="342" y2="115" stroke="#1E5EFF" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#arrowBlue)" />
+          <line x1="248" y1="222" x2="342" y2="232" stroke="#7C3AED" stroke-width="2.2" marker-end="url(#arrowPurple)" />
+
+          <!-- Jembatan Partner <-> Master (Ambil Produk dari Master) -->
+          <line x1="480" y1="180" x2="480" y2="163" stroke="#D97706" stroke-width="2.2" marker-end="url(#arrowOrange)" />
+          <line x1="530" y1="160" x2="530" y2="177" stroke="#059669" stroke-width="2.2" marker-end="url(#arrowGreen)" />
+          <text x="415" y="173" font-size="8.5" font-weight="800" fill="#B45309">Order B2C</text>
+          <text x="538" y="173" font-size="8.5" font-weight="800" fill="#047857">Callback + WS</text>
+
+          <!-- Master -> Vendor Master -->
+          <line x1="665" y1="60" x2="740" y2="60" stroke="#D97706" stroke-width="2" marker-end="url(#arrowOrange)" />
+          <!-- Partner -> Vendor Partner -->
+          <line x1="665" y1="215" x2="740" y2="165" stroke="#7C3AED" stroke-width="2" marker-end="url(#arrowPurple)" />
+          <!-- Apps -> Partner -->
+          <line x1="745" y1="265" x2="670" y2="265" stroke="#059669" stroke-width="2" marker-end="url(#arrowGreen)" />
+        </svg>
+      </div>
+
+      <div class="grid-3">
+        <div class="card">
+          <h3 style="color:#92400E;">🏢 1. APOGEE Master Server (Pusat)</h3>
+          <ul>
+            <li>Memegang otoritas lisensi (<code>whitelabel_licenses</code>), kredensial Open API, dan katalog induk APOGEE.</li>
+            <li>Menjadi <strong>Supplier H2H (Vendor APOGEE)</strong> ketika Partner Dedicated mengambil produk dari Master.</li>
+            <li>Memotong <strong>Saldo APOGEE</strong> milik Partner saat Partner mengirim transaksi ke Master.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="color:#5B21B6;">🖥️ 2. Partner Dedicated (Partner A, B, C)</h3>
+          <ul>
+            <li>Login melalui portal web APOGEE Partner Console.</li>
+            <li>Memiliki <strong>Domain sendiri</strong> (<code>mitrapulsa.my.id</code>), <strong>IP VPS sendiri</strong>, & <strong>DB Supabase sendiri</strong>.</li>
+            <li>Bebas mengambil produk dari APOGEE Master <strong>ATAU</strong> menghubungkan vendor H2H milik sendiri.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="color:#1D4ED8;">⚡ 3. Mitra Open API (Open API A, B)</h3>
+          <ul>
+            <li>Login dengan API Key & Secret Key (otomatis masuk ke <code>/openapi-portal/*</code>).</li>
+            <li><strong>Tidak punya DB/VPS sendiri</strong> — 100% langsung membaca & bertransaksi di APOGEE Master Server.</li>
+            <li>Transaksi via <code>curl</code> / H2H tercatat sebagai channel <code>B2 • OpenAPI</code> di APOGEE Master.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>Dokumentasi Arsitektur Resmi • APOGEE Digital Distribution Network</span>
+      <span>Halaman 1 dari 4</span>
+    </div>
+  </div>
+
+  <!-- ==================== HALAMAN 2 ==================== -->
+  <div class="page">
+    <div>
+      <div class="header">
+        <div class="header-left">
+          <h1>2. MEKANISME LISENSI WHITELABEL, WL DOMAIN, WL IP (IP WHITELIST) & ISOLASI TENANT</h1>
+          <p>Alur Kerja Resolusi Domain Otomatis, Whitelist IP Vendor vs Whitelist IP Open API, dan Kontrol Hak Akses Menu APOGEE</p>
+        </div>
+        <span class="badge">Halaman 2 / 4 • Lisensi, WL Domain & WL IP</span>
+      </div>
+
+      <div class="diagram-box">
+        <svg viewBox="0 0 1000 245" width="100%" height="225" xmlns="http://www.w3.org/2000/svg">
+          <!-- Step 1: Login -->
+          <rect x="15" y="20" width="215" height="205" rx="10" fill="#EFF6FF" stroke="#2563EB" stroke-width="2" />
+          <text x="122" y="42" text-anchor="middle" font-weight="900" font-size="11.5" fill="#1E3A8A">STEP 1: LOGIN DI PORTAL</text>
+          <text x="122" y="58" text-anchor="middle" font-size="9.5" fill="#1E5EFF">APOGEE Partner & Open API</text>
+          <rect x="27" y="70" width="190" height="62" rx="6" fill="#FFFFFF" stroke="#93C5FD" />
+          <text x="122" y="88" text-anchor="middle" font-weight="800" font-size="9.5" fill="#0F172A">A. Login Email & Password Mitra</text>
+          <text x="122" y="103" text-anchor="middle" font-size="8.8" fill="#475569">Auth ke APOGEE Master -> Cek Lisensi</text>
+          <text x="122" y="118" text-anchor="middle" font-size="8.8" fill="#059669" font-weight="700">Dapat: license_key, domain, vps_ip</text>
+
+          <rect x="27" y="142" width="190" height="68" rx="6" fill="#FFFFFF" stroke="#93C5FD" />
+          <text x="122" y="160" text-anchor="middle" font-weight="800" font-size="9.5" fill="#0F172A">B. Login API Key / Akun OpenAPI</text>
+          <text x="122" y="175" text-anchor="middle" font-size="8.8" fill="#475569">Auth ke APOGEE Master -> Role: openapi</text>
+          <text x="122" y="190" text-anchor="middle" font-size="8.8" fill="#1D4ED8" font-weight="700">Redirect -> /openapi-portal/dashboard</text>
+
+          <!-- Step 2: Tenant Router -->
+          <rect x="270" y="20" width="235" height="205" rx="10" fill="#FFFBEB" stroke="#D97706" stroke-width="2" />
+          <text x="387" y="42" text-anchor="middle" font-weight="900" font-size="11.5" fill="#92400E">STEP 2: DYNAMIC TENANT ROUTER</text>
+          <text x="387" y="58" text-anchor="middle" font-size="9.5" fill="#B45309">src/config/api.ts (API_CONFIG)</text>
+          <text x="284" y="80" font-size="9.3" fill="#334155">• Jika punya <tspan font-weight="800">WL Domain</tspan> (misal mitrapulsa.my.id):</text>
+          <text x="292" y="96" font-size="9" fill="#5B21B6" font-weight="700">BASE_URL = https://mitrapulsa.my.id</text>
+          <text x="292" y="111" font-size="9" fill="#5B21B6" font-weight="700">PARTNER_WS = wss://mitrapulsa.my.id/...</text>
+          <text x="292" y="126" font-size="9" fill="#047857" font-weight="700">MASTER_WS = wss://&lt;master-apogee&gt;/...</text>
+          <text x="284" y="150" font-size="9.3" fill="#334155">• Jika akun <tspan font-weight="800">Open API (H2H)</tspan>:</text>
+          <text x="292" y="166" font-size="9" fill="#1D4ED8" font-weight="700">BASE_URL = https://&lt;master-apogee&gt;</text>
+          <text x="292" y="181" font-size="9" fill="#1D4ED8" font-weight="700">MASTER_WS = wss://&lt;master-apogee&gt;/...</text>
+          <text x="284" y="203" font-size="9" fill="#64748B">• Header: X-Whitelabel-License-Key dikirim</text>
+
+          <!-- Step 3: WL IP & Security -->
+          <rect x="545" y="20" width="440" height="205" rx="10" fill="#F0FDF4" stroke="#059669" stroke-width="2" />
+          <text x="765" y="42" text-anchor="middle" font-weight="900" font-size="11.5" fill="#065F46">STEP 3: PERAN WL IP (IP WHITELIST) & WL DOMAIN DI 3 TITIK</text>
+
+          <rect x="560" y="55" width="410" height="48" rx="6" fill="#FFFFFF" stroke="#86EFAC" />
+          <text x="572" y="72" font-weight="800" font-size="9.8" fill="#065F46">1. WL IP VPS Partner (Contoh: 101.32.254.43) -> Untuk Whitelist di Vendor Supplier</text>
+          <text x="572" y="88" font-size="9" fill="#334155">Saat Partner cek saldo / tembak order ke vendor sendiri (Digiflazz/OkeConnect), request keluar dari IP VPS Partner.</text>
+
+          <rect x="560" y="110" width="410" height="48" rx="6" fill="#FFFFFF" stroke="#93C5FD" />
+          <text x="572" y="127" font-weight="800" font-size="9.8" fill="#1E3A8A">2. WL IP Klien Open API (ip_whitelist) -> Untuk Keamanan H2H ke APOGEE Master</text>
+          <text x="572" y="143" font-size="9" fill="#334155">Saat Klien Open API menembak POST /api/open/v1/order, APOGEE Master memverifikasi IP pengirim terhadap daftar WL IP klien.</text>
+
+          <rect x="560" y="165" width="410" height="48" rx="6" fill="#FFFFFF" stroke="#DDD6FE" />
+          <text x="572" y="182" font-weight="800" font-size="9.8" fill="#5B21B6">3. WL Domain Partner (Contoh: mitrapulsa.my.id) -> Untuk Webhook Callback APOGEE Master</text>
+          <text x="572" y="198" font-size="9" fill="#334155">Saat transaksi produk APOGEE Master selesai, Master mengirim callback otomatis ke https://mitrapulsa.my.id/api/v1/callback.</text>
+
+          <line x1="230" y1="120" x2="266" y2="120" stroke="#1E5EFF" stroke-width="2" marker-end="url(#arrowBlue)" />
+          <line x1="505" y1="120" x2="541" y2="120" stroke="#059669" stroke-width="2" marker-end="url(#arrowGreen)" />
+        </svg>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 16%;">Komponen / Parameter</th>
+            <th style="width: 28%;">Di APOGEE Master Superadmin</th>
+            <th style="width: 28%;">Di Partner Dedicated (Mitra A, B, C)</th>
+            <th style="width: 28%;">Di Mitra Open API (H2H Client A, B)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Endpoint API</strong></td>
+            <td>Rute Master: <code>/api/v1/admin/*</code></td>
+            <td><code>https://mitrapulsa.my.id</code> (WL Domain)<br/>Rute: <code>/api/v1/partner/*</code></td>
+            <td>Rute Open API: <code>/api/open/v1/*</code> &amp; <code>/api/v1/openapi-portal/*</code></td>
+          </tr>
+          <tr>
+            <td><strong>IP Server (WL IP)</strong></td>
+            <td><code>43.173.26.120</code> (Didaftarkan ke Vendor Master: Saudagarhost, OkeConnect, DFlash)</td>
+            <td><code>101.32.254.43</code> (Didaftarkan ke Vendor milik Partner sendiri &amp; tercatat di Lisensi Master)</td>
+            <td>IP Server Klien H2H didaftarkan di form <strong>IP Whitelist</strong> pada Dashboard Open API</td>
+          </tr>
+          <tr>
+            <td><strong>Database</strong></td>
+            <td>Supabase APOGEE Master (Pusat)</td>
+            <td>Supabase Dedicated Partner (Terpisah per Mitra)</td>
+            <td>Tidak butuh DB (Langsung di Supabase APOGEE Master)</td>
+          </tr>
+          <tr>
+            <td><strong>Dompet Saldo (Wallet)</strong></td>
+            <td>Saldo Vendor H2H Master</td>
+            <td><strong>Saldo APOGEE</strong> di Master (dipakai saat ambil produk dari Master) + Saldo Vendor Partner sendiri</td>
+            <td><strong>Saldo APOGEE / Saldo H2H</strong> di Master (dipotong langsung setiap order H2H)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="footer">
+      <span>Dokumentasi Arsitektur Resmi • APOGEE Lisensi, WL Domain & WL IP</span>
+      <span>Halaman 2 dari 4</span>
+    </div>
+  </div>
+
+  <!-- ==================== HALAMAN 3 ==================== -->
+  <div class="page">
+    <div>
+      <div class="header">
+        <div class="header-left">
+          <h1>3. FLOWCHART 3 JALUR TRANSAKSI & CALLBACK OTOMATIS (END-TO-END)</h1>
+          <p>Perbedaan Alur Saat Partner Order ke APOGEE Master vs Partner Order ke Vendor Sendiri vs Open API H2H Order ke APOGEE Master</p>
+        </div>
+        <span class="badge">Halaman 3 / 4 • Siklus Transaksi & Callback</span>
+      </div>
+
+      <div class="diagram-box">
+        <svg viewBox="0 0 1000 310" width="100%" height="285" xmlns="http://www.w3.org/2000/svg">
+          <!-- JALUR 1: PARTNER AMBIL PRODUK DARI MASTER -->
+          <rect x="10" y="10" width="980" height="90" rx="8" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.8" />
+          <text x="24" y="28" font-weight="900" font-size="10.5" fill="#92400E">JALUR 1: PARTNER DEDICATED AMBIL PRODUK DARI APOGEE MASTER (Supplier = APOGEE)</text>
+
+          <rect x="24" y="38" width="150" height="50" rx="6" fill="#FFFFFF" stroke="#D97706" />
+          <text x="99" y="56" text-anchor="middle" font-weight="800" font-size="9.2">1. Member App Partner</text>
+          <text x="99" y="70" text-anchor="middle" font-size="8.5" fill="#475569">Order DANA Rp 13.120</text>
+          <text x="99" y="81" text-anchor="middle" font-size="8" fill="#059669" font-weight="700">Channel: i1 • Apps</text>
+
+          <rect x="205" y="38" width="185" height="50" rx="6" fill="#FFFFFF" stroke="#7C3AED" />
+          <text x="297" y="55" text-anchor="middle" font-weight="800" font-size="9.2" fill="#5B21B6">2. Server Partner (mitrapulsa)</text>
+          <text x="297" y="68" text-anchor="middle" font-size="8.5" fill="#475569">Catat #2611180502 (Tanpa Ref)</text>
+          <text x="297" y="80" text-anchor="middle" font-size="8" fill="#6D28D9" font-weight="700">Publish WS Partner (admin:orders)</text>
+
+          <rect x="420" y="38" width="195" height="50" rx="6" fill="#FFFFFF" stroke="#D97706" />
+          <text x="517" y="55" text-anchor="middle" font-weight="800" font-size="9.2" fill="#92400E">3. Server APOGEE Master</text>
+          <text x="517" y="68" text-anchor="middle" font-size="8.5" fill="#475569">Potong Saldo APOGEE (Rp 13.100)</text>
+          <text x="517" y="80" text-anchor="middle" font-size="8" fill="#B45309" font-weight="700">Catat B2C • Partner (Ref: #2611180502)</text>
+
+          <rect x="645" y="38" width="145" height="50" rx="6" fill="#FFFFFF" stroke="#E11D48" />
+          <text x="717" y="55" text-anchor="middle" font-weight="800" font-size="9.2" fill="#9F1239">4. Vendor Master</text>
+          <text x="717" y="68" text-anchor="middle" font-size="8.5" fill="#475569">Saudagarhost / OkeConnect</text>
+          <text x="717" y="80" text-anchor="middle" font-size="8" fill="#BE123C" font-weight="700">Callback SUKSES + SN</text>
+
+          <rect x="820" y="38" width="155" height="50" rx="6" fill="#ECFDF5" stroke="#059669" />
+          <text x="897" y="55" text-anchor="middle" font-weight="800" font-size="9.2" fill="#065F46">5. Webhook ke Partner</text>
+          <text x="897" y="68" text-anchor="middle" font-size="8.3" fill="#047857">mitrapulsa.my.id/api/v1/callback</text>
+          <text x="897" y="80" text-anchor="middle" font-size="8" fill="#059669" font-weight="800">Update SUKSES + Bunyi "SUKSES"</text>
+
+          <line x1="174" y1="63" x2="201" y2="63" stroke="#7C3AED" stroke-width="1.8" marker-end="url(#arrowPurple)" />
+          <line x1="390" y1="63" x2="416" y2="63" stroke="#D97706" stroke-width="1.8" marker-end="url(#arrowOrange)" />
+          <line x1="615" y1="63" x2="641" y2="63" stroke="#D97706" stroke-width="1.8" marker-end="url(#arrowOrange)" />
+          <line x1="790" y1="63" x2="816" y2="63" stroke="#059669" stroke-width="1.8" marker-end="url(#arrowGreen)" />
+
+          <!-- JALUR 2: PARTNER KE VENDOR SENDIRI -->
+          <rect x="10" y="112" width="980" height="88" rx="8" fill="#F5F3FF" stroke="#8B5CF6" stroke-width="1.8" />
+          <text x="24" y="130" font-weight="900" font-size="10.5" fill="#5B21B6">JALUR 2: PARTNER DEDICATED PAKAI VENDOR H2H SENDIRI (Tanpa Lewat APOGEE Master)</text>
+
+          <rect x="24" y="138" width="180" height="50" rx="6" fill="#FFFFFF" stroke="#7C3AED" />
+          <text x="114" y="155" text-anchor="middle" font-weight="800" font-size="9.2">1. Member App Partner</text>
+          <text x="114" y="168" text-anchor="middle" font-size="8.5" fill="#475569">Order Pulsa / Kuota</text>
+          <text x="114" y="180" text-anchor="middle" font-size="8" fill="#059669" font-weight="700">Channel: i1 • Apps</text>
+
+          <rect x="245" y="138" width="225" height="50" rx="6" fill="#FFFFFF" stroke="#7C3AED" />
+          <text x="357" y="155" text-anchor="middle" font-weight="800" font-size="9.2" fill="#5B21B6">2. Server Partner (IP: 101.32.254.43)</text>
+          <text x="357" y="168" text-anchor="middle" font-size="8.5" fill="#475569">Potong Saldo Member di DB Partner</text>
+          <text x="357" y="180" text-anchor="middle" font-size="8" fill="#6D28D9" font-weight="700">Langsung Tembak Vendor Milik Partner</text>
+
+          <rect x="510" y="138" width="215" height="50" rx="6" fill="#FFFFFF" stroke="#0891B2" />
+          <text x="617" y="155" text-anchor="middle" font-weight="800" font-size="9.2" fill="#155E75">3. Vendor H2H Milik Partner</text>
+          <text x="617" y="168" text-anchor="middle" font-size="8.5" fill="#475569">Validasi WL IP Partner (101.32.254.43)</text>
+          <text x="617" y="180" text-anchor="middle" font-size="8" fill="#0E7490" font-weight="700">Kirim Callback langsung ke Domain Partner</text>
+
+          <rect x="765" y="138" width="210" height="50" rx="6" fill="#ECFDF5" stroke="#059669" />
+          <text x="870" y="155" text-anchor="middle" font-weight="800" font-size="9.2" fill="#065F46">4. Selesai di Server Partner</text>
+          <text x="870" y="168" text-anchor="middle" font-size="8.5" fill="#047857">Tidak Masuk Master &amp; Saldo APOGEE Utuh</text>
+          <text x="870" y="180" text-anchor="middle" font-size="8" fill="#059669" font-weight="800">Broadcast WS Partner (admin:orders)</text>
+
+          <line x1="204" y1="163" x2="241" y2="163" stroke="#7C3AED" stroke-width="1.8" marker-end="url(#arrowPurple)" />
+          <line x1="470" y1="163" x2="506" y2="163" stroke="#7C3AED" stroke-width="1.8" marker-end="url(#arrowPurple)" />
+          <line x1="725" y1="163" x2="761" y2="163" stroke="#059669" stroke-width="1.8" marker-end="url(#arrowGreen)" />
+
+          <!-- JALUR 3: OPEN API H2H KE MASTER -->
+          <rect x="10" y="212" width="980" height="88" rx="8" fill="#EFF6FF" stroke="#3B82F6" stroke-width="1.8" />
+          <text x="24" y="230" font-weight="900" font-size="10.5" fill="#1E3A8A">JALUR 3: MITRA OPEN API H2H (CURL / SERVER-TO-SERVER LANGSUNG KE APOGEE MASTER)</text>
+
+          <rect x="24" y="238" width="180" height="50" rx="6" fill="#FFFFFF" stroke="#2563EB" />
+          <text x="114" y="255" text-anchor="middle" font-weight="800" font-size="9.2" fill="#1E3A8A">1. Server / Curl Open API</text>
+          <text x="114" y="268" text-anchor="middle" font-size="8.5" fill="#475569">POST /api/open/v1/order</text>
+          <text x="114" y="280" text-anchor="middle" font-size="8" fill="#1D4ED8" font-weight="700">Kirim ref_id + X-Client-Key</text>
+
+          <rect x="245" y="238" width="225" height="50" rx="6" fill="#FFFFFF" stroke="#2563EB" />
+          <text x="357" y="255" text-anchor="middle" font-weight="800" font-size="9.2" fill="#1E3A8A">2. APOGEE Master Validasi</text>
+          <text x="357" y="268" text-anchor="middle" font-size="8.5" fill="#475569">Cek WL IP Klien + Potong Saldo APOGEE</text>
+          <text x="357" y="280" text-anchor="middle" font-size="8" fill="#1D4ED8" font-weight="700">Catat Channel: B2 • OpenAPI (Ref: ref_id)</text>
+
+          <rect x="510" y="238" width="215" height="50" rx="6" fill="#FFFFFF" stroke="#D97706" />
+          <text x="617" y="255" text-anchor="middle" font-weight="800" font-size="9.2" fill="#92400E">3. Broadcast Realtime 0ms</text>
+          <text x="617" y="268" text-anchor="middle" font-size="8.5" fill="#475569">Publish ke admin:orders &amp; public:openapi</text>
+          <text x="617" y="280" text-anchor="middle" font-size="8" fill="#B45309" font-weight="700">Tabel Master &amp; Portal OpenAPI Update Live</text>
+
+          <rect x="765" y="238" width="210" height="50" rx="6" fill="#ECFDF5" stroke="#059669" />
+          <text x="870" y="255" text-anchor="middle" font-weight="800" font-size="9.2" fill="#065F46">4. Webhook ke Klien OpenAPI</text>
+          <text x="870" y="268" text-anchor="middle" font-size="8.5" fill="#047857">Kirim JSON Callback ke webhook_url</text>
+          <text x="870" y="280" text-anchor="middle" font-size="8" fill="#059669" font-weight="800">Tersedia Tombol Resend Callback di Master</text>
+
+          <line x1="204" y1="263" x2="241" y2="263" stroke="#1E5EFF" stroke-width="1.8" marker-end="url(#arrowBlue)" />
+          <line x1="470" y1="263" x2="506" y2="263" stroke="#1E5EFF" stroke-width="1.8" marker-end="url(#arrowBlue)" />
+          <line x1="725" y1="263" x2="761" y2="263" stroke="#059669" stroke-width="1.8" marker-end="url(#arrowGreen)" />
+        </svg>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="color:#1E3A8A;">🏷️ Aturan Tampilan Kode Transaksi &amp; Ref ID</h3>
+          <ul>
+            <li><strong>Di Partner Admin (Channel <code>i1 • Apps</code>)</strong>: Hanya menampilkan Kode Transaksi tunggal (tanpa <code>Ref:</code> di bawahnya, dan tanpa menampilkan URL endpoint vendor internal).</li>
+            <li><strong>Di APOGEE Master Superadmin (Channel <code>B2 • OpenAPI</code> &amp; <code>B2C • Partner</code>)</strong>: Menampilkan Kode Transaksi Master beserta <code>Ref: &lt;Kode_Partner&gt;</code> dan tombol <strong>Resend Callback</strong>.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="color:#065F46;">🛡️ Proteksi Saldo Vendor &amp; Status Produk</h3>
+          <ul>
+            <li>Jika transaksi gagal karena <strong>Saldo APOGEE Master di Vendor kurang</strong> (<code>isVendorBalanceIssue</code>), produk <strong>TIDAK dinonaktifkan</strong> (tetap aktif agar ketika deposit vendor diisi langsung bisa transaksi).</li>
+            <li>Jika transaksi timeout jaringan (<em>indeterminate</em>), status ditahan sebagai <code>PROCESSING</code> (<em>Timeout is Pending, Never Failed</em>) demi mencegah rugi refund ganda.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>Dokumentasi Arsitektur Resmi • APOGEE Flowchart 3 Jalur Transaksi &amp; Callback</span>
+      <span>Halaman 3 dari 4</span>
+    </div>
+  </div>
+
+  <!-- ==================== HALAMAN 4 ==================== -->
+  <div class="page">
+    <div>
+      <div class="header">
+        <div class="header-left">
+          <h1>4. ARSITEKTUR REALTIME CENTRIFUGO WEBSOCKET (DUAL-PIPE 0MS TANPA POLLING)</h1>
+          <p>Pemisahan Saluran WebSocket APOGEE Master vs Saluran WebSocket Dedicated Partner Agar Tabel &amp; Saldo Selalu Sinkron Detik ke-0</p>
+        </div>
+        <span class="badge">Halaman 4 / 4 • Realtime Centrifugo</span>
+      </div>
+
+      <div class="diagram-box">
+        <svg viewBox="0 0 1000 225" width="100%" height="210" xmlns="http://www.w3.org/2000/svg">
+          <!-- Centrifugo Master -->
+          <rect x="15" y="15" width="460" height="195" rx="10" fill="#FFFBEB" stroke="#D97706" stroke-width="2" />
+          <text x="245" y="38" text-anchor="middle" font-weight="900" font-size="11.5" fill="#92400E">⚡ PIPA 1: CENTRIFUGO APOGEE MASTER (PUSAT)</text>
+          <text x="245" y="54" text-anchor="middle" font-weight="700" font-size="9.5" fill="#B45309">DEFAULT_MASTER_WS (Koneksi Permanen ke Server APOGEE Master)</text>
+
+          <rect x="30" y="66" width="430" height="30" rx="5" fill="#FFFFFF" stroke="#FCD34D" />
+          <text x="42" y="85" font-size="9.2" fill="#0F172A"><tspan font-weight="800" fill="#B45309">admin:orders</tspan> ➔ Menambah baris baru 0ms di Tabel Riwayat Transaksi APOGEE Master</text>
+
+          <rect x="30" y="102" width="430" height="30" rx="5" fill="#FFFFFF" stroke="#FCD34D" />
+          <text x="42" y="121" font-size="9.2" fill="#0F172A"><tspan font-weight="800" fill="#B45309">tenant:&lt;KEY&gt;:admin:orders</tspan> ➔ Dual-broadcast transaksi B2C dari Master ke Partner</text>
+
+          <rect x="30" y="138" width="430" height="30" rx="5" fill="#FFFFFF" stroke="#FCD34D" />
+          <text x="42" y="157" font-size="9.2" fill="#0F172A"><tspan font-weight="800" fill="#B45309">whitelabel:&lt;KEY&gt;</tspan> ➔ Update live SALDO APOGEE, status lisensi &amp; allowed_menus</text>
+
+          <rect x="30" y="174" width="430" height="30" rx="5" fill="#FFFFFF" stroke="#FCD34D" />
+          <text x="42" y="193" font-size="9.2" fill="#0F172A"><tspan font-weight="800" fill="#B45309">public:openapi &amp; user:&lt;ID&gt;</tspan> ➔ Update live Tabel &amp; Saldo di Dashboard Open API</text>
+
+          <!-- Centrifugo Partner -->
+          <rect x="525" y="15" width="460" height="195" rx="10" fill="#F5F3FF" stroke="#7C3AED" stroke-width="2" />
+          <text x="755" y="38" text-anchor="middle" font-weight="900" font-size="11.5" fill="#5B21B6">⚡ PIPA 2: CENTRIFUGO DEDICATED PARTNER</text>
+          <text x="755" y="54" text-anchor="middle" font-weight="700" font-size="9.5" fill="#6D28D9">wss://&lt;domain-partner&gt;/connection/websocket (Contoh: mitrapulsa.my.id)</text>
+
+          <rect x="540" y="66" width="430" height="30" rx="5" fill="#FFFFFF" stroke="#DDD6FE" />
+          <text x="552" y="85" font-size="9.2" fill="#0F172A"><tspan font-weight="800" fill="#6D28D9">admin:orders</tspan> ➔ Menambah baris baru 0ms di Tabel Riwayat Transaksi Partner Admin</text>
+
+          <rect x="540" y="102" width="430" height="30" rx="5" fill="#FFFFFF" stroke="#DDD6FE" />
+          <text x="552" y="121" font-size="9.2" fill="#0F172A"><tspan font-weight="800" fill="#6D28D9">user:&lt;MEMBER_ID&gt;</tspan> ➔ Notifikasi &amp; update status pesanan di Aplikasi HP Pelanggan Partner</text>
+
+          <rect x="540" y="138" width="430" height="30" rx="5" fill="#FFFFFF" stroke="#DDD6FE" />
+          <text x="552" y="157" font-size="9.2" fill="#0F172A"><tspan font-weight="800" fill="#6D28D9">admin:catalog &amp; public:app</tspan> ➔ Sinkronisasi harga &amp; status produk Partner ke Aplikasi</text>
+
+          <rect x="540" y="174" width="430" height="30" rx="5" fill="#FFFFFF" stroke="#DDD6FE" />
+          <text x="552" y="193" font-size="9.2" fill="#0F172A"><tspan font-weight="800" fill="#6D28D9">admin:chat &amp; admin:presence</tspan> ➔ Live chat pelanggan Partner &amp; indikator member online</text>
+        </svg>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 20%;">Portal / Layar</th>
+            <th style="width: 26%;">Koneksi WebSocket yang Dipakai</th>
+            <th style="width: 27%;">Event Saat Pesanan Masuk (Detik ke-0)</th>
+            <th style="width: 27%;">Event Saat Transaksi Selesai (Callback)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>APOGEE Master Admin</strong></td>
+            <td>Hanya <strong>Pipa 1 (APOGEE Master WS)</strong></td>
+            <td><code>ORDER_CREATED</code> ➔ Baris baru langsung muncul di urutan #1 tabel + bunyi notifikasi masuk.</td>
+            <td><code>ORDER_UPDATED</code> ➔ Status berubah menjadi <code>SUKSES</code> + SN muncul + suara manusia <strong>"SUKSES"</strong>.</td>
+          </tr>
+          <tr>
+            <td><strong>Partner Admin Dedicated</strong></td>
+            <td><strong>Dual-Pipe Aktif Bersamaan:</strong><br/>• Pipa 1 (APOGEE Master WS) untuk Saldo APOGEE<br/>• Pipa 2 (Partner WS) untuk Tabel Transaksi</td>
+            <td><code>ORDER_CREATED</code> dari Pipa 2 (<code>admin:orders</code>) &amp; Pipa 1 ➔ Baris baru langsung muncul di urutan #1 tabel Partner.</td>
+            <td><code>ORDER_UPDATED</code> ➔ Baris berubah ke <code>SUKSES</code> + SN terformat rapi + Saldo APOGEE terupdate + suara <strong>"SUKSES"</strong>.</td>
+          </tr>
+          <tr>
+            <td><strong>Open API Portal</strong><br/>(<code>/openapi-portal/*</code>)</td>
+            <td>Hanya <strong>Pipa 1 (APOGEE Master WS)</strong><br/>Channel: <code>public:openapi</code> &amp; <code>user:&lt;ID&gt;</code></td>
+            <td>Saat <code>curl</code> / Live Test dieksekusi, baris baru langsung masuk ke tabel Riwayat Transaksi Open API &amp; Saldo APOGEE berkurang live.</td>
+            <td>Status otomatis berubah ke <code>SUKSES</code> + SN muncul tanpa perlu tekan tombol Refresh.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="footer">
+      <span>Dokumentasi Arsitektur Resmi • APOGEE Realtime Centrifugo WebSocket Architecture</span>
+      <span>Halaman 4 dari 4</span>
+    </div>
+  </div>
+
+</body>
+</html>
